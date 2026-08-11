@@ -508,11 +508,16 @@ function renderPicker() {
 function renderHeader() {
   const h = document.getElementById('header');
   if (!h) return;
-  const key = view === 'project' ? 'proj:' + activeProjectId : view;
+  // The account button lives in this header, so its state belongs in the
+  // memo key — otherwise signing in or out would leave a stale button until
+  // some unrelated navigation happened to rebuild the header.
+  const key = (view === 'project' ? 'proj:' + activeProjectId : view) +
+              '|' + (typeof cloudState === 'function' ? cloudState() : '');
   if (h.dataset.key === key) return;
   h.dataset.key = key;
   if (view === 'home') {
-    h.innerHTML = `<div class="header-top lib-brand">${LOGO_SVG}<h1><span>Pattern</span> library</h1></div>`;
+    h.innerHTML = `<div class="header-top lib-brand">${LOGO_SVG}<h1><span>Pattern</span> library</h1>` +
+      (typeof accountButtonHtml === 'function' ? accountButtonHtml() : '') + `</div>`;
     return;
   }
   if (view === 'picker') {

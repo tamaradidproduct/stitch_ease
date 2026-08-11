@@ -118,8 +118,48 @@
   .header.header-hidden { transform: translateY(-100%); }
   .header-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 0.75rem; }
   .header-top.lib-brand { justify-content: flex-start; gap: 10px; align-items: center; margin-bottom: 0; }
+  .header-top.lib-brand h1 { flex: 1; min-width: 0; }
   .header-top .pattern-h1 { flex: 1; min-width: 0; }
   .lib-logo { display: block; flex-shrink: 0; }
+
+  /* Account button — the only entry point to sign-in. */
+  .acct-btn {
+    flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%;
+    border: 1px solid var(--border); background: var(--bg);
+    color: var(--muted); cursor: pointer; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: inherit; font-size: 13px; font-weight: 600;
+  }
+  /* Signed in: the accent fill is the whole status indicator, so it reads at a
+     glance without a label competing with the app title. */
+  .acct-btn.in { background: var(--accent); border-color: var(--accent); color: #fff; }
+  /* Signed in but unreachable — amber ring, not an error colour: nothing is
+     wrong, the work is just not backed up yet. */
+  .acct-btn.off { border-color: #c99a3f; color: #a97c22; }
+
+  .acct-row { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+  .acct-avatar {
+    width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+    background: var(--accent); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 600;
+  }
+  .acct-email { font-size: 14px; color: var(--text); word-break: break-all; }
+  .acct-status { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .acct-note {
+    font-size: 12px; color: var(--muted); line-height: 1.5;
+    margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--border);
+  }
+  .acct-err {
+    font-size: 13px; line-height: 1.45; color: #8e4634;
+    background: #f7ece8; border: 1px solid #e4c7bd; border-radius: var(--radius);
+    padding: 10px 12px; margin-top: 12px;
+  }
+  .acct-ok {
+    font-size: 13px; line-height: 1.45; color: var(--text);
+    background: var(--accent-light); border: 1px solid var(--accent);
+    border-radius: var(--radius); padding: 10px 12px; margin-top: 12px;
+  }
 
   /* Compact project header: back · (title + size subtitle) · Rows · chevron */
   .proj-head { align-items: flex-start; gap: 8px; margin-bottom: 0; }
