@@ -708,6 +708,11 @@
 
 <!-- App code. Classic scripts, loaded in dependency order: state first (it
      declares the globals everything else assigns to), bootstrap last. -->
+<!-- Vendored, not a CDN tag: works offline on first load, sits in the SW
+     precache, pins the version, and keeps a third-party origin out of the
+     critical path. Nothing uses it until Phase 4 — and if it fails to load,
+     the app must carry on exactly as it does today. -->
+<script src="js/vendor/supabase.js"></script>
 <script src="js/core/state.js"></script>
 <script src="js/patterns/peacock-tee.js"></script>
 <script src="js/patterns/tatted-triangle.js"></script>

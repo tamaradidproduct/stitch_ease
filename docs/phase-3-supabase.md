@@ -37,7 +37,26 @@ Applied 2026-08-11 to `stitch-ease-app` (`dozzilmrtjhinoactcve`, ca-central-1, P
 - **3.3 proof** — all checks pass, both directions, plus the signed-out case. See below.
 - Supabase's own security advisor reports **zero findings**.
 
-**Still to do: 3.4 (migration file convention — done) and 3.5 (vendor supabase-js).**
+- **3.4 migration convention** — `supabase/migrations/` is the record; the dashboard (or
+  this MCP connection) applies it. No CLI, no toolchain.
+- **3.5 vendored client** — `@supabase/supabase-js@2.112.3` UMD, 207K, MIT, pinned.
+  `sha256 ec004176d101aec77aeef266aa1c94411287fe2039c65ea5f6c72f5e14b3847d`.
+  Loaded first in `index.html`, precached, cache bumped to `stitch-ease-v7`.
+
+**Phase 3 is complete.** Nothing calls the client yet — that is Phase 4.
+
+### The failure-mode test (risk §H10)
+
+Renaming `js/vendor/supabase.js` away so it 404s, the app is **byte-identical**: same
+rendered HTML length and text on both the home and project screens, same chart row, still
+fully knittable, still stamping clocks. The only console output is the expected 404.
+
+The first run of this comparison showed the clock key set differing, which looked like a
+real effect of the missing vendor file. It was not: the test setup had cleared all `pt3_`
+keys including `pt3_schema`, so `migrateAddClocks()` re-ran on reload and backfilled every
+key. Restoring the vendor file and re-checking gave the *same* 39 keys, which is what
+proved the difference was the migration rather than the vendor. Worth remembering that a
+fixture that clears storage also clears migration sentinels.
 
 ### What the RLS proof actually showed
 
