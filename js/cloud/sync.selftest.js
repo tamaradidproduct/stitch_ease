@@ -65,13 +65,13 @@ function syncSelfTest() {
   check('both changed, values differ → conflict, merged keeps local',
     (() => {
       const r = diffProgress(
-        { values: { chart_row: 31 }, clocks: { chart_row: t1 } },
-        { values: { chart_row: 23 }, clocks: { chart_row: t2 } },
-        { chart_row: t0 });
+        { values: { 'cr:yoke': 31 }, clocks: { 'cr:yoke': t1 } },
+        { values: { 'cr:yoke': 23 }, clocks: { 'cr:yoke': t2 } },
+        { 'cr:yoke': t0 });
       return { merged: r.merged, conflicts: r.conflicts };
     })(),
-    { merged: { chart_row: 31 },
-      conflicts: [{ key: 'chart_row', local: 31, remote: 23, localClock: t1, remoteClock: t2 }] });
+    { merged: { 'cr:yoke': 31 },
+      conflicts: [{ key: 'cr:yoke', local: 31, remote: 23, localClock: t1, remoteClock: t2 }] });
 
   // 5. Both moved, but landed on the same value.
   check('both changed, values equal → no prompt, newest clock',
@@ -91,14 +91,29 @@ function syncSelfTest() {
   check('disjoint fields → both survive, nothing to ask',
     (() => {
       const r = diffProgress(
-        { values: { 's:m1': true, 's:m2': true, 's:m3': true, chart_row: 1 },
-          clocks: { 's:m1': t1, 's:m2': t1, 's:m3': t1, chart_row: t0 } },
-        { values: { 's:m1': false, 's:m2': false, 's:m3': false, chart_row: 31 },
-          clocks: { 's:m1': t0, 's:m2': t0, 's:m3': t0, chart_row: t1 } },
-        { 's:m1': t0, 's:m2': t0, 's:m3': t0, chart_row: t0 });
+        { values: { 's:m1': true, 's:m2': true, 's:m3': true, 'cr:yoke': 1 },
+          clocks: { 's:m1': t1, 's:m2': t1, 's:m3': t1, 'cr:yoke': t0 } },
+        { values: { 's:m1': false, 's:m2': false, 's:m3': false, 'cr:yoke': 31 },
+          clocks: { 's:m1': t0, 's:m2': t0, 's:m3': t0, 'cr:yoke': t1 } },
+        { 's:m1': t0, 's:m2': t0, 's:m3': t0, 'cr:yoke': t0 });
       return { merged: r.merged, conflicts: r.conflicts.length };
     })(),
-    { merged: { 's:m1': true, 's:m2': true, 's:m3': true, chart_row: 31 }, conflicts: 0 });
+    { merged: { 's:m1': true, 's:m2': true, 's:m3': true, 'cr:yoke': 31 }, conflicts: 0 });
+
+  // Chart rows are keyed per phase (chartRowKey). A pattern can have several
+  // charts — Frost Flower has a gauge swatch and a raglan — and two devices
+  // sitting on DIFFERENT charts are not in conflict. Under a single shared
+  // 'chart_row' key they would have been, and merging would have jumped
+  // somebody to a row of a chart they were not knitting.
+  check('different chart phases → independent, no conflict',
+    (() => {
+      const r = diffProgress(
+        { values: { 'cr:swatch': 14, 'cr:raglan': 1 }, clocks: { 'cr:swatch': t1, 'cr:raglan': t0 } },
+        { values: { 'cr:swatch': 1, 'cr:raglan': 9 }, clocks: { 'cr:swatch': t0, 'cr:raglan': t1 } },
+        { 'cr:swatch': t0, 'cr:raglan': t0 });
+      return { merged: r.merged, conflicts: r.conflicts.length };
+    })(),
+    { merged: { 'cr:swatch': 14, 'cr:raglan': 9 }, conflicts: 0 });
 
   // ── Baselines ──
 
