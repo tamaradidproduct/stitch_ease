@@ -10,6 +10,7 @@ function openProject(id) {
 
 function goHome() {
   save();
+  flushNow('goHome');   // a natural pause — the knitter has put the project down
   view = 'home';
   phaseNavOpen = false;
   window.scrollTo(0, 0);
@@ -39,7 +40,7 @@ function syncChartLayout() {
 }
 
 function go(i) {
-  cur = i; phaseNavOpen = false;
+  cur = i; stampClock('cur'); phaseNavOpen = false;
   syncActiveChart(); // phases can have different charts — repoint before render
   save(); render();
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -48,10 +49,11 @@ function go(i) {
 function toggleStep(id) {
   const nowDone = !state[id];
   state[id] = nowDone;
+  stampClock('s:' + id);
   // On "countable" phases (e.g. tatting rings/chains) each completed step is one
   // unit of work — advance the Rows tally by the real change.
   const ph = PHASES.find(p => p.steps.some(s => s.id === id));
-  if (ph && ph.countable) globalRows = Math.max(0, globalRows + (nowDone ? 1 : -1));
+  if (ph && ph.countable) { globalRows = Math.max(0, globalRows + (nowDone ? 1 : -1)); stampClock('global_rows'); }
   save(); render();
 }
 
@@ -64,9 +66,10 @@ function toggleSubStep(stepId, idx) {
   if (!step || !step.bullets) return;
   const key = stepId + '__b' + idx;
   state[key] = !state[key];
+  stampClock('s:' + key);
   const allDone = step.bullets.every((_, i) => state[stepId + '__b' + i]);
   if (allDone) {
-    step.bullets.forEach((_, i) => { state[stepId + '__b' + i] = false; });
+    step.bullets.forEach((_, i) => { state[stepId + '__b' + i] = false; stampClock('s:' + stepId + '__b' + i); });
     changeCount(stepId, 1); // saves + renders
   } else {
     save(); render();
@@ -78,7 +81,12 @@ function changeCount(id, delta) {
   const max  = step ? step.target : 999;
   const prev = ctrs[id] || 0;
   ctrs[id]   = Math.max(0, Math.min(max, prev + delta));
-  globalRows = Math.max(0, globalRows + (ctrs[id] - prev)); // auto-advance global by the real change
+  // A tap that hit the min/max moved nothing — stamping it would claim an edit
+  // this device never made, and lose a real one from the other device.
+  if (ctrs[id] !== prev) {
+    stampClocks(['c:' + id, 'global_rows']);
+    globalRows = Math.max(0, globalRows + (ctrs[id] - prev)); // auto-advance global by the real change
+  }
   save(); render(); renderGlobalRows();
 }
 
@@ -213,7 +221,9 @@ window.addEventListener('resize', updatePhaseHeaderOffset);
 // ─────────────────────────────────────────────
 migrateLegacy();
 migrateToProjects();
+migrateAddClocks();
 loadGlobal();
+loadOutbox();
 loadProjects();
 view = 'home';
 render();

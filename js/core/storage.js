@@ -3,7 +3,9 @@
 //
 // Keys, all under the pt3_ prefix (see CLAUDE.md; do not rename — the
 // migrations below depend on the exact strings):
-//   pt3_projects                  the registry: [{ id, patternId, name, created }]
+//   pt3_projects                  the registry: [{ id, patternId, name, created,
+//                                 updatedAt, deletedAt? }] — deletedAt marks a
+//                                 tombstone; the record is kept, not removed
 //   pt3_proj_<id>_state           {stepId: bool}   completed steps
 //   pt3_proj_<id>_ctrs            {stepId: int}    row counters
 //   pt3_proj_<id>_cur             current phase index
@@ -13,49 +15,111 @@
 //                                 then superseded. Kept readable forever so
 //                                 old saved progress isn't lost.
 //   pt3_proj_<id>_grows           project-wide row tally
+//   pt3_proj_<id>_clk             {fieldKey: epoch_ms} last local change per field
+//   pt3_proj_<id>_base            {fieldKey: epoch_ms} clocks at last sync
+//   pt3_schema                    migration sentinel — GLOBAL
+//   pt3_outbox                    entities with unpushed changes — GLOBAL
+//                                 (see js/cloud/sync.js)
 //   pt3_cellSz                    chart cell size — GLOBAL, shared across projects
 // ─────────────────────────────────────────────
 
 // ── Projects registry (pt3_projects) ──
 function loadProjects() {
   try { projects = JSON.parse(localStorage.getItem('pt3_projects') || '[]') || []; } catch(e) { projects = []; }
+  // Records written before registry records carried an `updatedAt` get one
+  // here rather than in a migration: migrateAddClocks() has already set its
+  // sentinel for existing users, so a one-time pass would skip exactly the
+  // records that need it. As an invariant checked every boot this is also
+  // self-healing if a future write path forgets the field.
+  //
+  // Backfilled from `created`, not from now(): "now" would assert the record
+  // changed at boot, letting a stale local name beat a newer remote one on
+  // first sync. `created` is the last thing actually known about it.
+  let patched = false;
+  projects.forEach(p => { if (!p.updatedAt) { p.updatedAt = p.created || 0; patched = true; } });
+  if (patched) saveProjects();
 }
 function saveProjects() {
   try { localStorage.setItem('pt3_projects', JSON.stringify(projects)); } catch(e) {}
 }
 function newId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
-// Auto-name: pattern name, then "<name> 2", "<name> 3"… for repeats.
+// `projects` holds tombstones as well as live records (see deleteProject), so
+// anything user-facing goes through this rather than iterating the array.
+function liveProjects() { return projects.filter(p => !p.deletedAt); }
+function isDeleted(projectId) {
+  const p = projects.find(x => x.id === projectId);
+  return !p || !!p.deletedAt;
+}
+
+// Every per-project key. Kept in one place because both deleteProject() and,
+// later, the sync engine applying a remote tombstone need to purge the same set
+// — and a key added to save() but missed here is a silent storage leak.
+// `chartRow` is the superseded scalar and `chartRows` the per-phase map: both
+// are listed because a project saved before that change still has the old key
+// on disk, and purging only the new one would leave it orphaned forever.
+const PROJ_KEYS = ['state','ctrs','cur','chartRow','chartRows','grows','clk','base'];
+function purgeProjectData(projectId) {
+  PROJ_KEYS.forEach(k => { try { localStorage.removeItem('pt3_proj_' + projectId + '_' + k); } catch(e){} });
+}
+
+// Auto-name: pattern name, then "<name> 2", "<name> 3"… for repeats. Tombstones
+// don't count, so deleting "Peacock Tee 2" frees that name to be used again
+// rather than leaving a permanent gap in the numbering.
 function autoProjectName(pattern) {
-  const n = projects.filter(p => p.patternId === pattern.id).length;
+  const n = liveProjects().filter(p => p.patternId === pattern.id).length;
   return n === 0 ? pattern.name : pattern.name + ' ' + (n + 1);
 }
 
 function createProject(patternId) {
   const pat = patternById(patternId);
   if (!pat) { console.warn('No pattern "' + patternId + '"'); return null; }
-  const proj = { id: newId(), patternId: pat.id, name: autoProjectName(pat), created: Date.now() };
+  const proj = { id: newId(), patternId: pat.id, name: autoProjectName(pat),
+                 created: Date.now(), updatedAt: syncNow() };
   projects.push(proj);
   saveProjects();
+  enqueue('project', proj.id);
   return proj;
 }
 
 function renameProject(projectId) {
   const proj = projects.find(p => p.id === projectId);
-  if (!proj) return;
+  if (!proj || proj.deletedAt) return;
   const name = prompt('Rename project', proj.name);
   if (name === null) return;
   const trimmed = name.trim();
-  if (trimmed) { proj.name = trimmed; saveProjects(); resetHeaderKey(); render(); }
+  if (trimmed) {
+    proj.name = trimmed; proj.updatedAt = syncNow();
+    saveProjects(); enqueue('project', projectId);
+    resetHeaderKey(); render();
+  }
 }
 
+// Soft delete. The registry entry stays as a tombstone (`deletedAt` set) and
+// only the progress keys are purged.
+//
+// A hard delete cannot survive sync: the phone would drop the record entirely,
+// then pull from the cloud, find a project it has never heard of, and helpfully
+// re-create it. The knitter deletes the same project over and over and it keeps
+// coming back. A tombstone is the only way to say "this is gone" in a way that
+// propagates — absence means "never seen", which is a different claim.
+//
+// Tombstones are ~150 bytes and are never collected. At family scale that is
+// nothing; if it ever matters, they can be dropped once every device has
+// confirmed the delete, which needs sync state that does not exist yet.
 function deleteProject(projectId) {
   const proj = projects.find(p => p.id === projectId);
-  if (!proj) return;
+  if (!proj || proj.deletedAt) return;
   if (!confirm('Delete "' + proj.name + '"? This removes its progress.')) return;
-  ['state','ctrs','cur','chartRow','chartRows','grows'].forEach(k => { try { localStorage.removeItem('pt3_proj_' + projectId + '_' + k); } catch(e){} });
-  projects = projects.filter(p => p.id !== projectId);
+  purgeProjectData(projectId);
+  proj.deletedAt = syncNow();
+  proj.updatedAt = proj.deletedAt;
   saveProjects();
+  // Any queued progress push is now meaningless — its source keys were just
+  // purged, so flushing it would send an empty row for a project being
+  // tombstoned in the same pass. The tombstone alone carries the delete.
+  dequeue('progress', projectId);
+  enqueue('project', projectId);
   if (activeProjectId === projectId) { activeProjectId = null; view = 'home'; }
   render();
 }
@@ -103,6 +167,17 @@ function save() {
     localStorage.setItem(pkey('cur'), cur);
     localStorage.setItem(pkey('chartRows'), JSON.stringify(chartRows));
     localStorage.setItem(pkey('grows'), globalRows);
+    // `clk` rides along with the data it describes: every mutator stamps the
+    // in-memory map and then calls save(), so one write keeps them in step.
+    // Persisting it separately would risk a crash between the two leaving a
+    // value saved with no clock, which the merge engine reads as "unchanged".
+    localStorage.setItem(pkey('clk'), JSON.stringify(clocks));
+    // `base` does NOT change here — only a completed sync moves it. It is
+    // rewritten (identically) purely so one function owns the whole of a
+    // project's persisted state; measured at ~0.004ms, well inside the
+    // chart-row tap budget.
+    localStorage.setItem(pkey('base'), JSON.stringify(baseClocks));
+    enqueue('progress', activeProjectId);
     clearSaveError();
   } catch(e) {
     showSaveError(e);
@@ -128,6 +203,8 @@ function loadProjectState() {
     }
 
     const gr = localStorage.getItem(pkey('grows')); if (gr !== null) globalRows = Math.max(0, parseInt(gr) || 0);
+    const ck = localStorage.getItem(pkey('clk'));  if (ck) clocks = JSON.parse(ck) || {};
+    const bs = localStorage.getItem(pkey('base')); if (bs) baseClocks = JSON.parse(bs) || {};
   } catch(e) {}
   // `cur` and `chartRows` are both restored above, so the active chart and
   // its row have to be recomputed from them.
@@ -174,6 +251,59 @@ function migrateToProjects() {
   } catch(e) {}
 }
 
+// One-time migration: give every existing project the sync bookkeeping the
+// merge engine needs — a clock per field, and a baseline copy of it.
+//
+// Gated on its own `pt3_schema` sentinel rather than on `pt3_projects`, which
+// migrateToProjects() above already claims: keying off that would make this
+// migration a no-op for exactly the users who have data to migrate.
+//
+// Every field is stamped with the SAME t0, because pre-existing progress has
+// no per-field history — it is one snapshot, taken now. Setting base = clocks
+// additionally declares "nothing is pending" so the first sync sees a device
+// with no local edits rather than a device claiming to have changed every
+// field, which would conflict against anything already in the cloud.
+function migrateAddClocks() {
+  try {
+    if (localStorage.getItem('pt3_schema')) return;
+    const t0 = Date.now();
+    JSON.parse(localStorage.getItem('pt3_projects') || '[]').forEach(proj => {
+      const p = 'pt3_proj_' + proj.id + '_';
+      const clk = {};
+      const readObj = k => { try { return JSON.parse(localStorage.getItem(p + k) || 'null'); } catch(e) { return null; } };
+
+      // Field keys, not storage keys: one clock per step/counter, so two
+      // devices touching different steps merge without a prompt.
+      Object.keys(readObj('state') || {}).forEach(id => { clk['s:' + id] = t0; });
+      Object.keys(readObj('ctrs')  || {}).forEach(id => { clk['c:' + id] = t0; });
+      if (localStorage.getItem(p + 'cur')   !== null) clk.cur = t0;
+      if (localStorage.getItem(p + 'grows') !== null) clk.global_rows = t0;
+
+      // Chart rows are per-phase, so each gets its own clock. Projects saved
+      // before that change hold a single `chartRow` scalar instead; attribute
+      // it the same way loadProjectState() does — to the pattern's only chart
+      // phase — rather than dropping it and leaving a knitted row unclocked.
+      const rows = readObj('chartRows');
+      if (rows) {
+        Object.keys(rows).forEach(phaseId => { clk[chartRowKey(phaseId)] = t0; });
+      } else if (localStorage.getItem(p + 'chartRow') !== null) {
+        const pat = patternById(proj.patternId);
+        const chartPhase = pat && pat.phases.find(ph => ph.hasChart);
+        if (chartPhase) clk[chartRowKey(chartPhase.id)] = t0;
+      }
+
+      const json = JSON.stringify(clk);
+      localStorage.setItem(p + 'clk', json);
+      localStorage.setItem(p + 'base', json);
+    });
+    localStorage.setItem('pt3_schema', '1');
+  } catch(e) {
+    // Deliberately not silent: a failure here leaves projects without
+    // baselines, which the merge engine cannot detect on its own.
+    console.error('migrateAddClocks failed', e);
+  }
+}
+
 // Done-steps / total for a project, read from its saved state (for home cards).
 // Counts only real step ids — a step's checkable bullets (stepId + '__b' +
 // index, see toggleSubStep()) live in the same state object but aren't steps
@@ -196,8 +326,9 @@ function projectProgress(proj) {
 // Clears a step's own done-flag/counter, plus any checkable-bullet sub-state.
 function resetStep(s) {
   state[s.id] = false;
-  if (s.rows) ctrs[s.id] = 0;
-  if (s.bullets) s.bullets.forEach((_, i) => { state[s.id + '__b' + i] = false; });
+  stampClock('s:' + s.id);
+  if (s.rows) { ctrs[s.id] = 0; stampClock('c:' + s.id); }
+  if (s.bullets) s.bullets.forEach((_, i) => { state[s.id + '__b' + i] = false; stampClock('s:' + s.id + '__b' + i); });
 }
 
 // Reset progress for the current phase only.
@@ -217,6 +348,11 @@ function resetPattern() {
   chartCurrentRow = 1;
   globalRows = 0;
   cur = 0;
+  // Clearing the objects drops the old keys entirely, so resetStep() below is
+  // what re-creates them (and their clocks); only the three scalars need
+  // stamping here. Clocks themselves are deliberately kept — a reset is an
+  // edit to sync, not a reason to forget this device ever edited anything.
+  stampClocks(['cur', 'chart_row', 'global_rows']);
   PHASES.forEach(ph => ph.steps.forEach(resetStep));
   syncActiveChart();
   save();

@@ -344,10 +344,11 @@ function renderHome() {
   renderHeader();
 
   let html = '<div class="lib-list">';
-  if (!projects.length) {
+  const live = liveProjects();   // tombstones are registry bookkeeping, never shown
+  if (!live.length) {
     html += `<div class="home-empty">No projects yet.<br>Tap ＋ to start one.</div>`;
   } else {
-    html += projects.map(proj => {
+    html += live.map(proj => {
       const pr = projectProgress(proj);
       const pat = patternById(proj.patternId);
       const meta = pat ? [pat.badge, pat.desc].filter(Boolean).join(' · ') : '';

@@ -273,10 +273,18 @@ function resizeChart(delta) {
 function changeChartRow(delta) {
   const prevRow = chartCurrentRow;
   chartCurrentRow = Math.max(1, Math.min(CHART_TOTAL, chartCurrentRow + delta));
-  if (chartCurrentRow === prevRow) return;
+  if (chartCurrentRow === prevRow) return; // clamped tap — nothing moved, nothing to stamp
   // Remember this phase's own position, so switching to another chart phase
   // and back returns to the row you were on rather than a shared one.
-  if (PHASES[cur]) chartRows[PHASES[cur].id] = chartCurrentRow;
+  if (PHASES[cur]) {
+    chartRows[PHASES[cur].id] = chartCurrentRow;
+    // Per-phase row means a per-phase clock. A single 'chart_row' key would
+    // make two devices sitting on two different chart phases look like they
+    // were fighting over one field, and merging them would move somebody to a
+    // row of a chart they aren't knitting.
+    stampClock(chartRowKey(PHASES[cur].id));
+  }
+  stampClock('global_rows');
   globalRows = Math.max(0, globalRows + (chartCurrentRow - prevRow)); // auto-advance global
   renderGlobalRows();
   save();

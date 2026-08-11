@@ -34,9 +34,25 @@ let TOTAL_STEPS = 0;
 let cur = 0;
 let phaseNavOpen = false;
 let state = {}, ctrs = {}, chartCurrentRow = 1, cellSz = 16, globalRows = 0;
+
+// Sync bookkeeping for the open project (see js/cloud/sync.js).
+//   clocks     {fieldKey: epoch_ms}  when this device last changed each field
+//   baseClocks {fieldKey: epoch_ms}  the clocks as of the last successful sync
+// Field keys are namespaced — 's:<stepId>', 'c:<stepId>', plus bare 'cur',
+// 'chart_row', 'global_rows' — NOT the localStorage suffixes, so a clock
+// identifies one field rather than the whole blob it is stored in.
+let clocks = {}, baseClocks = {};
+
+// Pending changes not yet pushed to the cloud, keyed '<kind>:<projectId>' so a
+// second change to the same entity cannot create a second entry. App-wide, not
+// per-project — it outlives whichever project happens to be open. See
+// js/cloud/sync.js.
+let outbox = {};
 let activePatternId = null;
 let activeProjectId = null;
-let projects = [];                 // [{ id, patternId, name, created }]
+// Includes tombstones — records with `deletedAt` set. Use liveProjects() for
+// anything user-facing; the raw array is what gets persisted and synced.
+let projects = [];                 // [{ id, patternId, name, created, updatedAt, deletedAt? }]
 let view = 'home';                 // 'home' | 'picker' | 'project'
 
 function patternById(id) { return PATTERNS.find(p => p.id === id) || null; }
@@ -79,6 +95,7 @@ function applyPattern(p) {
   TOTAL_STEPS = PHASES.reduce((a, ph) => a + ph.steps.length, 0);
   cur = 0; chartRows = {}; globalRows = 0;
   state = {}; ctrs = {};
+  clocks = {}; baseClocks = {};
   PHASES.forEach(ph => ph.steps.forEach(s => { state[s.id] = false; if (s.rows) ctrs[s.id] = 0; }));
   syncActiveChart();
 }
@@ -87,6 +104,11 @@ function applyPattern(p) {
 function activateProject(projectId) {
   const proj = projects.find(p => p.id === projectId);
   if (!proj) return false;
+  // A tombstone still has an id, so a stale card left on screen — or a remote
+  // delete arriving while the home list is rendered — can still route here.
+  // Its progress keys are already purged, so opening it would show a project
+  // reset to zero rather than the one the user deleted.
+  if (proj.deletedAt) return false;
   // No fallback pattern on purpose. Opening a project under the *wrong*
   // pattern is worse than not opening it: loadProjectState() would
   // Object.assign this project's saved step-ids onto a different pattern's
