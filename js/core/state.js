@@ -19,12 +19,12 @@ const PATTERNS = [];
 // pattern-agnostic.
 //
 // NB these are live references INTO the registry, not copies: after
-// applyPattern(p), PHASES === p.phases and CHART_B === p.chart. Mutating
-// PHASES[i] therefore edits the pattern itself, for every project using it.
-// Nothing does that today (the one offender, a chart-override that spliced
-// CHART_B in place, is gone), and the rule is that nothing may start. When
-// patterns become per-project snapshots this needs to become a real copy or a
-// deep freeze.
+// applyPattern(p), PHASES === p.phases and CHART_B === (the active phase's
+// chart). Mutating PHASES[i] therefore edits the pattern itself, for every
+// project using it. Nothing does that today (the one offender, a
+// chart-override that spliced CHART_B in place, is gone), and the rule is
+// that nothing may start. When patterns become per-project snapshots this
+// needs to become a real copy or a deep freeze.
 let PHASES = [];
 let CHART_B = [];
 let CHART_TOTAL = 0;
@@ -43,16 +43,44 @@ function patternById(id) { return PATTERNS.find(p => p.id === id) || null; }
 function activePattern() { return patternById(activePatternId); }
 function activeProject() { return projects.find(p => p.id === activeProjectId) || null; }
 
+// A pattern's `chart` field is a fallback shared by every hasChart phase
+// that doesn't set its own. Most patterns have exactly one chart-having
+// phase and never need to set phase.chart at all; a pattern with more than
+// one (e.g. Frost Flower's gauge swatch + raglan) sets `chart` on each
+// phase that needs a different one.
+function chartForPhase(phase) {
+  return (phase && phase.chart) || (activePattern() && activePattern().chart) || [];
+}
+
+// Each hasChart phase tracks its own current row, keyed by phase id, so
+// switching phases doesn't clobber a different chart's position. chartRows
+// is the persisted source of truth; chartCurrentRow stays a plain scalar —
+// "whichever chart phase is active right now" — since every chart.js call
+// site only ever cares about that one, not the whole map.
+let chartRows = {};
+
+// Refresh CHART_B/CHART_TOTAL/chartCurrentRow for whichever phase is
+// current. Call this whenever `cur` changes or PHASES is reassigned —
+// applyPattern(), go(), and loadProjectState() (after restoring `cur` and
+// `chartRows`) are the three places that can happen.
+function syncActiveChart() {
+  const phase = PHASES[cur];
+  CHART_B = chartForPhase(phase);
+  CHART_TOTAL = CHART_B.length;
+  if (phase && phase.hasChart) {
+    chartCurrentRow = Math.max(1, Math.min(CHART_TOTAL, chartRows[phase.id] || 1));
+  }
+}
+
 // Swap the active-pattern data pointers (PHASES / CHART_B / …) + reset step
 // defaults. No load — the caller loads the project's progress.
 function applyPattern(p) {
   PHASES = p.phases;
-  CHART_B = p.chart || [];
-  CHART_TOTAL = CHART_B.length;
   TOTAL_STEPS = PHASES.reduce((a, ph) => a + ph.steps.length, 0);
-  cur = 0; chartCurrentRow = 1; globalRows = 0;
+  cur = 0; chartRows = {}; globalRows = 0;
   state = {}; ctrs = {};
   PHASES.forEach(ph => ph.steps.forEach(s => { state[s.id] = false; if (s.rows) ctrs[s.id] = 0; }));
+  syncActiveChart();
 }
 
 // Open a project: apply its pattern's data, then load that project's progress.

@@ -543,8 +543,15 @@
     flex-shrink: 0;
     background: var(--ch-def-bg);
   }
+  /* Symbols scale WITH the cell: the SVGs are 100%x100% of this box, so
+     zooming the chart (A+/A−, which drives --cell-sz) grows the glyph too.
+     They used to be a fixed 9px, which meant zooming in made the cells
+     bigger while the symbol stayed the same tiny size. Each glyph is drawn
+     inside the full 24-unit Figma cell box, so its padding is part of the
+     artwork — filling the cell here reproduces the intended proportions. */
   .cc-sym {
-    font-size: 10px; line-height: 1; color: var(--ch-def-symbol);
+    width: 100%; height: 100%;
+    line-height: 1; color: var(--ch-def-symbol);
     display: flex; align-items: center; justify-content: center;
     pointer-events: none;
   }

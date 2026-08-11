@@ -2,13 +2,24 @@
 // CHART RENDERER — SYMS, stitchCell, buildChartTracker
 //
 // Renders the knitting chart viewport, row tracker, zoom, and legend.
+//
+// Symbol artwork is the exact vector paths from this app's own Figma
+// "Stitches" component set (mSct8t0TpsyYJad4teKfwl, node 1:258), kept in
+// their native 24-unit cell box so each glyph's inset (e.g. the triangles
+// span 4..20) is the designed padding rather than something re-derived
+// here. Every svg is 100%x100% of its container, so one set of paths
+// serves the chart (scales with --cell-sz), the legend and the notes
+// sheet. `currentColor` replaces the export's hardcoded fill/stroke so
+// the active-row color swap (.crow-active .cc-sym) keeps working.
 // ─────────────────────────────────────────────
 const SYMS = {
-  P:  '<svg width="8" height="8" viewBox="0 0 8 8" style="display:block"><circle cx="4" cy="4" r="3.5" fill="currentColor"/></svg>',
-  YO: '<svg width="9" height="9" viewBox="0 0 9 9" style="display:block"><circle cx="4.5" cy="4.5" r="3.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>',
-  K2: '<svg width="9" height="9" viewBox="0 0 9 9" style="display:block"><polygon points="0,9 9,9 9,0" fill="currentColor"/></svg>',
-  SK: '<svg width="9" height="9" viewBox="0 0 9 9" style="display:block"><polygon points="0,0 0,9 9,9" fill="currentColor"/></svg>',
-  M1: '<svg width="10" height="10" viewBox="0 0 10 10" style="display:block"><circle cx="5" cy="5" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="1.5" y1="5" x2="8.5" y2="5" stroke="currentColor" stroke-width="1.5"/></svg>',
+  P:   '<svg width="100%" height="100%" viewBox="0 0 24 24" style="display:block"><rect x="8" y="8" width="8" height="8" rx="4" fill="currentColor" /></svg>',
+  YO:  '<svg width="100%" height="100%" viewBox="0 0 24 24" style="display:block"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20ZM12.0001 17.7143C15.156 17.7143 17.7143 15.1559 17.7143 12C17.7143 8.84408 15.156 6.28571 12.0001 6.28571C8.84414 6.28571 6.28577 8.84408 6.28577 12C6.28577 15.1559 8.84414 17.7143 12.0001 17.7143Z" fill="currentColor" /></svg>',
+  K2:  '<svg width="100%" height="100%" viewBox="0 0 24 24" style="display:block"><path d="M20 4V20H4L20 4Z" fill="currentColor" /></svg>',
+  SK:  '<svg width="100%" height="100%" viewBox="0 0 24 24" style="display:block"><path d="M4 4V20H20L4 4Z" fill="currentColor" /></svg>',
+  M1:  '<svg width="100%" height="100%" viewBox="0 0 24 24" style="display:block"><path d="M7.38477 4.47806V4.47903H7.38672C7.38835 4.47984 7.39133 4.48135 7.39453 4.48294C7.40094 4.48612 7.41056 4.49148 7.42285 4.49759C7.44775 4.50997 7.4844 4.5279 7.53125 4.5513C7.6256 4.59843 7.76217 4.66687 7.92969 4.7515C8.26463 4.9207 8.72451 5.15583 9.22559 5.41751C10.1988 5.92575 11.3316 6.53872 11.999 6.97318C12.7329 6.49387 13.8686 5.87939 14.8271 5.38138C15.3191 5.12575 15.7663 4.9004 16.0898 4.7388C16.2514 4.65811 16.3821 4.59298 16.4727 4.54837C16.5179 4.52609 16.5533 4.50929 16.5771 4.49759C16.5891 4.49174 16.5984 4.48692 16.6045 4.48392C16.6074 4.48249 16.6098 4.48173 16.6113 4.48099L16.6133 4.48001L16.709 4.43314L16.75 4.53079L17.2227 5.65677L17.2588 5.74368L17.1738 5.78568H17.1729L17.1719 5.78665C17.1706 5.78728 17.1686 5.78834 17.166 5.78958C17.1608 5.7921 17.1527 5.7954 17.1426 5.80032C17.1221 5.81024 17.0916 5.8253 17.0527 5.84427C16.975 5.88217 16.8625 5.93682 16.7236 6.0054C16.4454 6.14285 16.0606 6.33479 15.6357 6.55228C14.8368 6.96131 13.899 7.46106 13.2549 7.85892C14.279 8.63071 15.3451 9.56084 16.165 10.6411C17.0167 11.7633 17.6074 13.0524 17.6074 14.4947C17.6072 17.585 15.0967 20.0894 12 20.0894C8.90325 20.0894 6.3928 17.585 6.39258 14.4947C6.39258 13.0526 6.98335 11.7634 7.83496 10.6411C8.6543 9.56139 9.71884 8.63136 10.7422 7.85989C10.2488 7.56159 9.33357 7.07321 8.50781 6.64505C8.05834 6.412 7.63692 6.19637 7.32812 6.03958C7.17393 5.96129 7.04756 5.89723 6.95996 5.85306C6.91646 5.83112 6.88253 5.81392 6.85938 5.80228C6.84776 5.79644 6.83799 5.79258 6.83203 5.78958C6.82934 5.78823 6.82764 5.78641 6.82617 5.78568L6.82422 5.7847H6.82324L6.74023 5.74271L6.77637 5.65677L7.24805 4.52884L7.28906 4.43118L7.38477 4.47806ZM11.999 8.69876C11.0694 9.36548 10.0335 10.1885 9.22461 11.1509C8.39846 12.134 7.81641 13.2546 7.81641 14.4947C7.81663 16.7996 9.68926 18.6685 12 18.6685C14.3107 18.6685 16.1834 16.7996 16.1836 14.4947C16.1836 13.2546 15.6015 12.134 14.7754 11.1509C13.9662 10.188 12.929 9.36564 11.999 8.69876Z" fill="currentColor" stroke="currentColor" stroke-width="0.2" /></svg>',
+  M1L: '<svg width="100%" height="100%" viewBox="0 0 24 24" style="display:block"><path d="M18 21L18 3M4 3L17.9642 11.0623" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>',
+  M1R: '<svg width="100%" height="100%" viewBox="0 0 24 24" style="display:block"><path d="M6 21L6 3M6 11L19.9642 2.93774" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>',
 };
 
 function stitchCell(type) {
@@ -74,6 +85,8 @@ function buildChartTracker(phaseHeaderHtml) {
     <div class="leg"><div class="leg-cc" style="color:var(--ch-def-symbol)">${SYMS.K2}</div>k2tog</div>
     <div class="leg"><div class="leg-cc" style="color:var(--ch-def-symbol)">${SYMS.SK}</div>SKPO</div>
     <div class="leg"><div class="leg-cc" style="color:var(--ch-def-symbol)">${SYMS.M1}</div>M1</div>
+    <div class="leg"><div class="leg-cc" style="color:var(--ch-def-symbol)">${SYMS.M1L}</div>M1L</div>
+    <div class="leg"><div class="leg-cc" style="color:var(--ch-def-symbol)">${SYMS.M1R}</div>M1R</div>
     <div class="leg"><div class="leg-cc leg-cc-e"></div>no stitch</div>
   </div>`;
   html += '</div>';
@@ -98,8 +111,8 @@ function centerOnCurrentRow() {
 // names), even rows are WS (left → right — the stored array is already
 // left → right, so no reverse — WS stitch names). See isRSRow().
 // ─────────────────────────────────────────────
-const STITCH_ABBR_RS = { K: 'k', P: 'p', YO: 'yo', K2: 'k2tog', SK: 'ssk', M1: 'm1' };
-const STITCH_ABBR_WS = { K: 'p', P: 'k', YO: 'yo', K2: 'p2tog', SK: 'ssp', M1: 'm1' };
+const STITCH_ABBR_RS = { K: 'k', P: 'p', YO: 'yo', K2: 'k2tog', SK: 'ssk', M1: 'm1', M1L: 'M1L', M1R: 'M1R' };
+const STITCH_ABBR_WS = { K: 'p', P: 'k', YO: 'yo', K2: 'p2tog', SK: 'ssp', M1: 'm1', M1L: 'M1LP', M1R: 'M1RP' };
 
 function isRSRow(row) {
   return !(PHASES[cur] && PHASES[cur].flatChart) || row % 2 === 1;
@@ -261,6 +274,9 @@ function changeChartRow(delta) {
   const prevRow = chartCurrentRow;
   chartCurrentRow = Math.max(1, Math.min(CHART_TOTAL, chartCurrentRow + delta));
   if (chartCurrentRow === prevRow) return;
+  // Remember this phase's own position, so switching to another chart phase
+  // and back returns to the row you were on rather than a shared one.
+  if (PHASES[cur]) chartRows[PHASES[cur].id] = chartCurrentRow;
   globalRows = Math.max(0, globalRows + (chartCurrentRow - prevRow)); // auto-advance global
   renderGlobalRows();
   save();

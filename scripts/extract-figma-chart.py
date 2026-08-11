@@ -74,11 +74,16 @@ DEFAULT_STITCH_MAP = {
     "make_one": "M1",
     "make one": "M1",
     "m1": "M1",
+    "m1l": "M1L",
+    "make one left": "M1L",
+    "m1r": "M1R",
+    "make one right": "M1R",
     "no_stitch": "E",
     "no stitch": "E",
+    "empty": "E",
 }
 
-VALID_CODES = {"K", "P", "YO", "K2", "SK", "M1", "E"}
+VALID_CODES = {"K", "P", "YO", "K2", "SK", "M1", "M1L", "M1R", "E"}
 
 
 def fetch_node(file_id: str, node_id: str, token: str) -> dict:

@@ -7,7 +7,11 @@
 //   pt3_proj_<id>_state           {stepId: bool}   completed steps
 //   pt3_proj_<id>_ctrs            {stepId: int}    row counters
 //   pt3_proj_<id>_cur             current phase index
-//   pt3_proj_<id>_chartRow        active yoke-chart row
+//   pt3_proj_<id>_chartRows       {phaseId: row} — per chart phase (see below)
+//   pt3_proj_<id>_chartRow        LEGACY single chart row; read once by
+//                                 loadProjectState() when chartRows is absent,
+//                                 then superseded. Kept readable forever so
+//                                 old saved progress isn't lost.
 //   pt3_proj_<id>_grows           project-wide row tally
 //   pt3_cellSz                    chart cell size — GLOBAL, shared across projects
 // ─────────────────────────────────────────────
@@ -49,7 +53,7 @@ function deleteProject(projectId) {
   const proj = projects.find(p => p.id === projectId);
   if (!proj) return;
   if (!confirm('Delete "' + proj.name + '"? This removes its progress.')) return;
-  ['state','ctrs','cur','chartRow','grows'].forEach(k => { try { localStorage.removeItem('pt3_proj_' + projectId + '_' + k); } catch(e){} });
+  ['state','ctrs','cur','chartRow','chartRows','grows'].forEach(k => { try { localStorage.removeItem('pt3_proj_' + projectId + '_' + k); } catch(e){} });
   projects = projects.filter(p => p.id !== projectId);
   saveProjects();
   if (activeProjectId === projectId) { activeProjectId = null; view = 'home'; }
@@ -97,7 +101,7 @@ function save() {
     localStorage.setItem(pkey('state'), JSON.stringify(state));
     localStorage.setItem(pkey('ctrs'), JSON.stringify(ctrs));
     localStorage.setItem(pkey('cur'), cur);
-    localStorage.setItem(pkey('chartRow'), chartCurrentRow);
+    localStorage.setItem(pkey('chartRows'), JSON.stringify(chartRows));
     localStorage.setItem(pkey('grows'), globalRows);
     clearSaveError();
   } catch(e) {
@@ -110,9 +114,24 @@ function loadProjectState() {
     const st = localStorage.getItem(pkey('state')); if (st) state = Object.assign(state, JSON.parse(st));
     const ct = localStorage.getItem(pkey('ctrs')); if (ct) ctrs = Object.assign(ctrs, JSON.parse(ct));
     const cu = localStorage.getItem(pkey('cur')); if (cu !== null) cur = Math.max(0, Math.min(PHASES.length - 1, parseInt(cu) || 0));
-    const cr = localStorage.getItem(pkey('chartRow')); if (cr !== null) chartCurrentRow = Math.max(1, Math.min(CHART_TOTAL, parseInt(cr)));
+
+    const crs = localStorage.getItem(pkey('chartRows'));
+    if (crs) {
+      chartRows = JSON.parse(crs) || {};
+    } else {
+      // Migrate the legacy single-chart row: it belonged to whichever phase
+      // was the pattern's only hasChart phase, so attribute it there rather
+      // than dropping progress on the floor.
+      const legacy = localStorage.getItem(pkey('chartRow'));
+      const chartPhase = PHASES.find(p => p.hasChart);
+      if (legacy !== null && chartPhase) chartRows = { [chartPhase.id]: parseInt(legacy) || 1 };
+    }
+
     const gr = localStorage.getItem(pkey('grows')); if (gr !== null) globalRows = Math.max(0, parseInt(gr) || 0);
   } catch(e) {}
+  // `cur` and `chartRows` are both restored above, so the active chart and
+  // its row have to be recomputed from them.
+  syncActiveChart();
 }
 
 // Global (non-project) prefs.
@@ -194,10 +213,12 @@ function resetPattern() {
   if (!activeProjectId) return;
   state = {};
   ctrs = {};
+  chartRows = {};
   chartCurrentRow = 1;
   globalRows = 0;
   cur = 0;
   PHASES.forEach(ph => ph.steps.forEach(resetStep));
+  syncActiveChart();
   save();
   render();
 }

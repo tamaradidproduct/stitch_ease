@@ -104,6 +104,55 @@ const FF_MOTIF_CHART = [
   ['K','K','K','K','K','K','K','K','K','K','K','K','K','K','K','K','K','K','K','K','K','K','K','K','K','K','K','K','K','K','K','K','K','K','K','K'],
 ];
 
+// ─────────────────────────────────────────────
+// SECTION 1 RAGLAN CHART — rows 1-14, 178 sts wide.
+//
+// Also worked flat (odd = RS, even = WS), so it uses the same flatChart
+// handling as the gauge swatch above. 'E' cells are the no-stitch padding
+// that makes the raglan's growing rows line up in a fixed-width grid — the
+// row starts at 96 live sts and reaches 170 by row 14, and the recap strip
+// filters E out so the spoken instructions only ever mention real stitches.
+//
+// M1L/M1R render as the directional increase icons and read as M1L/M1R on
+// RS rows, M1LP/M1RP on WS rows (the purlwise variants the pattern calls
+// for) — see STITCH_ABBR_RS/WS in js/core/chart.js.
+//
+// Verified against the pattern PDF: every row's live-stitch count matches
+// the count printed in the written instructions (96, 104, 104, 112, 120,
+// 120, 128, 136, 136, 144, 152, 154, 162, 170), and the generated row-recap
+// text for rows 1-2 reproduces the PDF's wording verbatim.
+// ─────────────────────────────────────────────
+const FF_RAGLAN_CHART = [
+  // Row 1
+  ['K','E','P','M1R','E','E','E','E','E','E','E','E','E','E','K','K','E','E','E','E','E','E','E','E','E','E','M1L','P','SK','YO','K','K','SK','YO','K','K','SK','YO','K','K','P','M1R','E','E','E','E','E','E','E','E','E','E','K','K','E','E','E','E','E','E','E','E','E','E','M1L','P','SK','YO','K','K','SK','YO','K','K','SK','YO','K','K','P','P','YO','K','K','K','K','K2','K','K','K','K','K','K','SK','K','K','K','K','YO','P','P','SK','YO','K','K','SK','YO','K','K','SK','YO','K','K','P','M1R','E','E','E','E','E','E','E','E','E','E','K','K','E','E','E','E','E','E','E','E','E','E','M1L','P','SK','YO','K','K','SK','YO','K','K','SK','YO','K','K','P','M1R','E','E','E','E','E','E','E','E','E','E','K','K','E','E','E','E','E','E','E','E','E','E','M1L','P','E','K'],
+  // Row 2
+  ['K','E','P','P','M1R','E','E','E','E','E','E','E','E','E','K','K','E','E','E','E','E','E','E','E','E','M1L','P','P','K','K','YO','K2','K','K','YO','K2','K','K','YO','K2','P','P','M1R','E','E','E','E','E','E','E','E','E','K','K','E','E','E','E','E','E','E','E','E','M1L','P','P','K','K','YO','K2','K','K','YO','K2','K','K','YO','K2','P','P','K','YO','K','K','K','K','K2','K','K','K','K','SK','K','K','K','K','YO','K','P','P','K','K','YO','K2','K','K','YO','K2','K','K','YO','K2','P','P','M1R','E','E','E','E','E','E','E','E','E','K','K','E','E','E','E','E','E','E','E','E','M1L','P','P','K','K','YO','K2','K','K','YO','K2','K','K','YO','K2','P','P','M1R','E','E','E','E','E','E','E','E','E','K','K','E','E','E','E','E','E','E','E','E','M1L','P','P','E','K'],
+  // Row 3
+  ['K','E','P','P','K','E','E','E','E','E','E','E','E','E','K','K','E','E','E','E','E','E','E','E','E','K','P','P','SK','YO','K','K','SK','YO','K','K','SK','YO','K','K','P','P','K','E','E','E','E','E','E','E','E','E','K','K','E','E','E','E','E','E','E','E','E','K','P','P','SK','YO','K','K','SK','YO','K','K','SK','YO','K','K','P','P','K','K','YO','K','K','K','K','K2','K','K','SK','K','K','K','K','YO','K','K','P','P','SK','YO','K','K','SK','YO','K','K','SK','YO','K','K','P','P','K','E','E','E','E','E','E','E','E','E','K','K','E','E','E','E','E','E','E','E','E','K','P','P','SK','YO','K','K','SK','YO','K','K','SK','YO','K','K','P','P','K','E','E','E','E','E','E','E','E','E','K','K','E','E','E','E','E','E','E','E','E','K','P','P','E','K'],
+  // Row 4
+  ['K','E','P','P','K','M1R','E','E','E','E','E','E','E','E','K','K','E','E','E','E','E','E','E','E','M1L','K','P','P','K','K','YO','K2','K','K','YO','K2','K','K','YO','K2','P','P','K','M1R','E','E','E','E','E','E','E','E','K','K','E','E','E','E','E','E','E','E','M1L','K','P','P','K','K','YO','K2','K','K','YO','K2','K','K','YO','K2','P','P','K','K','K','YO','K','K','K','K','K2','SK','K','K','K','K','YO','K','K','K','P','P','K','K','YO','K2','K','K','YO','K2','K','K','YO','K2','P','P','K','M1R','E','E','E','E','E','E','E','E','K','K','E','E','E','E','E','E','E','E','M1L','K','P','P','K','K','YO','K2','K','K','YO','K2','K','K','YO','K2','P','P','K','M1R','E','E','E','E','E','E','E','E','K','K','E','E','E','E','E','E','E','E','M1L','K','P','P','E','K'],
+  // Row 5
+  ['K','E','P','P','YO','K','K','E','E','E','E','E','E','E','K','K','E','E','E','E','E','E','E','K','K','YO','P','P','SK','YO','K','K','SK','YO','K','K','SK','YO','K','K','P','P','YO','K','K','E','E','E','E','E','E','E','K','K','E','E','E','E','E','E','E','K','K','YO','P','P','SK','YO','K','K','SK','YO','K','K','SK','YO','K','K','P','P','YO','K','K','K','K','K2','K','K','K','K','K','K','SK','K','K','K','K','YO','P','P','SK','YO','K','K','SK','YO','K','K','SK','YO','K','K','P','P','YO','K','K','E','E','E','E','E','E','E','K','K','E','E','E','E','E','E','E','K','K','YO','P','P','SK','YO','K','K','SK','YO','K','K','SK','YO','K','K','P','P','YO','K','K','E','E','E','E','E','E','E','K','K','E','E','E','E','E','E','E','K','K','YO','P','P','E','K'],
+  // Row 6
+  ['K','E','P','P','K','YO','K2','E','E','E','E','E','E','E','K','K','E','E','E','E','E','E','E','SK','YO','K','P','P','K','K','YO','K2','K','K','YO','K2','K','K','YO','K2','P','P','K','YO','K2','E','E','E','E','E','E','E','K','K','E','E','E','E','E','E','E','SK','YO','K','P','P','K','K','YO','K2','K','K','YO','K2','K','K','YO','K2','P','P','K','YO','K','K','K','K','K2','K','K','K','K','SK','K','K','K','K','YO','K','P','P','K','K','YO','K2','K','K','YO','K2','K','K','YO','K2','P','P','K','YO','K2','E','E','E','E','E','E','E','K','K','E','E','E','E','E','E','E','SK','YO','K','P','P','K','K','YO','K2','K','K','YO','K2','K','K','YO','K2','P','P','K','YO','K2','E','E','E','E','E','E','E','K','K','E','E','E','E','E','E','E','SK','YO','K','P','P','E','K'],
+  // Row 7
+  ['K','E','P','P','K','K','YO','K','E','E','E','E','E','E','K','K','E','E','E','E','E','E','K','YO','K','K','P','P','SK','YO','K','K','SK','YO','K','K','SK','YO','K','K','P','P','K','K','YO','K','E','E','E','E','E','E','K','K','E','E','E','E','E','E','K','YO','K','K','P','P','SK','YO','K','K','SK','YO','K','K','SK','YO','K','K','P','P','K','K','YO','K','K','K','K','K2','K','K','SK','K','K','K','K','YO','K','K','P','P','SK','YO','K','K','SK','YO','K','K','SK','YO','K','K','P','P','K','K','YO','K','E','E','E','E','E','E','K','K','E','E','E','E','E','E','K','YO','K','K','P','P','SK','YO','K','K','SK','YO','K','K','SK','YO','K','K','P','P','K','K','YO','K','E','E','E','E','E','E','K','K','E','E','E','E','E','E','K','YO','K','K','P','P','E','K'],
+  // Row 8
+  ['K','E','P','P','K','K','K','YO','K','E','E','E','E','E','K','K','E','E','E','E','E','K','YO','K','K','K','P','P','K','K','YO','K2','K','K','YO','K2','K','K','YO','K2','P','P','K','K','K','YO','K','E','E','E','E','E','K','K','E','E','E','E','E','K','YO','K','K','K','P','P','K','K','YO','K2','K','K','YO','K2','K','K','YO','K2','P','P','K','K','K','YO','K','K','K','K','K2','SK','K','K','K','K','YO','K','K','K','P','P','K','K','YO','K2','K','K','YO','K2','K','K','YO','K2','P','P','K','K','K','YO','K','E','E','E','E','E','K','K','E','E','E','E','E','K','YO','K','K','K','P','P','K','K','YO','K2','K','K','YO','K2','K','K','YO','K2','P','P','K','K','K','YO','K','E','E','E','E','E','K','K','E','E','E','E','E','K','YO','K','K','K','P','P','E','K'],
+  // Row 9
+  ['K','E','P','P','YO','K','K','K','K2','E','E','E','E','E','K','K','E','E','E','E','E','SK','K','K','K','YO','P','P','SK','YO','K','K','SK','YO','K','K','SK','YO','K','K','P','P','YO','K','K','K','K2','E','E','E','E','E','K','K','E','E','E','E','E','SK','K','K','K','YO','P','P','SK','YO','K','K','SK','YO','K','K','SK','YO','K','K','P','P','YO','K','K','K','K','K2','K','K','K','K','K','K','SK','K','K','K','K','YO','P','P','SK','YO','K','K','SK','YO','K','K','SK','YO','K','K','P','P','YO','K','K','K','K2','E','E','E','E','E','K','K','E','E','E','E','E','SK','K','K','K','YO','P','P','SK','YO','K','K','SK','YO','K','K','SK','YO','K','K','P','P','YO','K','K','K','K2','E','E','E','E','E','K','K','E','E','E','E','E','SK','K','K','K','YO','P','P','E','K'],
+  // Row 10
+  ['K','E','P','P','K','YO','K','K','K','K','E','E','E','E','K','K','E','E','E','E','K','K','K','K','YO','K','P','P','K','K','YO','K2','K','K','YO','K2','K','K','YO','K2','P','P','K','YO','K','K','K','K','E','E','E','E','K','K','E','E','E','E','K','K','K','K','YO','K','P','P','K','K','YO','K2','K','K','YO','K2','K','K','YO','K2','P','P','K','YO','K','K','K','K','K2','K','K','K','K','SK','K','K','K','K','YO','K','P','P','K','K','YO','K2','K','K','YO','K2','K','K','YO','K2','P','P','K','YO','K','K','K','K','E','E','E','E','K','K','E','E','E','E','K','K','K','K','YO','K','P','P','K','K','YO','K2','K','K','YO','K2','K','K','YO','K2','P','P','K','YO','K','K','K','K','E','E','E','E','K','K','E','E','E','E','K','K','K','K','YO','K','P','P','E','K'],
+  // Row 11
+  ['K','E','P','P','K','K','YO','K','K','K','K','E','E','E','K','K','E','E','E','K','K','K','K','YO','K','K','P','P','SK','YO','K','K','SK','YO','K','K','SK','YO','K','K','P','P','K','K','YO','K','K','K','K','E','E','E','K','K','E','E','E','K','K','K','K','YO','K','K','P','P','SK','YO','K','K','SK','YO','K','K','SK','YO','K','K','P','P','K','K','YO','K','K','K','K','K2','K','K','SK','K','K','K','K','YO','K','K','P','P','SK','YO','K','K','SK','YO','K','K','SK','YO','K','K','P','P','K','K','YO','K','K','K','K','E','E','E','K','K','E','E','E','K','K','K','K','YO','K','K','P','P','SK','YO','K','K','SK','YO','K','K','SK','YO','K','K','P','P','K','K','YO','K','K','K','K','E','E','E','K','K','E','E','E','K','K','K','K','YO','K','K','P','P','E','K'],
+  // Row 12
+  ['K','M1L','P','P','K','K','K','YO','K','K','K2','E','E','E','K','K','E','E','E','SK','K','K','YO','K','K','K','P','P','K','K','YO','K2','K','K','YO','K2','K','K','YO','K2','P','P','K','K','K','YO','K','K','K2','E','E','E','K','K','E','E','E','SK','K','K','YO','K','K','K','P','P','K','K','YO','K2','K','K','YO','K2','K','K','YO','K2','P','P','K','K','K','YO','K','K','K','K','K2','SK','K','K','K','K','YO','K','K','K','P','P','K','K','YO','K2','K','K','YO','K2','K','K','YO','K2','P','P','K','K','K','YO','K','K','K2','E','E','E','K','K','E','E','E','SK','K','K','YO','K','K','K','P','P','K','K','YO','K2','K','K','YO','K2','K','K','YO','K2','P','P','K','K','K','YO','K','K','K2','E','E','E','K','K','E','E','E','SK','K','K','YO','K','K','K','P','P','M1R','K'],
+  // Row 13
+  ['K','K','P','P','YO','K','K','K','K','K2','K','M1R','E','E','K','K','E','E','M1L','K','SK','K','K','K','K','YO','P','P','SK','YO','K','K','SK','YO','K','K','SK','YO','K','K','P','P','YO','K','K','K','K','K2','K','M1R','E','E','K','K','E','E','M1L','K','SK','K','K','K','K','YO','P','P','SK','YO','K','K','SK','YO','K','K','SK','YO','K','K','P','P','YO','K','K','K','K','K2','K','K','K','K','K','K','SK','K','K','K','K','YO','P','P','SK','YO','K','K','SK','YO','K','K','SK','YO','K','K','P','P','YO','K','K','K','K','K2','K','M1R','E','E','K','K','E','E','M1L','K','SK','K','K','K','K','YO','P','P','SK','YO','K','K','SK','YO','K','K','SK','YO','K','K','P','P','YO','K','K','K','K','K2','K','M1R','E','E','K','K','E','E','M1L','K','SK','K','K','K','K','YO','P','P','K','K'],
+  // Row 14
+  ['K','K','P','P','K','YO','K','K','K','K','K2','K','M1R','E','K','K','E','M1L','K','SK','K','K','K','K','YO','K','P','P','K','K','YO','K2','K','K','YO','K2','K','K','YO','K2','P','P','K','YO','K','K','K','K','K2','K','M1R','E','K','K','E','M1L','K','SK','K','K','K','K','YO','K','P','P','K','K','YO','K2','K','K','YO','K2','K','K','YO','K2','P','P','K','YO','K','K','K','K','K2','K','K','K','K','SK','K','K','K','K','YO','K','P','P','K','K','YO','K2','K','K','YO','K2','K','K','YO','K2','P','P','K','YO','K','K','K','K','K2','K','M1R','E','K','K','E','M1L','K','SK','K','K','K','K','YO','K','P','P','K','K','YO','K2','K','K','YO','K2','K','K','YO','K2','P','P','K','YO','K','K','K','K','K2','K','M1R','E','K','K','E','M1L','K','SK','K','K','K','K','YO','K','P','P','K','K'],
+];
+
 const FF_PHASES = [
   {
     id:'ff-mat', name:'Materials', desc:'Before you start',
@@ -115,9 +164,16 @@ const FF_PHASES = [
   },
   {
     id:'ff-gauge', name:'Gauge swatch', desc:'Cast on 36 sts · Frost Flower motif · 36 rows, worked flat',
-    hasChart: true, flatChart: true,
+    hasChart: true, flatChart: true, chart: FF_MOTIF_CHART,
     steps:[
       {id:'ffg1', text:'Block the swatch, measure its finished width, then multiply ×8 for finished chest circumference (plus however much positive ease you want — this pattern runs 4–15 cm of ease over bust measurement)', postChart:true},
+    ]
+  },
+  {
+    id:'ff-raglan', name:'Cast on & raglan', desc:'Section 1 · rows 1–14 · 88 sts → 170 sts, worked flat',
+    hasChart: true, flatChart: true, chart: FF_RAGLAN_CHART,
+    steps:[
+      {id:'ffr1', text:'Count 170 sts after row 14, then continue from row 15 (not yet in the app — follow the printed pattern from here)', postChart:true},
     ]
   },
 ];
@@ -126,10 +182,13 @@ PATTERNS.push(
   { id:'frost-flower-cardigan', name:'Frost Flower Cardigan', badge:'Ngo Quynh · lace · graded by needle', desc:'Top-down lace cardigan · 8-motif Frost Flower body', phases: FF_PHASES, chart: FF_MOTIF_CHART,
     notes: [
       { term:'Knit / Purl', def:'Blank square — RS rows: knit. WS rows: purl.' },
-      { term:'Purl / Knit', def:'Dot — RS rows: purl. WS rows: knit.', symbol:'<svg width="8" height="8" viewBox="0 0 8 8" style="display:block"><circle cx="4" cy="4" r="3.5" fill="currentColor"/></svg>' },
-      { term:'Yarn over', def:'YO — wrap the yarn to create a new stitch and an eyelet.', symbol:'<svg width="9" height="9" viewBox="0 0 9 9" style="display:block"><circle cx="4.5" cy="4.5" r="3.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>' },
-      { term:'Right-leaning decrease', def:'RS rows: k2tog. WS rows: p2tog.', symbol:'<svg width="9" height="9" viewBox="0 0 9 9" style="display:block"><polygon points="0,9 9,9 9,0" fill="currentColor"/></svg>' },
-      { term:'Left-leaning decrease', def:'RS rows: ssk. WS rows: ssp.', symbol:'<svg width="9" height="9" viewBox="0 0 9 9" style="display:block"><polygon points="0,0 0,9 9,9" fill="currentColor"/></svg>' },
-      { term:'', def:'Chart is worked flat: odd (RS) rows read right → left, even (WS) rows read left → right.' },
+      { term:'Purl / Knit', def:'Dot — RS rows: purl. WS rows: knit.', sym:'P' },
+      { term:'Yarn over', def:'YO — wrap the yarn to create a new stitch and an eyelet.', sym:'YO' },
+      { term:'Right-leaning decrease', def:'RS rows: k2tog. WS rows: p2tog.', sym:'K2' },
+      { term:'Left-leaning decrease', def:'RS rows: ssk. WS rows: ssp.', sym:'SK' },
+      { term:'Make one left', def:'Raglan increase — RS rows: M1L. WS rows: M1LP.', sym:'M1L' },
+      { term:'Make one right', def:'Raglan increase — RS rows: M1R. WS rows: M1RP.', sym:'M1R' },
+      { term:'No stitch', def:'Grey cell — placeholder so the raglan’s growing rows line up in the grid. Skip it; work the next real stitch.' },
+      { term:'', def:'Charts are worked flat: odd (RS) rows read right → left, even (WS) rows read left → right.' },
     ] }
 );

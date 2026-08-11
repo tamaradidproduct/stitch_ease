@@ -39,7 +39,9 @@ function syncChartLayout() {
 }
 
 function go(i) {
-  cur = i; phaseNavOpen = false; save(); render();
+  cur = i; phaseNavOpen = false;
+  syncActiveChart(); // phases can have different charts — repoint before render
+  save(); render();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -86,7 +88,9 @@ function changeCount(id, delta) {
 // advance globalRows, so the two numbers stay comparable.
 function patternTotalRows() {
   return PHASES.reduce((sum, p) => {
-    if (p.hasChart) return sum + CHART_TOTAL;
+    // Each chart phase contributes its OWN chart's length — a pattern can
+    // have several differently-sized charts (see chartForPhase()).
+    if (p.hasChart) return sum + chartForPhase(p).length;
     if (p.countable) return sum + p.steps.length;
     return sum + p.steps.reduce((s, st) => s + (st.rows ? st.target : 0), 0);
   }, 0);

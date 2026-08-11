@@ -166,10 +166,16 @@ function openNotes() {
   scrim.className = 'sheet-scrim';
   scrim.id = 'notes-scrim';
   scrim.onclick = e => { if (e.target === scrim) closeNotes(); };
-  const rows = pat.notes.map(n => `<div class="note-row">
-      <span class="note-term">${n.symbol ? `<span class="note-sym">${n.symbol}</span>` : ''}${n.term ? escapeHtml(n.term) : ''}</span>
+  // `sym` names a key in SYMS (the shared chart artwork) so a pattern's
+  // legend can't drift from what the chart actually draws; `symbol` is a
+  // raw SVG string, still supported for one-off glyphs with no chart cell.
+  const rows = pat.notes.map(n => {
+    const art = n.sym ? SYMS[n.sym] : n.symbol;
+    return `<div class="note-row">
+      <span class="note-term">${art ? `<span class="note-sym">${art}</span>` : ''}${n.term ? escapeHtml(n.term) : ''}</span>
       <span class="note-def">${escapeHtml(n.def)}</span>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   scrim.innerHTML = `<div class="sheet" role="dialog" aria-label="Pattern notes">
       <div class="sheet-grab"></div>
       <div class="sheet-head">
