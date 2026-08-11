@@ -146,6 +146,13 @@ if ('serviceWorker' in navigator) {
 
   // Once skipWaiting fires, the controller changes — reload to get fresh files
   navigator.serviceWorker.addEventListener('controllerchange', () => {
+    // Not while a magic-link code is being exchanged. The code is single-use,
+    // so reloading here re-submits a spent one: sign-in fails silently, and
+    // only when an SW update happened to be queued at that moment.
+    if (typeof authCodeInFlight === 'function' && authCodeInFlight()) {
+      console.info('[cloud] deferring SW reload — auth code in flight');
+      return;
+    }
     window.location.reload();
   });
 }
@@ -227,3 +234,7 @@ loadOutbox();
 loadProjects();
 view = 'home';
 render();
+
+// Cloud comes up AFTER the first paint, and nothing above it awaits. The app
+// has to work with no network, no session, and no vendor file.
+initCloud();
