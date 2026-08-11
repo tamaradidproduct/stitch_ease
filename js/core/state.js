@@ -44,7 +44,9 @@ let state = {}, ctrs = {}, chartCurrentRow = 1, cellSz = 16, globalRows = 0;
 let clocks = {}, baseClocks = {};
 let activePatternId = null;
 let activeProjectId = null;
-let projects = [];                 // [{ id, patternId, name, created }]
+// Includes tombstones — records with `deletedAt` set. Use liveProjects() for
+// anything user-facing; the raw array is what gets persisted and synced.
+let projects = [];                 // [{ id, patternId, name, created, updatedAt, deletedAt? }]
 let view = 'home';                 // 'home' | 'picker' | 'project'
 
 function patternById(id) { return PATTERNS.find(p => p.id === id) || null; }
@@ -96,6 +98,11 @@ function applyPattern(p) {
 function activateProject(projectId) {
   const proj = projects.find(p => p.id === projectId);
   if (!proj) return false;
+  // A tombstone still has an id, so a stale card left on screen — or a remote
+  // delete arriving while the home list is rendered — can still route here.
+  // Its progress keys are already purged, so opening it would show a project
+  // reset to zero rather than the one the user deleted.
+  if (proj.deletedAt) return false;
   // No fallback pattern on purpose. Opening a project under the *wrong*
   // pattern is worse than not opening it: loadProjectState() would
   // Object.assign this project's saved step-ids onto a different pattern's

@@ -3,7 +3,9 @@
 //
 // Keys, all under the pt3_ prefix (see CLAUDE.md; do not rename — the
 // migrations below depend on the exact strings):
-//   pt3_projects                  the registry: [{ id, patternId, name, created }]
+//   pt3_projects                  the registry: [{ id, patternId, name, created,
+//                                 updatedAt, deletedAt? }] — deletedAt marks a
+//                                 tombstone; the record is kept, not removed
 //   pt3_proj_<id>_state           {stepId: bool}   completed steps
 //   pt3_proj_<id>_ctrs            {stepId: int}    row counters
 //   pt3_proj_<id>_cur             current phase index
@@ -22,22 +24,56 @@
 // ── Projects registry (pt3_projects) ──
 function loadProjects() {
   try { projects = JSON.parse(localStorage.getItem('pt3_projects') || '[]') || []; } catch(e) { projects = []; }
+  // Records written before registry records carried an `updatedAt` get one
+  // here rather than in a migration: migrateAddClocks() has already set its
+  // sentinel for existing users, so a one-time pass would skip exactly the
+  // records that need it. As an invariant checked every boot this is also
+  // self-healing if a future write path forgets the field.
+  //
+  // Backfilled from `created`, not from now(): "now" would assert the record
+  // changed at boot, letting a stale local name beat a newer remote one on
+  // first sync. `created` is the last thing actually known about it.
+  let patched = false;
+  projects.forEach(p => { if (!p.updatedAt) { p.updatedAt = p.created || 0; patched = true; } });
+  if (patched) saveProjects();
 }
 function saveProjects() {
   try { localStorage.setItem('pt3_projects', JSON.stringify(projects)); } catch(e) {}
 }
 function newId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
-// Auto-name: pattern name, then "<name> 2", "<name> 3"… for repeats.
+// `projects` holds tombstones as well as live records (see deleteProject), so
+// anything user-facing goes through this rather than iterating the array.
+function liveProjects() { return projects.filter(p => !p.deletedAt); }
+function isDeleted(projectId) {
+  const p = projects.find(x => x.id === projectId);
+  return !p || !!p.deletedAt;
+}
+
+// Every per-project key. Kept in one place because both deleteProject() and,
+// later, the sync engine applying a remote tombstone need to purge the same set
+// — and a key added to save() but missed here is a silent storage leak.
+// `chartRow` is the superseded scalar and `chartRows` the per-phase map: both
+// are listed because a project saved before that change still has the old key
+// on disk, and purging only the new one would leave it orphaned forever.
+const PROJ_KEYS = ['state','ctrs','cur','chartRow','chartRows','grows','clk','base'];
+function purgeProjectData(projectId) {
+  PROJ_KEYS.forEach(k => { try { localStorage.removeItem('pt3_proj_' + projectId + '_' + k); } catch(e){} });
+}
+
+// Auto-name: pattern name, then "<name> 2", "<name> 3"… for repeats. Tombstones
+// don't count, so deleting "Peacock Tee 2" frees that name to be used again
+// rather than leaving a permanent gap in the numbering.
 function autoProjectName(pattern) {
-  const n = projects.filter(p => p.patternId === pattern.id).length;
+  const n = liveProjects().filter(p => p.patternId === pattern.id).length;
   return n === 0 ? pattern.name : pattern.name + ' ' + (n + 1);
 }
 
 function createProject(patternId) {
   const pat = patternById(patternId);
   if (!pat) { console.warn('No pattern "' + patternId + '"'); return null; }
-  const proj = { id: newId(), patternId: pat.id, name: autoProjectName(pat), created: Date.now() };
+  const proj = { id: newId(), patternId: pat.id, name: autoProjectName(pat),
+                 created: Date.now(), updatedAt: syncNow() };
   projects.push(proj);
   saveProjects();
   return proj;
@@ -45,19 +81,32 @@ function createProject(patternId) {
 
 function renameProject(projectId) {
   const proj = projects.find(p => p.id === projectId);
-  if (!proj) return;
+  if (!proj || proj.deletedAt) return;
   const name = prompt('Rename project', proj.name);
   if (name === null) return;
   const trimmed = name.trim();
-  if (trimmed) { proj.name = trimmed; saveProjects(); resetHeaderKey(); render(); }
+  if (trimmed) { proj.name = trimmed; proj.updatedAt = syncNow(); saveProjects(); resetHeaderKey(); render(); }
 }
 
+// Soft delete. The registry entry stays as a tombstone (`deletedAt` set) and
+// only the progress keys are purged.
+//
+// A hard delete cannot survive sync: the phone would drop the record entirely,
+// then pull from the cloud, find a project it has never heard of, and helpfully
+// re-create it. The knitter deletes the same project over and over and it keeps
+// coming back. A tombstone is the only way to say "this is gone" in a way that
+// propagates — absence means "never seen", which is a different claim.
+//
+// Tombstones are ~150 bytes and are never collected. At family scale that is
+// nothing; if it ever matters, they can be dropped once every device has
+// confirmed the delete, which needs sync state that does not exist yet.
 function deleteProject(projectId) {
   const proj = projects.find(p => p.id === projectId);
-  if (!proj) return;
+  if (!proj || proj.deletedAt) return;
   if (!confirm('Delete "' + proj.name + '"? This removes its progress.')) return;
-  ['state','ctrs','cur','chartRow','chartRows','grows','clk','base'].forEach(k => { try { localStorage.removeItem('pt3_proj_' + projectId + '_' + k); } catch(e){} });
-  projects = projects.filter(p => p.id !== projectId);
+  purgeProjectData(projectId);
+  proj.deletedAt = syncNow();
+  proj.updatedAt = proj.deletedAt;
   saveProjects();
   if (activeProjectId === projectId) { activeProjectId = null; view = 'home'; }
   render();
