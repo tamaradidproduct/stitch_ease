@@ -64,3 +64,65 @@ function stampClocks(keys) {
 function isDirty(key) {
   return (clocks[key] || 0) > (baseClocks[key] || 0);
 }
+
+// ─────────────────────────────────────────────
+// OUTBOX — which entities have unpushed changes.
+//
+// (Lives here rather than in storage.js, where the original plan put it: it is
+// read only by the flush path, alongside the clocks above, and keeping the
+// whole sync state machine in one file beats matching a file assignment made
+// before any of this existed.)
+//
+// It stores POINTERS, never bodies — an entry says "project X's progress has
+// changed", not what it changed to. Two consequences, both wanted:
+//
+//   * Coalescing is free. A second change to the same entity is already
+//     described by the entry that is there, so 60 chart-row taps leave exactly
+//     one entry of a few dozen bytes rather than 60 snapshots.
+//   * A replay always sends current data. flush() reads localStorage at send
+//     time, so an op queued twenty rows ago pushes the twentieth row, not the
+//     first. A body-carrying queue would push a stale snapshot and then have to
+//     reconcile it against the newer one behind it.
+// ─────────────────────────────────────────────
+const OUTBOX_KEY = 'pt3_outbox';
+
+function loadOutbox() {
+  try { outbox = JSON.parse(localStorage.getItem(OUTBOX_KEY) || '{}') || {}; } catch(e) { outbox = {}; }
+}
+function saveOutbox() {
+  try { localStorage.setItem(OUTBOX_KEY, JSON.stringify(outbox)); } catch(e) {}
+}
+
+// kind is 'project' (the registry record) or 'progress' (that project's rows).
+function enqueue(kind, id) {
+  if (!id) return;
+  const key = kind + ':' + id;
+  // Already pending: there is nothing to update. `at` is deliberately the
+  // FIRST time this entity went dirty ("has had unpushed changes since…"), not
+  // the latest — which also means the common case costs one property read and
+  // no localStorage write at all, keeping the chart-row tap path cheap.
+  if (outbox[key]) return;
+  outbox[key] = { k: kind, id: id, at: syncNow() };
+  saveOutbox();
+}
+
+function dequeue(kind, id) {
+  const key = kind + ':' + id;
+  if (!outbox[key]) return;
+  delete outbox[key];
+  saveOutbox();
+}
+
+// Pending ops in send order: project upserts, then progress, then deletes.
+//
+// Upserts first because a progress row references its project, so pushing
+// progress for a project the server has never seen would fail. Deletes last so
+// a queued upsert cannot resurrect a row the same flush is about to tombstone.
+function pendingOps() {
+  const ops = Object.keys(outbox).map(k => outbox[k]);
+  const rank = op => {
+    if (op.k === 'project') return isDeleted(op.id) ? 2 : 0;
+    return 1; // progress
+  };
+  return ops.sort((a, b) => rank(a) - rank(b) || a.at - b.at);
+}

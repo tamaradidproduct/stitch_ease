@@ -42,6 +42,12 @@ let state = {}, ctrs = {}, chartCurrentRow = 1, cellSz = 16, globalRows = 0;
 // 'chart_row', 'global_rows' — NOT the localStorage suffixes, so a clock
 // identifies one field rather than the whole blob it is stored in.
 let clocks = {}, baseClocks = {};
+
+// Pending changes not yet pushed to the cloud, keyed '<kind>:<projectId>' so a
+// second change to the same entity cannot create a second entry. App-wide, not
+// per-project — it outlives whichever project happens to be open. See
+// js/cloud/sync.js.
+let outbox = {};
 let activePatternId = null;
 let activeProjectId = null;
 // Includes tombstones — records with `deletedAt` set. Use liveProjects() for

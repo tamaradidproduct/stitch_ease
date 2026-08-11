@@ -222,6 +222,7 @@ migrateLegacy();
 migrateToProjects();
 migrateAddClocks();
 loadGlobal();
+loadOutbox();
 loadProjects();
 view = 'home';
 render();

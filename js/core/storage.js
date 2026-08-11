@@ -18,6 +18,8 @@
 //   pt3_proj_<id>_clk             {fieldKey: epoch_ms} last local change per field
 //   pt3_proj_<id>_base            {fieldKey: epoch_ms} clocks at last sync
 //   pt3_schema                    migration sentinel — GLOBAL
+//   pt3_outbox                    entities with unpushed changes — GLOBAL
+//                                 (see js/cloud/sync.js)
 //   pt3_cellSz                    chart cell size — GLOBAL, shared across projects
 // ─────────────────────────────────────────────
 
@@ -76,6 +78,7 @@ function createProject(patternId) {
                  created: Date.now(), updatedAt: syncNow() };
   projects.push(proj);
   saveProjects();
+  enqueue('project', proj.id);
   return proj;
 }
 
@@ -85,7 +88,11 @@ function renameProject(projectId) {
   const name = prompt('Rename project', proj.name);
   if (name === null) return;
   const trimmed = name.trim();
-  if (trimmed) { proj.name = trimmed; proj.updatedAt = syncNow(); saveProjects(); resetHeaderKey(); render(); }
+  if (trimmed) {
+    proj.name = trimmed; proj.updatedAt = syncNow();
+    saveProjects(); enqueue('project', projectId);
+    resetHeaderKey(); render();
+  }
 }
 
 // Soft delete. The registry entry stays as a tombstone (`deletedAt` set) and
@@ -108,6 +115,11 @@ function deleteProject(projectId) {
   proj.deletedAt = syncNow();
   proj.updatedAt = proj.deletedAt;
   saveProjects();
+  // Any queued progress push is now meaningless — its source keys were just
+  // purged, so flushing it would send an empty row for a project being
+  // tombstoned in the same pass. The tombstone alone carries the delete.
+  dequeue('progress', projectId);
+  enqueue('project', projectId);
   if (activeProjectId === projectId) { activeProjectId = null; view = 'home'; }
   render();
 }
@@ -165,6 +177,7 @@ function save() {
     // project's persisted state; measured at ~0.004ms, well inside the
     // chart-row tap budget.
     localStorage.setItem(pkey('base'), JSON.stringify(baseClocks));
+    enqueue('progress', activeProjectId);
     clearSaveError();
   } catch(e) {
     showSaveError(e);
