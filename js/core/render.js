@@ -157,15 +157,77 @@ function renderPhase() {
   document.getElementById('phase-content').innerHTML = html;
 }
 
+// ─────────────────────────────────────────────
+// BOTTOM SHEET
+//
+// One primitive, several uses: pattern notes, and the confirm/prompt dialogs
+// below. The CSS was already written for the notes sheet, so generalising it
+// costs almost no new styling — and it is what lets prompt()/confirm() go.
+//
+// Those have to go before any sign-in flow exists: native dialogs are
+// unreliable inside Chrome Custom Tabs, which is exactly where a magic link
+// opened from an email app lands.
+//
+// opts:
+//   onDismiss  called when the sheet is closed by scrim tap, ✕, or Escape —
+//              i.e. the "cancel" path. Not called on programmatic close.
+//   onOpen     called with the .sheet element once it is in the DOM
+// ─────────────────────────────────────────────
+let sheetDismissHandler = null;
+
+function openSheet(title, bodyHtml, opts) {
+  opts = opts || {};
+  closeSheet(); // never stack two
+  const scrim = document.createElement('div');
+  scrim.className = 'sheet-scrim';
+  scrim.id = 'sheet-scrim';
+  scrim.onclick = e => { if (e.target === scrim) dismissSheet(); };
+  scrim.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="${escapeHtml(title)}">
+      <div class="sheet-grab"></div>
+      <div class="sheet-head">
+        <div class="sheet-title">${escapeHtml(title)}</div>
+        <button class="sheet-close" onclick="dismissSheet()" aria-label="Close">✕</button>
+      </div>
+      <div class="sheet-body">${bodyHtml}</div>
+    </div>`;
+  document.body.appendChild(scrim);
+  sheetDismissHandler = opts.onDismiss || null;
+  document.addEventListener('keydown', sheetKeydown);
+  // Force a layout flush so the transition has a start value, then set the end
+  // value synchronously. requestAnimationFrame would be the usual way to do
+  // this, but it does not fire while a tab is throttled or not painting — and
+  // a sheet that never gets `.open` sits entirely below the fold, invisible,
+  // with no way for the user to recover. Reading offsetHeight cannot be
+  // deferred, so the animation degrades to an instant open at worst.
+  void scrim.offsetHeight;
+  scrim.classList.add('open');
+  if (opts.onOpen) opts.onOpen(scrim.querySelector('.sheet'));
+}
+
+function closeSheet() {
+  const s = document.getElementById('sheet-scrim');
+  if (s) s.remove();
+  sheetDismissHandler = null;
+  document.removeEventListener('keydown', sheetKeydown);
+}
+
+// Closing via scrim / ✕ / Escape means "cancel", so the dismiss handler runs.
+// closeSheet() alone is the programmatic path and stays silent — otherwise a
+// confirmed action would also fire its own cancel.
+function dismissSheet() {
+  const fn = sheetDismissHandler;
+  closeSheet();
+  if (fn) fn();
+}
+
+function sheetKeydown(e) {
+  if (e.key === 'Escape') dismissSheet();
+}
+
 // Notes icon → bottom sheet with the pattern's stitch help / abbreviations.
 function openNotes() {
   const pat = activePattern();
   if (!pat || !pat.notes) return;
-  closeNotes(); // never stack two sheets
-  const scrim = document.createElement('div');
-  scrim.className = 'sheet-scrim';
-  scrim.id = 'notes-scrim';
-  scrim.onclick = e => { if (e.target === scrim) closeNotes(); };
   // `sym` names a key in SYMS (the shared chart artwork) so a pattern's
   // legend can't drift from what the chart actually draws; `symbol` is a
   // raw SVG string, still supported for one-off glyphs with no chart cell.
@@ -176,20 +238,61 @@ function openNotes() {
       <span class="note-def">${escapeHtml(n.def)}</span>
     </div>`;
   }).join('');
-  scrim.innerHTML = `<div class="sheet" role="dialog" aria-label="Pattern notes">
-      <div class="sheet-grab"></div>
-      <div class="sheet-head">
-        <div class="sheet-title">Pattern notes</div>
-        <button class="sheet-close" onclick="closeNotes()" aria-label="Close">✕</button>
-      </div>
-      <div class="sheet-body">${rows}</div>
-    </div>`;
-  document.body.appendChild(scrim);
-  requestAnimationFrame(() => scrim.classList.add('open'));
+  openSheet('Pattern notes', rows);
 }
-function closeNotes() {
-  const s = document.getElementById('notes-scrim');
-  if (s) s.remove();
+// Kept as a name: render paths call this to dismiss the sheet on navigation.
+function closeNotes() { closeSheet(); }
+
+// ── confirm() / prompt() replacements ──
+//
+// Both are callback-based, not blocking, so call sites that read
+// `if (!confirm(...)) return;` have to move their work into onConfirm.
+
+function sheetConfirm(o) {
+  const body = `<p class="sheet-msg">${escapeHtml(o.message)}</p>
+    ${o.detail ? `<p class="sheet-sub">${escapeHtml(o.detail)}</p>` : ''}
+    <div class="sheet-actions">
+      <button class="sheet-btn" onclick="dismissSheet()">${escapeHtml(o.cancelLabel || 'Cancel')}</button>
+      <button class="sheet-btn ${o.danger ? 'danger' : 'primary'}" id="sheet-ok">${escapeHtml(o.confirmLabel || 'OK')}</button>
+    </div>`;
+  openSheet(o.title, body, {
+    onDismiss: o.onCancel,
+    onOpen: el => {
+      el.querySelector('#sheet-ok').onclick = () => { closeSheet(); o.onConfirm(); };
+    }
+  });
+}
+
+function sheetPrompt(o) {
+  const body = `${o.message ? `<p class="sheet-msg">${escapeHtml(o.message)}</p>` : ''}
+    <input class="sheet-input" id="sheet-input" type="text"
+           value="${escapeHtml(o.value || '')}" aria-label="${escapeHtml(o.title)}">
+    <div class="sheet-actions">
+      <button class="sheet-btn" onclick="dismissSheet()">Cancel</button>
+      <button class="sheet-btn primary" id="sheet-ok">${escapeHtml(o.confirmLabel || 'Save')}</button>
+    </div>`;
+  openSheet(o.title, body, {
+    onDismiss: o.onCancel,
+    onOpen: el => {
+      const input = el.querySelector('#sheet-input');
+      const ok = el.querySelector('#sheet-ok');
+      // An empty name is the one input this can't accept, so the button says
+      // so rather than the sheet silently doing nothing on submit.
+      const sync = () => { ok.disabled = !input.value.trim(); };
+      const submit = () => {
+        const v = input.value.trim();
+        if (!v) return;
+        closeSheet();
+        o.onSubmit(v);
+      };
+      input.oninput = sync;
+      input.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); submit(); } };
+      ok.onclick = submit;
+      sync();
+      input.focus();
+      input.select();
+    }
+  });
 }
 
 // Context menu for resetting project progress.
@@ -235,14 +338,26 @@ function closeResetMenu() {
 
 function confirmResetPhase(projectId, phaseName) {
   closeResetMenu();
-  if (!confirm('Reset "' + phaseName + '"?\n\nThis will clear the progress for just this section.')) return;
-  resetPhase();
+  sheetConfirm({
+    title: 'Reset section',
+    message: 'Reset “' + phaseName + '”?',
+    detail: 'This clears the progress for just this section.',
+    confirmLabel: 'Reset section',
+    danger: true,
+    onConfirm: resetPhase
+  });
 }
 
 function confirmResetPattern(projectId) {
   closeResetMenu();
-  if (!confirm('Reset all progress?\n\nThis will clear every step and return to the beginning.')) return;
-  resetPattern();
+  sheetConfirm({
+    title: 'Reset all progress',
+    message: 'Reset all progress?',
+    detail: 'This clears every step and returns to the beginning.',
+    confirmLabel: 'Reset everything',
+    danger: true,
+    onConfirm: resetPattern
+  });
 }
 
 // Confetti fill/size are randomized per open so the celebration doesn't

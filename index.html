@@ -317,6 +317,33 @@
     font-size: 16px; cursor: pointer; padding: 6px;
   }
   .sheet-body { overflow-y: auto; padding: 12px 20px 16px; }
+
+  /* Sheet dialogs — replacing prompt()/confirm(), which are unreliable in
+     Chrome Custom Tabs, where magic links from email open. */
+  .sheet-msg {
+    font-size: 14px; line-height: 1.5; color: var(--text);
+    margin: 0; white-space: pre-line;
+  }
+  .sheet-sub { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+  .sheet-input {
+    width: 100%; box-sizing: border-box; margin-top: 12px;
+    padding: 12px; border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--bg); color: var(--text);
+    font-family: inherit; font-size: 16px; /* 16px or iOS zooms the page on focus */
+  }
+  .sheet-input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .sheet-actions { display: flex; gap: 10px; margin-top: 18px; }
+  .sheet-btn {
+    flex: 1; padding: 13px; border-radius: var(--radius);
+    border: 1px solid var(--border); background: var(--card);
+    font-family: inherit; font-size: 14px; font-weight: 500;
+    color: var(--text); cursor: pointer; transition: background 0.15s;
+  }
+  .sheet-btn.primary { background: var(--text); color: #fff; border-color: var(--text); }
+  .sheet-btn.primary:active { background: #444; }
+  .sheet-btn.danger { background: #a4553f; color: #fff; border-color: #a4553f; }
+  .sheet-btn.danger:active { background: #8e4634; }
+  .sheet-btn:disabled { opacity: 0.45; cursor: default; }
   .note-row {
     display: flex; align-items: baseline; gap: 12px;
     padding: 10px 0;

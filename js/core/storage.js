@@ -85,14 +85,15 @@ function createProject(patternId) {
 function renameProject(projectId) {
   const proj = projects.find(p => p.id === projectId);
   if (!proj || proj.deletedAt) return;
-  const name = prompt('Rename project', proj.name);
-  if (name === null) return;
-  const trimmed = name.trim();
-  if (trimmed) {
-    proj.name = trimmed; proj.updatedAt = syncNow();
-    saveProjects(); enqueue('project', projectId);
-    resetHeaderKey(); render();
-  }
+  sheetPrompt({
+    title: 'Rename project',
+    value: proj.name,
+    onSubmit: name => {
+      proj.name = name; proj.updatedAt = syncNow();
+      saveProjects(); enqueue('project', projectId);
+      resetHeaderKey(); render();
+    }
+  });
 }
 
 // Soft delete. The registry entry stays as a tombstone (`deletedAt` set) and
@@ -110,18 +111,26 @@ function renameProject(projectId) {
 function deleteProject(projectId) {
   const proj = projects.find(p => p.id === projectId);
   if (!proj || proj.deletedAt) return;
-  if (!confirm('Delete "' + proj.name + '"? This removes its progress.')) return;
-  purgeProjectData(projectId);
-  proj.deletedAt = syncNow();
-  proj.updatedAt = proj.deletedAt;
-  saveProjects();
-  // Any queued progress push is now meaningless — its source keys were just
-  // purged, so flushing it would send an empty row for a project being
-  // tombstoned in the same pass. The tombstone alone carries the delete.
-  dequeue('progress', projectId);
-  enqueue('project', projectId);
-  if (activeProjectId === projectId) { activeProjectId = null; view = 'home'; }
-  render();
+  sheetConfirm({
+    title: 'Delete project',
+    message: 'Delete “' + proj.name + '”?',
+    detail: 'This removes its progress from this device. It can’t be undone.',
+    confirmLabel: 'Delete',
+    danger: true,
+    onConfirm: () => {
+      purgeProjectData(projectId);
+      proj.deletedAt = syncNow();
+      proj.updatedAt = proj.deletedAt;
+      saveProjects();
+      // Any queued progress push is now meaningless — its source keys were
+      // just purged, so flushing it would send an empty row for a project
+      // being tombstoned in the same pass. The tombstone carries the delete.
+      dequeue('progress', projectId);
+      enqueue('project', projectId);
+      if (activeProjectId === projectId) { activeProjectId = null; view = 'home'; }
+      render();
+    }
+  });
 }
 
 // ── Per-project persistence (pt3_proj_<id>_*); cellSz is a global pref. ──
