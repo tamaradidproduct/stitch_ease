@@ -10,6 +10,7 @@ function openProject(id) {
 
 function goHome() {
   save();
+  flushNow('goHome');   // a natural pause — the knitter has put the project down
   view = 'home';
   phaseNavOpen = false;
   window.scrollTo(0, 0);

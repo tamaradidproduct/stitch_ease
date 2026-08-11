@@ -101,9 +101,14 @@ function enqueue(kind, id) {
   // FIRST time this entity went dirty ("has had unpushed changes since…"), not
   // the latest — which also means the common case costs one property read and
   // no localStorage write at all, keeping the chart-row tap path cheap.
-  if (outbox[key]) return;
-  outbox[key] = { k: kind, id: id, at: syncNow() };
-  saveOutbox();
+  if (!outbox[key]) {
+    outbox[key] = { k: kind, id: id, at: syncNow() };
+    saveOutbox();
+  }
+  // Outside the guard on purpose. The write is skippable; the scheduling is
+  // not — every tap has to push the debounce back, or a 60-tap burst would
+  // flush 2.5s after the FIRST tap and then keep re-firing through the rest.
+  markDirty();
 }
 
 function dequeue(kind, id) {
@@ -126,3 +131,78 @@ function pendingOps() {
   };
   return ops.sort((a, b) => rank(a) - rank(b) || a.at - b.at);
 }
+
+function hasPending() { return Object.keys(outbox).length > 0; }
+
+// ─────────────────────────────────────────────
+// FLUSH SCHEDULING
+//
+// Knitting is a burst of tiny edits — a row tap every few seconds for an hour.
+// Pushing each one would be a request per stitch row; waiting for a natural
+// pause would mean never pushing at all for a knitter working steadily. So:
+// a trailing debounce, bounded by a max wait.
+//
+//   debounce  each edit pushes the flush back, so a burst settles into one
+//   max wait  but a burst can only delay it so far — a steady worker still
+//             syncs every 20s, rather than only when they finally stop
+//
+// Plus immediate flushes at the moments the page might not get another chance:
+// backgrounding, unload, leaving a project, and coming back online.
+// ─────────────────────────────────────────────
+const FLUSH_DEBOUNCE_MS = 2500;
+const FLUSH_MAX_WAIT_MS = 20000;
+
+let flushTimer = null;
+let burstStartedAt = 0;   // 0 = no burst in progress
+let flushing = false;
+
+function markDirty() {
+  if (!hasPending()) return;
+  const now = Date.now();
+  if (!burstStartedAt) burstStartedAt = now;
+  // Never let the debounce push past the burst's deadline.
+  const untilDeadline = Math.max(0, (burstStartedAt + FLUSH_MAX_WAIT_MS) - now);
+  const delay = Math.min(FLUSH_DEBOUNCE_MS, untilDeadline);
+  clearTimeout(flushTimer);
+  flushTimer = setTimeout(() => flush(delay === untilDeadline ? 'max-wait' : 'debounce'), delay);
+}
+
+function cancelScheduledFlush() {
+  clearTimeout(flushTimer);
+  flushTimer = null;
+  burstStartedAt = 0;
+}
+
+// Skip the wait — used where the page may not survive to run the timer.
+function flushNow(reason) {
+  cancelScheduledFlush();
+  flush(reason);
+}
+
+// STUB until a backend exists (Phase 6).
+//
+// It deliberately does NOT clear the outbox. Nothing has been sent, so
+// dropping the ops here would silently discard the very changes this whole
+// mechanism exists to preserve. The outbox is cleared per-op by the real
+// flush, only once the server has acknowledged that op.
+function flush(reason) {
+  cancelScheduledFlush();
+  if (!hasPending()) return;
+  if (flushing) return;                 // a real flush is async; don't overlap
+  if (!navigator.onLine) {
+    // Not an error — the `online` listener below picks it up again.
+    console.info('[sync] offline, deferring flush (' + reason + '):', pendingOps().length, 'op(s)');
+    return;
+  }
+  const ops = pendingOps();
+  console.info('[sync] flush (' + reason + '):', ops.map(o => o.k + ':' + o.id).join(', '));
+  // ...network push lands here. Outbox intentionally left intact.
+}
+
+// Backgrounding is the last reliable moment on mobile — a phone may freeze or
+// kill the tab without ever firing anything else.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') flushNow('hidden');
+});
+window.addEventListener('pagehide', () => flushNow('pagehide'));
+window.addEventListener('online', () => flushNow('online'));
