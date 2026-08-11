@@ -349,10 +349,16 @@ function resetPattern() {
   globalRows = 0;
   cur = 0;
   // Clearing the objects drops the old keys entirely, so resetStep() below is
-  // what re-creates them (and their clocks); only the three scalars need
-  // stamping here. Clocks themselves are deliberately kept — a reset is an
+  // what re-creates them (and their clocks); the scalars and every chart phase
+  // need stamping here. Clocks themselves are deliberately kept — a reset is an
   // edit to sync, not a reason to forget this device ever edited anything.
-  stampClocks(['cur', 'chart_row', 'global_rows']);
+  //
+  // Every chart phase must be stamped even though chartRows was just emptied:
+  // an unstamped reset keeps its old, older clock, so the other device's row
+  // reads as newer and the next sync quietly puts it back.
+  stampClocks(['cur', 'global_rows'].concat(
+    PHASES.filter(ph => ph.hasChart).map(ph => chartRowKey(ph.id))
+  ));
   PHASES.forEach(ph => ph.steps.forEach(resetStep));
   syncActiveChart();
   save();
