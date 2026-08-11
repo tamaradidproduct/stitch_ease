@@ -34,6 +34,14 @@ let TOTAL_STEPS = 0;
 let cur = 0;
 let phaseNavOpen = false;
 let state = {}, ctrs = {}, chartCurrentRow = 1, cellSz = 16, globalRows = 0;
+
+// Sync bookkeeping for the open project (see js/cloud/sync.js).
+//   clocks     {fieldKey: epoch_ms}  when this device last changed each field
+//   baseClocks {fieldKey: epoch_ms}  the clocks as of the last successful sync
+// Field keys are namespaced — 's:<stepId>', 'c:<stepId>', plus bare 'cur',
+// 'chart_row', 'global_rows' — NOT the localStorage suffixes, so a clock
+// identifies one field rather than the whole blob it is stored in.
+let clocks = {}, baseClocks = {};
 let activePatternId = null;
 let activeProjectId = null;
 let projects = [];                 // [{ id, patternId, name, created }]
@@ -79,6 +87,7 @@ function applyPattern(p) {
   TOTAL_STEPS = PHASES.reduce((a, ph) => a + ph.steps.length, 0);
   cur = 0; chartRows = {}; globalRows = 0;
   state = {}; ctrs = {};
+  clocks = {}; baseClocks = {};
   PHASES.forEach(ph => ph.steps.forEach(s => { state[s.id] = false; if (s.rows) ctrs[s.id] = 0; }));
   syncActiveChart();
 }

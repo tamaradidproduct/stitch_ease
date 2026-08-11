@@ -9,6 +9,7 @@ const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './ic
   './js/core/chart.js',
   './js/core/render.js',
   './js/core/app.js',
+  './js/cloud/sync.js',
   './js/patterns/peacock-tee.js',
   './js/patterns/tatted-triangle.js',
   './js/patterns/lenore.js',
