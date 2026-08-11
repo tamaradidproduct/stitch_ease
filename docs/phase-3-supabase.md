@@ -24,9 +24,49 @@ now.
 **Unknown, and blocking 3.1:** what is already *in* the database. If an earlier experiment
 left tables behind, the SQL below could collide with them. That is what 3.0 settles.
 
+## Status — 3.0 to 3.3 are DONE
+
+Applied 2026-08-11 to `stitch-ease-app` (`dozzilmrtjhinoactcve`, ca-central-1, Postgres 17).
+
+- **3.0 inventory** — the project was completely empty: no tables, no migrations, no users.
+  There is also a second project in the org, `stitch-ease-knitting-archive`
+  (`mciveuhlmtzepmsqkury`), INACTIVE since May 2025 — left alone deliberately.
+- **3.1 schema** — applied as migration `20260811174743_projects_and_progress`, recorded at
+  `supabase/migrations/`.
+- **3.2 RLS** — enabled on both tables with owner-only policies.
+- **3.3 proof** — all checks pass, both directions, plus the signed-out case. See below.
+- Supabase's own security advisor reports **zero findings**.
+
+**Still to do: 3.4 (migration file convention — done) and 3.5 (vendor supabase-js).**
+
+### What the RLS proof actually showed
+
+Two fake users, one project and one progress row each:
+
+| check | user A | user B |
+|---|---|---|
+| SELECT projects | only own | only own |
+| SELECT progress | only own | only own |
+| UPDATE the other's project | 0 rows | 0 rows |
+| DELETE the other's row | 0 rows | 0 rows |
+| INSERT owned by the other | blocked by with-check | — |
+
+Signed out (`anon`, which is what the shipped key resolves to): `auth.uid()` null, zero
+projects, zero progress, 0 rows on update. The `server_rev` trigger produced distinct
+increasing values (1, 2) across two inserts. All test rows and users were deleted
+afterwards — all three tables are back to 0 rows.
+
+One methodological note, since it nearly produced a false alarm: an early version of the
+anon check used `set_config(...)` inside a subquery, which does not apply before the outer
+query executes, so it silently ran as the service role and appeared to show anon reading
+everything. Role switching has to happen in its own transaction with `set local role`.
+**A passing RLS test that never actually changed role is worse than no test.**
+
 ## 3.0 — Inventory the project
 
-Nothing else starts until this is done. In the Supabase dashboard → SQL Editor:
+*Done — see Status above. Kept for the record, and for when a second project is set up.*
+
+In the Supabase dashboard → SQL Editor:
 
 ```sql
 -- Tables, and whether RLS is on
