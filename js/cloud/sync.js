@@ -199,6 +199,77 @@ function flush(reason) {
   // ...network push lands here. Outbox intentionally left intact.
 }
 
+// ─────────────────────────────────────────────
+// THREE-WAY MERGE
+//
+// Pure. No I/O, no globals — everything comes in as arguments, which is what
+// makes it testable without a backend (see sync.selftest.js).
+//
+// Detecting a real conflict needs a BASELINE: what both sides agreed on at the
+// last successful sync. With only two versions you cannot tell "the other side
+// is simply stale" from "the other side diverged", so you either prompt
+// constantly or lose data silently. With a baseline, per field:
+//
+//   local changed?  remote changed?  →  action
+//   no              no                  nothing
+//   yes             no                  keep local
+//   no              yes                 take remote
+//   yes             yes, values differ  CONFLICT — ask
+//   yes             yes, values equal   agreed independently, no prompt
+//
+// where "changed" means clock > baseClock.
+//
+// This is what makes the common case invisible. Tick three Materials steps on
+// the phone while the iPad sits on chart row 31: those are different fields, so
+// both survive untouched and nobody is asked anything.
+//
+//   local / remote  { values: {fieldKey: value}, clocks: {fieldKey: epoch_ms} }
+//   base            {fieldKey: epoch_ms}
+//   → { merged, mergedClocks, conflicts }
+//
+// Conflicted fields are left at the LOCAL value in `merged`. That is the safe
+// default — it is what is already on screen — and it means a caller that
+// ignores `conflicts` still behaves sanely rather than silently adopting the
+// other device's value.
+// ─────────────────────────────────────────────
+function diffProgress(local, remote, base) {
+  const lv = (local && local.values) || {}, lc = (local && local.clocks) || {};
+  const rv = (remote && remote.values) || {}, rc = (remote && remote.clocks) || {};
+  const bc = base || {};
+
+  const merged = Object.assign({}, lv);
+  const mergedClocks = Object.assign({}, lc);
+  const conflicts = [];
+
+  const keys = new Set(
+    Object.keys(lv).concat(Object.keys(rv), Object.keys(lc), Object.keys(rc))
+  );
+
+  keys.forEach(k => {
+    const lClock = lc[k] || 0, rClock = rc[k] || 0, bClock = bc[k] || 0;
+    const localChanged  = lClock > bClock;
+    const remoteChanged = rClock > bClock;
+
+    if (!remoteChanged) return;          // nothing to take; local already stands
+    // A clock with no value behind it is malformed — taking it would delete a
+    // field on the strength of a timestamp alone.
+    if (!Object.prototype.hasOwnProperty.call(rv, k)) return;
+
+    if (!localChanged) {                 // only the other side moved
+      merged[k] = rv[k];
+      mergedClocks[k] = rClock;
+      return;
+    }
+    if (lv[k] === rv[k]) {               // both moved, and agreed
+      mergedClocks[k] = Math.max(lClock, rClock);
+      return;
+    }
+    conflicts.push({ key: k, local: lv[k], remote: rv[k], localClock: lClock, remoteClock: rClock });
+  });
+
+  return { merged, mergedClocks, conflicts };
+}
+
 // Backgrounding is the last reliable moment on mobile — a phone may freeze or
 // kill the tab without ever firing anything else.
 document.addEventListener('visibilitychange', () => {
