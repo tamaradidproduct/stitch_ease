@@ -70,8 +70,13 @@ const LENORE_PHASES = [
       {id:'r1-n', text:'Ring N: 4 + 6 - 2 (join to last Ring F)'},
       {id:'r1-o', text:'Ring O: 2 + 6 - 4 (join to Ring N)'},
       {id:'r1-p', text:'Chain P: 4'},
-      {id:'r1-q', text:'Ring Q: 2 - 2 - 2 - 2 - 2 (four picots)', rows:true, target:12, lbl:'repeat: Ring Q'},
-      {id:'r1-r', text:'Chain R: 2 - 2 + 2 - 2 (join to the center picot of Chains G and I) — skip after the 12th Ring Q', rows:true, target:11, lbl:'repeat: Chain R'},
+      {id:'r1-qr', text:'Ring Q – Chain R (repeat unit):',
+        bullets:[
+          'Ring Q: 2 - 2 - 2 - 2 - 2 (four picots)',
+          'Chain R: 2 - 2 + 2 - 2 (join to the center picot of Chains G and I)',
+        ],
+        rows:true, target:11, lbl:'repeat: Ring Q – Chain R'},
+      {id:'r1-q2', text:'Ring Q: 2 - 2 - 2 - 2 - 2 (four picots) — final repeat, no Chain R after this one'},
       {id:'r1-s', text:'Chain S: 4 — tie off at the base of Ring A and hide ends'},
     ]
   },
