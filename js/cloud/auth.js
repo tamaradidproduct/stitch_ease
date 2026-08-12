@@ -83,12 +83,111 @@ function initCloud() {
       resetHeaderKey();
       render();
     }
+    if (session) handleSignedIn(currentUserId());
   });
 
   // Coming back online doesn't fire an auth event, but it does change what the
   // button should say ("offline" → "signed in").
   window.addEventListener('online',  refreshAccountButton);
   window.addEventListener('offline', refreshAccountButton);
+}
+
+// ─────────────────────────────────────────────
+// CLAIMING LOCAL DATA
+//
+// The app is usable for months before anyone signs in, so by the time a
+// session appears there is usually already a pile of local progress. Someone
+// has to decide whose it is, and the wrong answer is expensive in both
+// directions: silently uploading it could hand one family member's projects to
+// another on a shared iPad, and silently discarding it loses real knitting.
+//
+// `pt3_owner` records which account the data on THIS DEVICE belongs to. Four
+// cases, and the only automatic ones are those where nothing can be lost:
+//
+//   no owner + no projects      adopt silently — there is nothing to decide
+//   no owner + projects exist   ask: are these yours?
+//   owner === signed-in user    normal; nothing to do
+//   owner !== signed-in user    ask, and never destroy anything either way
+//
+// Nothing here uploads. Claiming marks the projects for the outbox; the push
+// itself is Phase 6.
+// ─────────────────────────────────────────────
+const OWNER_KEY   = 'pt3_owner';
+const DECLINE_KEY = 'pt3_claim_declined';   // uid that already said "not now"
+
+function localOwner() { try { return localStorage.getItem(OWNER_KEY); } catch(e) { return null; } }
+function setLocalOwner(uid) {
+  try {
+    localStorage.setItem(OWNER_KEY, uid);
+    localStorage.removeItem(DECLINE_KEY);
+  } catch(e) {}
+}
+
+function handleSignedIn(uid) {
+  if (!uid) return;
+  const owner = localOwner();
+  if (owner === uid) return;                       // already ours, nothing to decide
+
+  const mine = liveProjects();
+  if (!owner) {
+    if (!mine.length) { setLocalOwner(uid); return; }   // nothing at stake
+    if (declinedBy(uid)) return;                        // asked already, they said no
+    openClaimSheet(mine.length, 'unclaimed', uid);
+    return;
+  }
+  // A different account's data is sitting here — a shared iPad, most likely.
+  if (declinedBy(uid)) return;
+  openClaimSheet(mine.length, 'other-owner', uid);
+}
+
+function declinedBy(uid) {
+  try { return localStorage.getItem(DECLINE_KEY) === uid; } catch(e) { return false; }
+}
+function declineClaim(uid) {
+  // Remember, so signing in again doesn't ask the same question every time.
+  try { localStorage.setItem(DECLINE_KEY, uid); } catch(e) {}
+  closeSheet();
+}
+
+// Mark every live project to be pushed under this account. No network here —
+// the outbox is drained in Phase 6.
+function claimLocalProjects(uid) {
+  setLocalOwner(uid);
+  liveProjects().forEach(p => {
+    enqueue('project', p.id);
+    enqueue('progress', p.id);
+  });
+  closeSheet();
+  refreshAccountButton();
+}
+
+function openClaimSheet(n, kind, uid) {
+  const plural = n === 1 ? 'project' : 'projects';
+  const body = kind === 'unclaimed'
+    ? `<p class="sheet-msg">Add your ${n} ${plural} to this account?</p>
+       <p class="acct-note" style="border:0;margin-top:8px;padding-top:0">They’ll be backed up and appear on your other devices. Nothing is removed from this one.</p>`
+    : `<p class="sheet-msg">This device already has ${n} ${plural} from a different account.</p>
+       <p class="acct-note" style="border:0;margin-top:8px;padding-top:0">Add them to your account, or leave them alone — either way nothing is deleted from this device.</p>`;
+
+  openSheet(kind === 'unclaimed' ? 'Back up your projects' : 'Projects already here',
+    body + `<div class="sheet-actions">
+      <button class="sheet-btn" id="claim-no">Not now</button>
+      <button class="sheet-btn primary" id="claim-yes">${kind === 'unclaimed' ? 'Add to my account' : 'They’re mine'}</button>
+    </div>`,
+    {
+      // Dismissing is the same as "not now" — never a claim by accident.
+      onDismiss: () => declineClaim(uid),
+      onOpen: el => {
+        el.querySelector('#claim-yes').onclick = () => claimLocalProjects(uid);
+        el.querySelector('#claim-no').onclick  = () => declineClaim(uid);
+      }
+    });
+}
+
+// True when there is local work this account has not taken responsibility for.
+// The account sheet says so rather than implying everything is safe.
+function hasUnclaimedProjects() {
+  return !!currentUserId() && localOwner() !== currentUserId() && liveProjects().length > 0;
 }
 
 // ─────────────────────────────────────────────
@@ -183,13 +282,24 @@ function openAccountSheet(msg) {
       </div>
     </div>
     ${msg ? msgHtml(msg) : ''}
+    ${hasUnclaimedProjects() ? `<p class="acct-err">${liveProjects().length === 1
+        ? 'A project on this device isn’t in your account yet.'
+        : liveProjects().length + ' projects on this device aren’t in your account yet.'}
+      </p>
+      <div class="sheet-actions"><button class="sheet-btn primary" id="acct-claim">Add them to my account</button></div>` : ''}
     <div class="sheet-actions">
       <button class="sheet-btn" onclick="dismissSheet()">Done</button>
       <button class="sheet-btn" id="acct-signout">Sign out</button>
     </div>
     <p class="acct-note">Signing out leaves your projects on this device. Nothing is deleted.</p>`;
   openSheet('Account', body, {
-    onOpen: el => { el.querySelector('#acct-signout').onclick = signOut; }
+    onOpen: el => {
+      el.querySelector('#acct-signout').onclick = signOut;
+      const claim = el.querySelector('#acct-claim');
+      // A second chance after "not now" — the sheet is where someone goes
+      // when they wonder whether their work is actually backed up.
+      if (claim) claim.onclick = () => { claimLocalProjects(currentUserId()); openAccountSheet(); };
+    }
   });
 }
 
