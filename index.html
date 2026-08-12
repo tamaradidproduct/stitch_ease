@@ -519,6 +519,30 @@
   .step-bullets.checkable li.done .sub-check { background: var(--checkbox-done); border-color: var(--checkbox-done); }
   .step-bullets.checkable li.done .sub-text { color: var(--done-text); text-decoration: line-through; text-decoration-color: var(--muted); }
 
+  /* Repeat-unit steps (a bulleted ring/chain group paired with a counter) —
+     the header isn't a checkbox: the counter (or the checkable bullets
+     below it) is what drives progress, see repeatStepHtml() in render.js. */
+  .repeat-step { cursor: default; }
+  .repeat-step:active { background: transparent; }
+  /* Emphasized like a section header, not a plain checkbox row — bold,
+     accent-tinted, in its own band so it reads as "everything below this
+     belongs to this repeat" rather than blending into the step list. */
+  .repeat-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: var(--accent-light); border-radius: var(--radius-sm);
+    padding: 10px 12px;
+  }
+  .repeat-head .step-text { flex: 1; min-width: 0; font-weight: 600; color: var(--accent); }
+  .step.done .repeat-head { background: var(--done-bg); }
+  .step.done .repeat-head .step-text { color: var(--done-text); text-decoration: line-through; text-decoration-color: var(--muted); }
+  .row-counter.inline { margin-top: 0; background: transparent; padding: 0; flex-shrink: 0; }
+  /* Sub-steps get the same generous spacing/divider as the main step list,
+     indented under the header (matching the old checkbox+gap indent) so
+     they read as nested under it rather than as their own top-level steps. */
+  .step-bullets.spaced { gap: 0; margin-top: 12px; padding-left: 36px; }
+  .step-bullets.spaced li { padding: 14px 0; border-bottom: 1px dashed var(--border); }
+  .step-bullets.spaced li:last-child { border-bottom: none; }
+
   /* Per-round cadence reminder (e.g. increase vs plain round) */
   .round-hint {
     margin-top: 10px; padding: 9px 12px; border-radius: var(--radius-sm);

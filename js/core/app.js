@@ -59,8 +59,10 @@ function toggleStep(id) {
 
 // A step's bullets (when it also has a repeat counter) are individually
 // checkable sub-steps: completing every bullet for the current pass advances
-// the counter by one and resets them for the next pass, instead of requiring
-// a separate tap on the +/- counter.
+// the counter by one, instead of requiring a separate tap on the +/-
+// counter. Every pass but the last resets the bullets for the next repeat;
+// the last one is left checked (changeCount() marks the whole step done
+// once the target is reached, so there's nothing left to reset for).
 function toggleSubStep(stepId, idx) {
   const step = PHASES.flatMap(p => p.steps).find(s => s.id === stepId);
   if (!step || !step.bullets) return;
@@ -69,7 +71,10 @@ function toggleSubStep(stepId, idx) {
   stampClock('s:' + key);
   const allDone = step.bullets.every((_, i) => state[stepId + '__b' + i]);
   if (allDone) {
-    step.bullets.forEach((_, i) => { state[stepId + '__b' + i] = false; stampClock('s:' + stepId + '__b' + i); });
+    const isLastRepeat = (ctrs[stepId] || 0) + 1 >= step.target;
+    if (!isLastRepeat) {
+      step.bullets.forEach((_, i) => { state[stepId + '__b' + i] = false; stampClock('s:' + stepId + '__b' + i); });
+    }
     changeCount(stepId, 1); // saves + renders
   } else {
     save(); render();
@@ -86,6 +91,14 @@ function changeCount(id, delta) {
   if (ctrs[id] !== prev) {
     stampClocks(['c:' + id, 'global_rows']);
     globalRows = Math.max(0, globalRows + (ctrs[id] - prev)); // auto-advance global by the real change
+    // Repeat-unit steps (bullets + counter, see toggleSubStep()) have no
+    // independent checkbox of their own — the counter reaching its target
+    // IS "done", and backing off below it reopens the step, so state[id]
+    // always mirrors the counter rather than being toggled separately.
+    if (step && step.bullets) {
+      const nowDone = ctrs[id] >= step.target;
+      if (state[id] !== nowDone) { state[id] = nowDone; stampClock('s:' + id); }
+    }
   }
   save(); render(); renderGlobalRows();
 }
