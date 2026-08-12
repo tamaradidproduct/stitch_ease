@@ -70,24 +70,53 @@ function cadenceHintHtml(s, ctr, done) {
   </div>`;
 }
 
-// Bullets on a step with a repeat counter (`rows`) are individually
-// checkable: ticking every bullet for one pass auto-advances the counter and
-// resets them, ready for the next pass (see toggleSubStep() in app.js).
-// Bullets without a counter are just an informational list (one-off steps).
+// Plain bullets (a one-off step's sub-items, e.g. a corner transition) are
+// just an informational list — no counter, no checkbox of their own.
 function bulletsHtml(s) {
   if (!s.bullets) return '';
-  if (!s.rows) return `<ul class="step-bullets">${s.bullets.map(b => `<li>${b}</li>`).join('')}</ul>`;
+  return `<ul class="step-bullets">${s.bullets.map(b => `<li>${b}</li>`).join('')}</ul>`;
+}
+
+// A "repeat unit" — a step that pairs a repeat counter with a bulleted list
+// of rings/chains (see toggleSubStep() in app.js) — renders as a header (no
+// checkbox of its own; ticking every bullet for one pass IS what advances
+// it) with the counter inline to its right, then the checkable bullets
+// below. The counter/toggleSubStep keep `state[s.id]` in sync: once the
+// target is reached the header shows done and the bullets stay checked
+// (the last pass isn't reset), instead of the header being independently
+// tappable like a normal step.
+function repeatStepHtml(s) {
+  const done = state[s.id];
+  const ctr  = ctrs[s.id] || 0;
+  const pct  = Math.round(Math.min(100, ctr / s.target * 100));
   const items = s.bullets.map((b, i) => {
     const bd = !!state[s.id + '__b' + i];
-    return `<li class="${bd ? 'done' : ''}" onclick="event.stopPropagation(); toggleSubStep('${s.id}', ${i})">
+    return `<li class="${bd ? 'done' : ''}" onclick="toggleSubStep('${s.id}', ${i})">
       <span class="sub-check">${bd ? CHECK_SVG : ''}</span>
       <span class="sub-text">${b}</span>
     </li>`;
   }).join('');
-  return `<ul class="step-bullets checkable">${items}</ul>`;
+  return `<div class="step repeat-step ${done ? 'done' : ''}">
+    <div class="step-body">
+      <div class="repeat-head">
+        <div class="step-text">${s.text.replace(/\n/g, '<br>')}</div>
+        <div class="row-counter inline">
+          <div class="rc-controls">
+            <button class="rc-btn" onclick="changeCount('${s.id}',-1)">−</button>
+            <span class="rc-val">${ctr}</span>
+            <span class="rc-target">/ ${s.target}</span>
+            <button class="rc-btn" onclick="changeCount('${s.id}',1)">+</button>
+          </div>
+        </div>
+      </div>
+      <ul class="step-bullets checkable spaced">${items}</ul>
+      <div class="rc-mini-bar"><div class="rc-mini-fill" style="width:${pct}%"></div></div>
+    </div>
+  </div>`;
 }
 
 function stepHtml(s) {
+  if (s.rows && s.bullets) return repeatStepHtml(s);
   const done = state[s.id];
   const ctr  = s.rows ? (ctrs[s.id] || 0) : 0;
   const pct  = s.rows ? Math.round(Math.min(100, ctr / s.target * 100)) : 0;
