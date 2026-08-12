@@ -199,6 +199,15 @@ function hasUnclaimedProjects() {
 // — the app is fully usable without an account and always will be.
 // ─────────────────────────────────────────────
 
+// Google's official four-colour G. Their brand guidelines require the mark be
+// shown unmodified, so this is inlined rather than recoloured to match the app.
+const GOOGLE_G_SVG = `<svg width="17" height="17" viewBox="0 0 18 18" aria-hidden="true">
+  <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/>
+  <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/>
+  <path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z"/>
+  <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.46 3.44 1.35l2.58-2.58C13.46.9 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/>
+</svg>`;
+
 // Small helper: initial for the avatar, from the email.
 function acctInitial() {
   const e = session && session.user && session.user.email;
@@ -244,6 +253,8 @@ function openAccountSheet(msg) {
 
   if (st === 'signed-out') {
     body = `<p class="sheet-msg">Sign in to keep your projects on all your devices.</p>
+      <button class="sheet-btn google-btn" id="acct-google">${GOOGLE_G_SVG}Continue with Google</button>
+      <div class="acct-or"><span>or</span></div>
       <p class="acct-sub sheet-sub">We’ll email you a link — no password to remember.</p>
       <input class="sheet-input" id="acct-email" type="email" inputmode="email"
              autocomplete="email" placeholder="you@example.com" aria-label="Email address">
@@ -255,6 +266,7 @@ function openAccountSheet(msg) {
       <p class="acct-note">Your projects stay on this device either way. Signing in only adds a copy in the cloud.</p>`;
     openSheet('Account', body, {
       onOpen: el => {
+        el.querySelector('#acct-google').onclick = signInWithGoogle;
         const input = el.querySelector('#acct-email');
         const send  = el.querySelector('#acct-send');
         const ok    = () => /\S+@\S+\.\S+/.test(input.value.trim());
@@ -311,6 +323,39 @@ function msgHtml(m) {
 //
 // Both re-open the sheet with a result rather than closing it silently, so the
 // user always sees what happened.
+
+// Google sends no email of its own, so this is the only sign-in path that
+// works for someone without a verified sending domain behind it.
+//
+// Unlike the magic link, this NAVIGATES AWAY — Google's consent screen replaces
+// the page, then returns to `redirectTo` carrying ?code=. So there is nothing
+// to report on success: if this call resolves without redirecting, something
+// went wrong, and that is the only case worth surfacing.
+async function signInWithGoogle() {
+  if (!sb) return;
+  const btn = document.getElementById('acct-google');
+  if (btn) { btn.disabled = true; btn.textContent = 'Opening Google…'; }
+  try {
+    const { error } = await sb.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: location.href.split('?')[0].split('#')[0] }
+    });
+    if (error) throw error;
+  } catch (e) {
+    console.error('[cloud] google sign-in failed', e);
+    openAccountSheet({ ok: false, text: oauthErrorText(e) });
+  }
+}
+
+// The failure modes here are configuration, not user error, so the wording
+// points at something the reader can actually check or report.
+function oauthErrorText(e) {
+  const m = (e && e.message) || '';
+  if (/provider is not enabled|not enabled/i.test(m)) return 'Google sign-in isn’t switched on for this app yet.';
+  if (/redirect|url/i.test(m))                        return 'Google sign-in is misconfigured (redirect URL). This needs fixing in setup.';
+  if (/fetch|network/i.test(m))                       return 'Couldn’t reach Google. Check your connection and try again.';
+  return 'Couldn’t start Google sign-in. ' + m;
+}
 
 async function sendMagicLink(email) {
   if (!sb) return;

@@ -161,6 +161,25 @@
     border-radius: var(--radius); padding: 10px 12px; margin-top: 12px;
   }
 
+  /* Google's brand guidelines: white button, their four-colour G unmodified,
+     and the wording left as "Continue with Google". */
+  .google-btn {
+    width: 100%; margin-top: 14px;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    background: #fff; color: #3c4043; border: 1px solid #dadce0;
+  }
+  .google-btn:active { background: #f7f8f8; }
+  .google-btn svg { flex-shrink: 0; }
+
+  /* "or" divider between the two sign-in paths */
+  .acct-or {
+    display: flex; align-items: center; gap: 10px;
+    margin: 16px 0 4px; color: var(--muted); font-size: 12px;
+  }
+  .acct-or::before, .acct-or::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
   /* Compact project header: back · (title + size subtitle) · Rows · chevron */
   .proj-head { align-items: flex-start; gap: 8px; margin-bottom: 0; }
   .proj-heading { flex: 1; min-width: 0; }
