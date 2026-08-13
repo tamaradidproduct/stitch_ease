@@ -291,8 +291,9 @@ function changeChartRow(delta) {
     // row of a chart they aren't knitting.
     stampClock(chartRowKey(PHASES[cur].id));
   }
-  stampClock('global_rows');
-  globalRows = Math.max(0, globalRows + (chartCurrentRow - prevRow)); // auto-advance global
+  // No tally nudge here any more — the Rows total is derived from
+  // chartRows/entryProg on read (globalRowsNow()), and save() stamps
+  // global_rows if the derived value actually moved.
   renderGlobalRows();
   save();
 

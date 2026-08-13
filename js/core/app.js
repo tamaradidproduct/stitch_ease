@@ -50,10 +50,6 @@ function toggleStep(id) {
   const nowDone = !state[id];
   state[id] = nowDone;
   stampClock('s:' + id);
-  // On "countable" phases (e.g. tatting rings/chains) each completed step is one
-  // unit of work — advance the Rows tally by the real change.
-  const ph = PHASES.find(p => (p.steps || []).some(s => s.id === id));
-  if (ph && ph.countable) { globalRows = Math.max(0, globalRows + (nowDone ? 1 : -1)); stampClock('global_rows'); }
   save(); render();
 }
 
@@ -75,13 +71,7 @@ function toggleEntry(id) {
   const e = findEntry(id);
   if (!e || e.kind === 'repeat') return;
   const key = e.kind === 'note' ? noteKey(id) : rowKey(id);
-  const nowDone = !entryProg[key];
-  entryProg[key] = nowDone;
-  // A row is a row; a note is setup. Only the former moves the tally.
-  if (e.kind === 'row') {
-    globalRows = Math.max(0, globalRows + (nowDone ? 1 : -1));
-    stampClock('global_rows');
-  }
+  entryProg[key] = !entryProg[key];
   save(); render();
 }
 
@@ -95,8 +85,6 @@ function advanceEntry(id, delta) {
   // stamping it would claim an edit this device never made.
   if (!moved) return;
   entryProg[repeatKey(id)] = next;
-  globalRows = Math.max(0, globalRows + moved);
-  stampClock('global_rows');
   save(); render(); renderGlobalRows();
 }
 
@@ -132,8 +120,7 @@ function changeCount(id, delta) {
   // A tap that hit the min/max moved nothing — stamping it would claim an edit
   // this device never made, and lose a real one from the other device.
   if (ctrs[id] !== prev) {
-    stampClocks(['c:' + id, 'global_rows']);
-    globalRows = Math.max(0, globalRows + (ctrs[id] - prev)); // auto-advance global by the real change
+    stampClock('c:' + id);
     // Repeat-unit steps (bullets + counter, see toggleSubStep()) have no
     // independent checkbox of their own — the counter reaching its target
     // IS "done", and backing off below it reopens the step, so state[id]
@@ -146,28 +133,31 @@ function changeCount(id, delta) {
   save(); render(); renderGlobalRows();
 }
 
-// Total row-equivalent units in the active pattern: row-counter targets,
-// the chart's row count, and one unit per step on "countable" phases (e.g.
-// tatting rings/chains) — matches how toggleStep/changeCount/changeChartRow
-// advance globalRows, so the two numbers stay comparable.
-function patternTotalRows() {
-  return PHASES.reduce((sum, p) => {
-    // Each chart phase contributes its OWN chart's length — a pattern can
-    // have several differently-sized charts (see chartForPhase()).
-    if (p.hasChart) return sum + chartForPhase(p).length;
-    // A converted section derives its own count — see sectionRowCount() in
-    // js/core/rows.js, which also holds the fallback for the unconverted ones.
-    if (p.entries) return sum + sectionRowCount(p, activeDoc);
-    if (p.countable) return sum + p.steps.length;
-    return sum + p.steps.reduce((s, st) => s + (st.rows ? st.target : 0), 0);
-  }, 0);
+// ── The Rows tally, derived ──
+//
+// Both halves are computed from the project's actual progress. Nothing stores
+// either number as a source of truth, so neither can drift: the old tally was
+// a running sum of deltas that five mutators nudged, with no referent to
+// reconstruct it from, and a reset or a missed clamp left it permanently
+// wrong.
+//
+// activeDoc, not activePattern(): a frozen project must count the pattern it
+// is actually knitting, not the one in the code.
+function patternTotalRows() { return patternRowTotal(activeDoc); }
+
+// The context every shape of progress lives in — converted entries, the
+// chart's position, and the legacy buckets a frozen project still uses.
+function progressCtx() {
+  return { entries: entryProg, chartRows: chartRows, state: state, ctrs: ctrs };
 }
 
-// Global, project-wide row tally — read-only display that auto-advances with
-// the section row counters and the chart row.
+function globalRowsNow() { return patternRowsDone(activeDoc, progressCtx()); }
+
+// Global, project-wide row tally — read-only display, recomputed on every
+// paint rather than remembered.
 function renderGlobalRows() {
   const el = document.getElementById('prog-rows');
-  if (el) el.textContent = globalRows + ' / ' + patternTotalRows();
+  if (el) el.textContent = globalRowsNow() + ' / ' + patternTotalRows();
 }
 
 // ── Service worker + update prompt ──

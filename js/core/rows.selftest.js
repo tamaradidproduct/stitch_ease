@@ -235,25 +235,64 @@ function rowsSelfTest() {
 
   // ── I. Done-counts meet the totals ──
 
+  const ectx = pr => ({ entries: pr });
+
   check('empty progress: nothing done anywhere',
-    [sectionRowsDone(COL, {}), sectionRowsDone(RAG, {}), sectionRowsDone(GSR, {})],
+    [sectionRowsDone(COL, ectx({})), sectionRowsDone(RAG, ectx({})), sectionRowsDone(GSR, ectx({}))],
     [0, 0, 0]);
   check('fully worked collar: rows done equals row count, section complete',
     (() => {
       const pr = { 'n:c1': true, 'rp:c2': { y: 7, z: 1 }, 'r:c3': true, 'n:c4': true };
-      return [sectionRowsDone(COL, pr), sectionRowCount(COL, PEACOCK), sectionComplete(COL, pr)];
+      return [sectionRowsDone(COL, ectx(pr)), sectionRowCount(COL, PEACOCK), sectionComplete(COL, pr)];
     })(),
     [8, 8, true]);
   check('a finished repeat with an unticked note: rows done, section not complete',
     (() => {
       const pr = { 'n:r1': true, 'rp:r2': { y: 4, z: 1 } };   // r3 note left unticked
-      return [sectionRowsDone(RAG, pr), sectionComplete(RAG, pr)];
+      return [sectionRowsDone(RAG, ectx(pr)), sectionComplete(RAG, pr)];
     })(),
     [8, false]);
   check('notes never add rows, however many are ticked',
-    sectionRowsDone(RAG, { 'n:r1': true, 'n:r3': true }), 0);
+    sectionRowsDone(RAG, ectx({ 'n:r1': true, 'n:r3': true })), 0);
   check('mid-repeat: standing on row 1 of pass 3 = 4 rows done',
-    sectionRowsDone(RAG, { 'rp:r2': { y: 2, z: 1 } }), 4);
+    sectionRowsDone(RAG, ectx({ 'rp:r2': { y: 2, z: 1 } })), 4);
+
+  // ── L. The derived tally ──
+  //
+  // globalRows used to be a stored running sum that five mutators nudged. It
+  // is now Σ sectionRowsDone over whatever the project actually has, which is
+  // why a reset can no longer leave the header claiming rows nobody knitted.
+
+  const CHART_SEC = sec(PEACOCK, 'chart');
+  check('chart section: standing on row 1 is zero done, row 44 is 43 done',
+    [sectionRowsDone(CHART_SEC, { chartRows: {} }),
+     sectionRowsDone(CHART_SEC, { chartRows: { chart: 1 } }),
+     sectionRowsDone(CHART_SEC, { chartRows: { chart: 44 } })],
+    [0, 0, 43]);
+  check('legacy countable section: one done step is one row',
+    sectionRowsDone(LEGACY_TAT1, { state: { t1r1: true, t1c1: true, t1r2: false } }), 2);
+  check('legacy counter section: the counter IS the rows, clamped to target',
+    [sectionRowsDone(LEGACY_COL, { ctrs: { c2: 3 } }),
+     sectionRowsDone(LEGACY_COL, { ctrs: { c2: 99 } })],
+    [3, 7]);
+  check('a whole project mid-progress: collar + chart + raglan add up',
+    patternRowsDone(PEACOCK, {
+      entries: { 'n:c1': true, 'rp:c2': { y: 7, z: 1 }, 'r:c3': true, 'rp:r2': { y: 1, z: 1 } },
+      chartRows: { chart: 44 },
+    }),
+    8 + 43 + 2);
+  check('a fully worked pattern derives exactly its own total',
+    (() => {
+      const entries = {};
+      PEACOCK.phases.forEach(s => (s.entries || []).forEach(e => {
+        if (e.kind === 'repeat') entries[repeatKey(e.id)] = { y: e.times, z: 1 };
+        else entries[e.kind === 'note' ? noteKey(e.id) : rowKey(e.id)] = true;
+      }));
+      return patternRowsDone(PEACOCK, { entries, chartRows: { chart: 44 } });
+    })(),
+    patternRowTotal(PEACOCK) - 1);   // −1: the chart's last row is "standing on", not done
+  check('clearing progress drops the tally to zero — no residue to drift',
+    patternRowsDone(PEACOCK, { entries: {}, chartRows: {} }), 0);
 
   // ── J. The legacy read-through ──
   //

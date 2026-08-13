@@ -33,7 +33,11 @@ let CHART_TOTAL = 0;
 let TOTAL_STEPS = 0;
 let cur = 0;
 let phaseNavOpen = false;
-let state = {}, ctrs = {}, chartCurrentRow = 1, cellSz = 16, globalRows = 0;
+// No `globalRows` here any more: the Rows tally is DERIVED from the progress
+// above (see globalRowsNow() in js/core/app.js). It used to be a stored number
+// that five separate mutators nudged by hand, which meant nothing could
+// reconstruct it — so it could only ever drift away from the truth, and did.
+let state = {}, ctrs = {}, chartCurrentRow = 1, cellSz = 16;
 
 // Progress for CONVERTED sections — those with `entries` rather than `steps`.
 // A flat map keyed the way js/core/rows.js documents: 'n:<id>' / 'r:<id>' for
@@ -194,7 +198,7 @@ function applyPattern(p) {
   // project.
   activeDoc = p;
   TOTAL_STEPS = PHASES.reduce((a, ph) => a + (ph.entries || ph.steps || []).length, 0);
-  cur = 0; chartRows = {}; globalRows = 0;
+  cur = 0; chartRows = {};
   state = {}; ctrs = {}; entryProg = {};
   clocks = {}; baseClocks = {};
   PHASES.forEach(ph => (ph.steps || []).forEach(s => { state[s.id] = false; if (s.rows) ctrs[s.id] = 0; }));

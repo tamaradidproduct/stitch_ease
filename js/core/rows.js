@@ -146,17 +146,44 @@ function sectionRowCount(section, pattern) {
   return (section.steps || []).reduce((n, st) => n + (st.rows ? st.target : 0), 0);
 }
 
-// Rows finished in a section. Only meaningful for a converted section — an
-// unconverted one has no progress in this shape, so it contributes nothing
-// rather than a guess.
+// Rows finished in a section.
 //
-// A chart section under-reports here: its position lives in `chartRows`, not
-// in this progress map. That is deliberate for now — the chart stays its own
-// code path until the model is settled — and it is why globalRows is not yet
-// derived from this function.
-function sectionRowsDone(section, progress) {
-  if (!section || !section.entries) return 0;
-  return section.entries.reduce((n, e) => n + entryRowsDone(e, progress), 0);
+// Takes a CONTEXT rather than one map, because a project's progress does not
+// all live in one place: converted entries are in `entries`, a chart's
+// position is in `chartRows`, and a project still frozen on the old shape has
+// its progress in `state`/`ctrs`. All three have to be readable or the derived
+// total is wrong for somebody.
+//
+//   ctx = { entries, chartRows, state, ctrs }   — all optional
+//
+// The chart contributes `row - 1`: standing on row 1 means nothing is
+// finished, which is the same arithmetic changeChartRow() used when it was
+// nudging the tally by hand.
+function sectionRowsDone(section, ctx) {
+  if (!section) return 0;
+  const c = ctx || {};
+  const chartDone = section.hasChart
+    ? Math.max(0, ((c.chartRows || {})[section.id] || 1) - 1)
+    : 0;
+  if (section.entries) {
+    return chartDone + section.entries.reduce((n, e) => n + entryRowsDone(e, c.entries), 0);
+  }
+  if (section.hasChart)  return chartDone;
+  // Legacy shapes, for projects frozen before the conversion. These mirror
+  // what the old per-mutator nudging produced, so a frozen project's header
+  // reads exactly what it read before.
+  if (section.countable) return (section.steps || []).filter(s => (c.state || {})[s.id]).length;
+  return (section.steps || []).reduce((n, st) =>
+    n + (st.rows ? Math.max(0, Math.min(st.target | 0, (c.ctrs || {})[st.id] | 0)) : 0), 0);
+}
+
+// Σ over the pattern. This is what the header's Rows tally IS, rather than a
+// number every mutator has to remember to nudge — the old one was a sum of
+// deltas with no referent, so nothing could reconstruct it and it could only
+// drift away from the truth.
+function patternRowsDone(pattern, ctx) {
+  return ((pattern && pattern.phases) || [])
+    .reduce((n, s) => n + sectionRowsDone(s, ctx), 0);
 }
 
 function sectionComplete(section, progress) {

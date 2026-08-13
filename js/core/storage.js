@@ -216,7 +216,17 @@ function save() {
     localStorage.setItem(pkey('entries'), JSON.stringify(entryProg));
     localStorage.setItem(pkey('cur'), cur);
     localStorage.setItem(pkey('chartRows'), JSON.stringify(chartRows));
-    localStorage.setItem(pkey('grows'), globalRows);
+    // `grows` is no longer the tally — it is a mirror of the derived value,
+    // kept because sync still carries `global_rows` as a field and the server
+    // column is NOT NULL. Written here, in one place, instead of nudged in
+    // five; and stamped ONLY when it really moved, so a save that changed
+    // nothing cannot claim an edit and win a conflict it should have lost.
+    // The key and the field both go at step 5, with the clock namespace.
+    const gr = String(globalRowsNow());
+    if (gr !== localStorage.getItem(pkey('grows'))) {
+      localStorage.setItem(pkey('grows'), gr);
+      stampClock('global_rows');
+    }
     // `clk` rides along with the data it describes: every mutator stamps the
     // in-memory map and then calls save(), so one write keeps them in step.
     // Persisting it separately would risk a crash between the two leaving a
@@ -253,7 +263,9 @@ function loadProjectState() {
       if (legacy !== null && chartPhase) chartRows = { [chartPhase.id]: parseInt(legacy) || 1 };
     }
 
-    const gr = localStorage.getItem(pkey('grows')); if (gr !== null) globalRows = Math.max(0, parseInt(gr) || 0);
+    // `grows` is deliberately NOT read back — the tally is recomputed from
+    // the progress that was just loaded. Reading it would reintroduce the
+    // stored number as a second, disagreeing source of truth.
     const ck = localStorage.getItem(pkey('clk'));  if (ck) clocks = JSON.parse(ck) || {};
     const bs = localStorage.getItem(pkey('base')); if (bs) baseClocks = JSON.parse(bs) || {};
     // Stops a later clock correction from handing out stamps that sit below
@@ -510,7 +522,6 @@ function resetPattern() {
   entryProg = {};
   chartRows = {};
   chartCurrentRow = 1;
-  globalRows = 0;
   cur = 0;
   // Clearing the objects drops the old keys entirely, so resetStep() below is
   // what re-creates them (and their clocks); the scalars and every chart phase
@@ -520,7 +531,9 @@ function resetPattern() {
   // Every chart phase must be stamped even though chartRows was just emptied:
   // an unstamped reset keeps its old, older clock, so the other device's row
   // reads as newer and the next sync quietly puts it back.
-  stampClocks(['cur', 'global_rows'].concat(
+  // `global_rows` is not stamped here any more — save() below derives it and
+  // stamps it if it moved, which after a reset it certainly did.
+  stampClocks(['cur'].concat(
     PHASES.filter(ph => ph.hasChart).map(ph => chartRowKey(ph.id))
   ));
   PHASES.forEach(resetSection);
