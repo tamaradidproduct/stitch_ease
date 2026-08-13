@@ -298,6 +298,7 @@ function openAccountSheet(msg) {
       </div>
     </div>
     ${msg ? msgHtml(msg) : ''}
+    ${syncBlockHtml()}
     ${hasUnclaimedProjects() ? `<p class="acct-err">${liveProjects().length === 1
         ? 'A project on this device isn’t in your account yet.'
         : liveProjects().length + ' projects on this device aren’t in your account yet.'}
@@ -311,6 +312,8 @@ function openAccountSheet(msg) {
   openSheet('Account', body, {
     onOpen: el => {
       el.querySelector('#acct-signout').onclick = signOut;
+      const sync = el.querySelector('#acct-sync');
+      if (sync) sync.onclick = syncFromSheet;
       const claim = el.querySelector('#acct-claim');
       // A second chance after "not now" — the sheet is where someone goes
       // when they wonder whether their work is actually backed up.
@@ -321,6 +324,42 @@ function openAccountSheet(msg) {
 
 function msgHtml(m) {
   return `<p class="${m.ok ? 'acct-ok' : 'acct-err'}">${escapeHtml(m.text)}</p>`;
+}
+
+// When was this device last backed up, and is anything still waiting.
+//
+// Shown even when everything is fine. "Backed up 4 minutes ago" is the only
+// thing that makes "backed up yesterday" mean something when it appears — a
+// status that only shows up on failure is one nobody has learned to read.
+//
+// Suppressed while the projects here are unclaimed: sync genuinely isn't
+// running yet, and the claim prompt directly below says why.
+function syncBlockHtml() {
+  if (!currentUserId() || hasUnclaimedProjects()) return '';
+  const err = syncErrorText();
+  const pending = pendingText();
+  return `<div class="acct-sync">
+      <div>
+        <div class="acct-sync-when">${escapeHtml(syncStatusText())}</div>
+        ${pending ? `<div class="acct-status">${escapeHtml(pending)}</div>` : ''}
+      </div>
+      <button class="sheet-btn slim" id="acct-sync">Sync now</button>
+    </div>
+    ${err ? `<p class="acct-err">${escapeHtml(err)}</p>` : ''}`;
+}
+
+// Manual sync. Deliberately awaits both halves and then re-opens the sheet, so
+// the button reports what actually happened rather than just looking busy.
+async function syncFromSheet() {
+  const btn = document.getElementById('acct-sync');
+  if (btn) { btn.disabled = true; btn.textContent = 'Syncing…'; }
+  try {
+    await pull('manual');
+    await flush('manual');
+  } catch (e) {
+    logSync('error', 'manual sync failed', e);
+  }
+  openAccountSheet();
 }
 
 // ── Actions ──

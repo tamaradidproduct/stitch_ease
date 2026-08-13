@@ -372,6 +372,50 @@ function logSync(level, msg, err) {
     ('[sync] ' + msg, err || '');
 }
 
+// ── Status, in words, for the account sheet ──
+//
+// This exists because of risk §H4: a device that silently stops syncing is
+// unrecoverable for the person using it. They have no console, no way to know
+// the difference between "everything is backed up" and "nothing has left this
+// phone since Tuesday". So both are said out loud, in the one place someone
+// looks when they wonder.
+
+function relTimeText(ms) {
+  const s = Math.max(0, Math.round((Date.now() - ms) / 1000));
+  if (s < 60) return 'just now';
+  const m = Math.round(s / 60);
+  if (m < 60) return m === 1 ? 'a minute ago' : m + ' minutes ago';
+  const h = Math.round(m / 60);
+  if (h < 24) return h === 1 ? 'an hour ago' : h + ' hours ago';
+  const d = Math.round(h / 24);
+  return d === 1 ? 'yesterday' : d + ' days ago';
+}
+
+function pendingCount() { return Object.keys(outbox).length; }
+
+function syncStatusText() {
+  if (!lastSyncAt) return 'Not backed up yet';
+  return 'Backed up ' + relTimeText(lastSyncAt);
+}
+
+function pendingText() {
+  const n = pendingCount();
+  if (!n) return null;
+  return n === 1 ? '1 change still to go up' : n + ' changes still to go up';
+}
+
+// The last failure, in language that says what it means for the knitter rather
+// than what the API returned.
+function syncErrorText() {
+  if (!lastSyncError) return null;
+  const m = (lastSyncError && lastSyncError.message) || '';
+  if (!navigator.onLine)                   return 'Offline — your work will go up when you’re back.';
+  if (/fetch|network/i.test(m))            return 'Couldn’t reach the server last time. It keeps trying.';
+  if (/jwt|token|expired/i.test(m))        return 'Your sign-in has expired. Sign out and back in to start syncing again.';
+  if (/row-level security|42501/i.test(m)) return 'The server refused the change. Nothing was lost here — please report this.';
+  return 'The last sync didn’t finish. Your work is safe on this device; it keeps trying.';
+}
+
 function loadSyncStatus() {
   try { lastSyncAt = parseInt(localStorage.getItem(LAST_SYNC_KEY)) || 0; } catch(e) { lastSyncAt = 0; }
 }

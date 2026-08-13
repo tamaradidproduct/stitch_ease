@@ -6,13 +6,28 @@ A single-page PWA knitting **pattern library**, built for mobile use while knitt
 ## File structure
 ```
 peacock-tee-deploy/
-  index.html      ← entire app (HTML + CSS + JS, single file)
-  sw.js           ← service worker (network-first HTML + update prompt)
-  manifest.json   ← PWA manifest
-  icon-192.png    ← app icon
-  icon-512.png    ← app icon
-  CLAUDE.md       ← this file
+  index.html                    ← shell + all CSS + the <script src> list
+  js/vendor/supabase.js         ← vendored supabase-js UMD (pinned, works offline)
+  js/core/state.js              ← globals, PATTERNS, applyPattern, activateProject
+  js/patterns/*.js              ← one file per pattern; each PATTERNS.push()es itself
+  js/core/storage.js            ← pkey/save/load*/migrations/projects registry
+  js/core/chart.js              ← chart tracker, zoom, scroll, changeChartRow
+  js/core/render.js             ← render*/stepHtml/openSheet/escapeHtml
+  js/cloud/auth.js              ← Supabase client, session, account sheet, claim flow
+  js/cloud/sync.js              ← clocks, outbox, push, pull, three-way merge
+  js/core/app.js                ← nav, SW registration, bootstrap  ← MUST BE LAST
+  js/cloud/*.selftest.js        ← NOT shipped: absent from index.html and sw.js
+  sw.js                         ← service worker (network-first HTML + /js/**)
+  manifest.json / icon-*.png    ← PWA manifest and icons
+  supabase/migrations/*.sql     ← record of the applied schema (no CLI in this project)
+  docs/                         ← runbooks and design notes
+  CLAUDE.md                     ← this file
 ```
+
+**Classic scripts, not modules.** They share global scope, which is what lets the
+inline `onclick` handlers in generated HTML keep working with no `window.*`
+plumbing. Load order matters only for top-level *executed* code — the pattern
+data and the bootstrap. Function declarations can live anywhere.
 
 ## Deployment
 - Hosted on **GitHub Pages** at https://tamaradidproduct.github.io/stitch_ease/, deploying from the `main` branch.
@@ -48,16 +63,31 @@ Each pattern's `phases` array holds phases in order (Peacock Tee: Materials → 
 
 ### State & persistence (per project)
 Progress is **namespaced per project**. Keys:
-- `pt3_projects` — the projects registry: `[{ id, patternId, name, created }]`
+- `pt3_projects` — the registry: `[{ id, patternId, name, created, updatedAt, deletedAt? }]`. `deletedAt` marks a **tombstone** — the record stays, only the progress keys are purged (see `deleteProject`). A hard delete cannot survive sync: absence means "never seen", so the other device would helpfully re-create it.
 - `pt3_proj_<projectId>_state` — `{stepId: boolean}` completed steps
 - `pt3_proj_<projectId>_ctrs` — `{stepId: number}` row counters
 - `pt3_proj_<projectId>_cur` — current phase index
-- `pt3_proj_<projectId>_chartRow` — active yoke-chart row (1–44)
+- `pt3_proj_<projectId>_chartRows` — `{phaseId: row}`, one per chart phase
+- `pt3_proj_<projectId>_chartRow` — LEGACY single chart row, still read when `chartRows` is absent
 - `pt3_proj_<projectId>_grows` — global row tally (see below)
-- `pt3_cellSz` — chart cell-size pref (10–32px, default 16) — **global**, shared across projects
-- `pt3_lastProject` — id of the last-opened project
+- `pt3_proj_<projectId>_clk` — `{fieldKey: epoch_ms}` when this device last changed each field
+- `pt3_proj_<projectId>_base` — the same map as of the last successful sync. **Never uploaded** — each device's baseline legitimately differs, and that difference is what makes the merge three-way.
+- `pt3_cellSz` — chart cell-size pref (10–32px, default 16) — **global**
+- `pt3_schema` / `pt3_outbox` / `pt3_last_sync` / `pt3_sync_cursor` / `pt3_owner` / `pt3_claim_declined` / `pt3_sb_auth` — **global**, see the Cloud sync section
 
-`save()` writes the active project's keys (via `pkey(suffix)` → `pt3_proj_<id>_*`); `loadProjectState()` reads them; `loadGlobal()` loads shared prefs. Two one-time migrations run on startup: `migrateLegacy()` folds the original single-pattern keys (`pt3_state`, …) into `pt3_peacock-tee_*`, then `migrateToProjects()` turns any pattern-namespaced progress into a first project (`pt3_proj_<id>_*`) and writes `pt3_projects`. **Keep the `pt3_` prefix and both migrations** — removing them breaks saved progress.
+`save()` writes the active project's keys (via `pkey(suffix)` → `pt3_proj_<id>_*`); `loadProjectState()` reads them; `loadGlobal()` loads shared prefs. Three one-time migrations run on startup, in order: `migrateLegacy()` folds the original single-pattern keys (`pt3_state`, …) into `pt3_peacock-tee_*`; `migrateToProjects()` turns any pattern-namespaced progress into a first project and writes `pt3_projects`; `migrateAddClocks()` backfills `clk`/`base` for every existing project. Each has its **own** sentinel — `migrateAddClocks` gates on `pt3_schema`, **not** on `pt3_projects`, which `migrateToProjects` already claims. **Keep the `pt3_` prefix and all three migrations** — removing them breaks saved progress.
+
+### Cloud sync (Supabase)
+localStorage stays the source of truth; the cloud is a background replica. **No sign-in wall** — signed out, `flush()` and `pull()` no-op and the app is exactly what it was before any of this existed. Same if `js/vendor/supabase.js` fails to load (`cloudState() === 'unavailable'`).
+
+- **Clock per field, not per blob.** Keys are `s:<stepId>`, `c:<stepId>`, `cur`, `cr:<phaseId>`, `global_rows`. Ticking steps on the phone while the iPad sits on a chart row touches disjoint keys, so both survive with nothing to ask about.
+- **Three-way merge** (`diffProgress`) against `base`. Without a baseline you cannot tell "the other side is stale" from "the other side diverged". Conflicts currently keep this device's value with a **fresh clock** so it settles; Phase 7 will ask instead.
+- **Push is read-merge-write**, guarded by the row's `server_rev`. A plain whole-row upsert silently erases whatever the other device pushed and reports no conflict — this is the single most important invariant in the sync code.
+- **`base` advances only for fields the server already agrees with** (`agreedBase`). Advancing it further marks a local edit as synced and it is never pushed at all.
+- **Sync only runs once the signed-in account has claimed this device's data** (`pt3_owner`), so a shared iPad can't hand one person's projects to another.
+- **Pull triggers:** sign-in, `online`, refocus after 30s away, and a 60s interval **while visible only**. Never a timer while hidden — this PWA sits open for weeks.
+- Schema and RLS live in `supabase/migrations/`; runbooks in `docs/`.
+- `js/cloud/sync.selftest.js` and `js/cloud/sync.pushpull.selftest.js` are **not shipped**. Load one from the console and call `syncSelfTest()` / `syncPushPullTest()`. The second stands up a mock server and snapshots/restores every `pt3_*` key, so it is safe to run on a device with real progress.
 
 ### Global row tally
 A read-only **Rows** display in the header. `globalRows` auto-advances by the real change whenever a section row counter (`changeCount`) or the yoke-chart row (`changeChartRow`) moves; clamped taps (counter already at min/max) don't move it. It's a project-wide total (persisted as `pt3_proj_<id>_grows`), updated in place by `renderGlobalRows()`.
@@ -104,9 +134,20 @@ HTML is fetched **network-first** (fresh page on each load when online; cache fa
 - `changeChartRow(delta)` — moves chart row ±1 (targeted DOM update); auto-advances `globalRows`
 - `changeCount(id, delta)` — section row counter; auto-advances `globalRows`
 - `resizeChart` / `scrollChartToCurrent` / `smartScrollChart` / `syncChartLayout` — chart layout & scroll
-- `save()` / `loadPatternState()` / `loadGlobal()` / `migrateLegacy()` — persistence
+- `save()` / `loadProjectState()` / `loadGlobal()` / `migrateLegacy()` — persistence
 - `renderGlobalRows()` — updates the header Rows tally in place
 - `showUpdateBanner(worker)` / `applyUpdate()` — PWA update prompt
+- `openSheet(title, html, opts)` / `sheetConfirm` / `sheetPrompt` — the bottom-sheet primitive; **use these, never `prompt()`/`confirm()`** (unreliable in Chrome Custom Tabs, which is where magic links open)
+
+**Cloud (`js/cloud/`)**
+- `initCloud()` / `cloudState()` / `openAccountSheet()` — client, status, the only sign-in surface
+- `handleSignedIn(uid)` / `claimLocalProjects(uid)` — whose data on this device is
+- `stampClock(key)` / `syncNow()` — record an edit; `syncNow` floors stamps above what's on disk
+- `readLocalProgress` / `writeLocalProgress` / `splitFields` / `joinFields` — localStorage ⇄ field keys ⇄ server columns
+- `diffProgress(local, remote, base)` — the pure three-way merge
+- `flush(reason)` / `pushProject` / `pushProgress` — push (read-merge-write, `server_rev` guarded)
+- `pull(reason)` / `mergeRemoteProgress` / `applyRemoteProject` / `agreedBase` — pull and apply
+- `enqueue` / `dequeue` / `markDirty` / `flushNow` — the outbox and its scheduler
 
 ## Nav buttons
 Within a pattern, phase nav is at the bottom. On non-chart phases it's the fixed `.nav-btns` (first phase shows only "Next →" full-width; others "← Back" + "Next →"). On the chart phase it lives in the fixed `.chart-dock` alongside the row counter.
@@ -118,7 +159,11 @@ Within a pattern, phase nav is at the bottom. On non-chart phases it's the fixed
 ## What NOT to do
 - Don't suggest "Add to Home Screen" on Android Chrome — owner can't do this and doesn't want it mentioned
 - Don't add the stats bar back (Steps Done / Phase / Complete) — removed intentionally
-- Don't change the `pt3_` localStorage prefix or drop `migrateLegacy()` — would break saved progress
+- Don't change the `pt3_` localStorage prefix or drop any of the three migrations — would break saved progress
+- Don't replace the progress push with a plain upsert — it silently erases the other device's rows and reports no conflict
+- Don't upload `pt3_proj_<id>_base` — each device's baseline is its own, and sharing it corrupts the other device's merge
+- Don't put a network call, an `await`, or a pattern-doc `JSON.stringify` on the `changeChartRow` path (budget: 100 taps under 50ms)
+- Don't `await` anything on a render path — read `session` synchronously, never `supabase.auth.getSession()`
 - Don't run the panel auto-hide/collapse animation off the chart screen — keep it scoped to `body.chart-page`
 - Don't deploy or push unless the user asks
 
