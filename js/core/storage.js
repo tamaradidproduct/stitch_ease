@@ -22,6 +22,8 @@
 //                                 (see js/cloud/sync.js)
 //   pt3_last_sync                 epoch_ms of the last fully successful sync
 //                                 — GLOBAL (see js/cloud/sync.js)
+//   pt3_sync_cursor               {uid, rev, projTs} — how far this device has
+//                                 pulled, per account — GLOBAL
 //   pt3_cellSz                    chart cell size — GLOBAL, shared across projects
 // ─────────────────────────────────────────────
 

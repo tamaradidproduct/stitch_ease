@@ -30,13 +30,26 @@ function makeMockDb() {
     projects: [],
     project_progress: [],
     rev: 0,
+    ticks: 0,
     calls: [],                  // every request, for asserting on request shape
     beforeWrite: null           // hook: fires between a select and its write
   };
+  // projects has no rev sequence, only server_updated_at. Monotonic ISO
+  // strings, so the >= cursor is exercised the way Postgres would serve it.
+  db.stamp = () => new Date(Date.UTC(2026, 0, 1) + (++db.ticks) * 1000).toISOString();
 
   const pk = t => (t === 'projects' ? 'id' : 'project_id');
   const clone = o => JSON.parse(JSON.stringify(o));
-  const matches = (row, filters) => filters.every(f => row[f[0]] === f[1]);
+  // Filters carry an operator, because the pull cursor depends on `>` for
+  // server_rev and `>=` for the projects timestamp behaving differently — a
+  // mock that treated them both as equality would let a broken cursor pass.
+  const matches = (row, filters) => filters.every(f => {
+    const v = row[f[1]];
+    if (f[0] === 'eq') return v === f[2];
+    if (f[0] === 'gt') return v > f[2];
+    if (f[0] === 'gte') return v >= f[2];
+    throw new Error('mock: unsupported filter ' + f[0]);
+  });
 
   async function run(st) {
     db.calls.push({ table: st.table, op: st.op, filters: st.filters.slice() });
@@ -61,6 +74,7 @@ function makeMockDb() {
         return { data: null, error: { code: '23503', message: 'foreign key violation' } };
       }
       if (st.table === 'project_progress') row.server_rev = ++db.rev;
+      else row.server_updated_at = db.stamp();
       if (existing) Object.assign(existing, row); else rows.push(row);
       return { data: st.returning ? [clone(row)] : null, error: null };
     }
@@ -70,6 +84,7 @@ function makeMockDb() {
       hit.forEach(r => {
         Object.assign(r, clone(st.payload));
         if (st.table === 'project_progress') r.server_rev = ++db.rev;
+        else r.server_updated_at = db.stamp();
       });
       return { data: st.returning ? hit.map(clone) : null, error: null };
     }
@@ -81,12 +96,13 @@ function makeMockDb() {
       const st = { table, filters: [], op: null, payload: null, single: false, returning: false };
       const api = {
         select(cols) { if (st.op) st.returning = true; else st.op = 'select'; return api; },
-        eq(k, v) { st.filters.push([k, v]); return api; },
+        eq(k, v) { st.filters.push(['eq', k, v]); return api; },
+        gt(k, v) { st.filters.push(['gt', k, v]); return api; },
+        gte(k, v) { st.filters.push(['gte', k, v]); return api; },
         maybeSingle() { st.single = true; return run(st); },
         upsert(row) { st.op = 'upsert'; st.payload = row; return run(st); },
         insert(row) { st.op = 'insert'; st.payload = row; return run(st); },
         update(row) { st.op = 'update'; st.payload = row; return api; },
-        gt(k, v) { st.filters.push(['>' + k, v]); return api; },
         then(res, rej) { return run(st).then(res, rej); }
       };
       return api;
@@ -149,8 +165,25 @@ async function syncPushPullTest() {
     outbox = {};
     activeProjectId = null;
     view = 'home';
+    syncCursor = { uid: null, rev: 0, projTs: null };
     localStorage.setItem('pt3_owner', UID);
     Object.defineProperty(navigator, 'onLine', { value: true, configurable: true });
+  }
+
+  // Put a project + its progress in the cloud, as another device would have.
+  function cloudProject(db, id, name, extra) {
+    db.projects.push(Object.assign({
+      id: id, owner_id: UID, name: name, pattern_id: 'peacock-tee',
+      created_ms: 1000, updated_ms: 1000, deleted_ms: null, server_updated_at: db.stamp()
+    }, extra || {}));
+  }
+  function cloudProgress(db, id, values, clocks) {
+    const f = splitFields(values);
+    db.project_progress.push({
+      project_id: id, owner_id: UID, steps: f.steps, counters: f.counters, cur: f.cur,
+      chart_rows: f.chart_rows, global_rows: f.global_rows, clocks: clocks,
+      server_rev: ++db.rev
+    });
   }
 
   try {
@@ -292,6 +325,130 @@ async function syncPushPullTest() {
     check('push error → op stays queued, nothing marked synced',
       { queued: Object.keys(outbox).length, hasError: !!lastSyncError }, { queued: 1, hasError: true });
 
+    // ─────────────────────────────────────────
+    // PULL
+    // ─────────────────────────────────────────
+
+    // ── 9. A fresh device signing in gets the library ──
+    db = makeMockDb();
+    device(db);
+    cloudProject(db, 'q1', 'From the cloud');
+    cloudProgress(db, 'q1', { 's:a': true, 'cr:chart': 12, cur: 2, global_rows: 12 },
+                            { 's:a': 700, 'cr:chart': 700, cur: 700, global_rows: 700 });
+    await pull('test');
+
+    check('fresh device pull → project appears',
+      projects.map(p => ({ id: p.id, name: p.name })), [{ id: 'q1', name: 'From the cloud' }]);
+    check('fresh device pull → progress lands',
+      readLocalProgress('q1').values,
+      { 's:a': true, 'cr:chart': 12, cur: 2, global_rows: 12 });
+    check('fresh device pull → base records agreement, so nothing is re-pushed',
+      { base: readBase('q1'), queued: Object.keys(outbox).length },
+      { base: { 's:a': 700, 'cr:chart': 700, cur: 700, global_rows: 700 }, queued: 0 });
+
+    // ── 10. THE HEADLINE CASE ──
+    // Phone ticks Materials steps; iPad sits on chart row 31. Different fields,
+    // so both survive and the knitter is asked nothing.
+    db = makeMockDb();
+    device(db);
+    seedProject('q2', 'Both');
+    cloudProject(db, 'q2', 'Both');
+    cloudProgress(db, 'q2', { 'cr:chart': 31, cur: 0, global_rows: 31 },
+                            { 'cr:chart': 800, global_rows: 800 });
+    seedProgress('q2', { 's:a': true, 's:b': true, cur: 0, global_rows: 0 },
+                       { 's:a': 900, 's:b': 900 }, {});
+    await pull('test');
+
+    check('disjoint edits merge silently → both sides survive',
+      readLocalProgress('q2').values,
+      { 's:a': true, 's:b': true, 'cr:chart': 31, cur: 0, global_rows: 31 });
+    check('disjoint edits merge silently → no conflicts raised', lastConflicts.length, 0);
+    check('disjoint edits merge silently → local-only edits queued to push back',
+      Object.keys(outbox), ['progress:q2']);
+
+    // ── 11. A real clash ──
+    // Both devices moved the chart row while offline. Phase 6 keeps what is on
+    // screen and gives it a fresh clock so it settles rather than ping-ponging.
+    db = makeMockDb();
+    device(db);
+    seedProject('q3', 'Clash');
+    cloudProject(db, 'q3', 'Clash');
+    cloudProgress(db, 'q3', { 'cr:chart': 23, cur: 0, global_rows: 23 }, { 'cr:chart': 800 });
+    seedProgress('q3', { 'cr:chart': 31, cur: 0, global_rows: 0 }, { 'cr:chart': 900 },
+                       { 'cr:chart': 100 });
+    const beforeClash = Date.now();
+    await pull('test');
+
+    check('conflict → this device keeps its value',
+      readLocalProgress('q3').values['cr:chart'], 31);
+    check('conflict → reported, and the kept value gets a decisive fresh clock',
+      { n: lastConflicts.length, key: lastConflicts[0] && lastConflicts[0].key,
+        fresh: (lsGetJson('q3', 'clk', {})['cr:chart'] || 0) >= beforeClash },
+      { n: 1, key: 'cr:chart', fresh: true });
+    check('conflict → queued to push, since the server does not have it yet',
+      Object.keys(outbox), ['progress:q3']);
+
+    // ── 12. A delete made on another device ──
+    db = makeMockDb();
+    device(db);
+    seedProject('q4', 'Doomed');
+    seedProgress('q4', { 's:a': true, cur: 0, global_rows: 0 }, { 's:a': 100 }, {});
+    activeProjectId = 'q4'; view = 'project';
+    cloudProject(db, 'q4', 'Doomed', { updated_ms: 9000, deleted_ms: 9000 });
+    await pull('test');
+
+    check('remote delete → tombstoned locally, not just hidden',
+      { deleted: !!projects.find(p => p.id === 'q4').deletedAt, live: liveProjects().length },
+      { deleted: true, live: 0 });
+    check('remote delete → progress keys purged',
+      localStorage.getItem('pt3_proj_q4_state'), null);
+    check('remote delete → the open project is closed',
+      { activeProjectId: activeProjectId, view: view }, { activeProjectId: null, view: 'home' });
+
+    // ── 13. A delete made HERE must not be undone by the pull that follows ──
+    db = makeMockDb();
+    device(db);
+    projects.push({ id: 'q5', patternId: 'peacock-tee', name: 'Gone', created: 1000,
+                    updatedAt: 9000, deletedAt: 9000 });
+    cloudProject(db, 'q5', 'Gone');                       // cloud still has it live
+    cloudProgress(db, 'q5', { 's:a': true, cur: 0, global_rows: 0 }, { 's:a': 800 });
+    await pull('test');
+
+    check('local tombstone survives a stale cloud copy',
+      { live: liveProjects().length, state: localStorage.getItem('pt3_proj_q5_state') },
+      { live: 0, state: null });
+
+    // ── 14. The cursor ──
+    db = makeMockDb();
+    device(db);
+    cloudProject(db, 'q6', 'Cursor');
+    cloudProgress(db, 'q6', { 's:a': true, cur: 0, global_rows: 0 }, { 's:a': 700 });
+    await pull('test');
+    const afterFirst = { rev: syncCursor.rev, projTs: syncCursor.projTs, uid: syncCursor.uid };
+    db.calls.length = 0;
+    await pull('test');
+    const secondPullSawRows = db.calls.filter(c => c.table === 'project_progress').length;
+
+    check('cursor advances past what was pulled',
+      { advanced: afterFirst.rev > 0 && !!afterFirst.projTs, uid: afterFirst.uid },
+      { advanced: true, uid: UID });
+    check('a second pull with nothing new changes nothing',
+      { queued: Object.keys(outbox).length, queries: secondPullSawRows },
+      { queued: 0, queries: 1 });
+
+    // ── 15. A different account on the same device ──
+    // Carrying one person's cursor into another's first pull would hand them an
+    // empty library with their data sitting right there in the cloud.
+    session = { user: { id: 'user-2', email: 'other@example.com' } };
+    localStorage.setItem('pt3_owner', 'user-2');
+    db.projects.forEach(p => { p.owner_id = 'user-2'; });
+    db.project_progress.forEach(p => { p.owner_id = 'user-2'; });
+    projects = [];
+    await pull('test');
+    check('a different account resets the cursor and pulls everything',
+      { names: projects.map(p => p.name), uid: syncCursor.uid },
+      { names: ['Cursor'], uid: 'user-2' });
+
   } finally {
     // Put the device back exactly as it was found — disk first, then memory
     // from disk, so the two cannot disagree.
@@ -302,9 +459,10 @@ async function syncPushPullTest() {
 
     sb = saved.sb; session = saved.session;
     activeProjectId = saved.activeProjectId; view = saved.view;
-    lastSyncError = null;
+    lastSyncError = null; lastConflicts = [];
     delete navigator.onLine;          // reveal the real getter again
-    loadProjects(); loadOutbox(); loadSyncStatus();
+    syncCursor = { uid: null, rev: 0, projTs: null };
+    loadProjects(); loadOutbox(); loadSyncStatus(); loadCursor();
     if (activeProjectId) loadProjectState();
     resetHeaderKey(); render();
   }

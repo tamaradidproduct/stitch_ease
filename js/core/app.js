@@ -245,6 +245,7 @@ migrateAddClocks();
 loadGlobal();
 loadOutbox();
 loadSyncStatus();
+loadCursor();
 loadProjects();
 view = 'home';
 render();

@@ -622,6 +622,154 @@ async function flush(reason) {
 }
 
 // ─────────────────────────────────────────────
+// PULL
+//
+// The cursor is per account, not per device. A shared iPad where two family
+// members sign in and out would otherwise carry one person's cursor into the
+// other's first pull and skip every row written before it — an empty library
+// on a device that has the data sitting right there in the cloud.
+//
+// Two cursors, because the two tables number their changes differently:
+// progress has a server_rev sequence (a strict ordering, so `>` is safe),
+// projects only has a timestamp. Rows written in the same transaction share a
+// timestamp, so `>` there could step over one — `>=` re-fetches the boundary
+// row instead, which costs a few hundred bytes and cannot lose anything, since
+// applying a remote row is idempotent.
+// ─────────────────────────────────────────────
+const CURSOR_KEY = 'pt3_sync_cursor';
+let syncCursor = { uid: null, rev: 0, projTs: null };
+let pulling = false;
+
+function loadCursor() {
+  try { syncCursor = JSON.parse(localStorage.getItem(CURSOR_KEY) || 'null') || syncCursor; } catch(e) {}
+}
+function saveCursor() {
+  try { localStorage.setItem(CURSOR_KEY, JSON.stringify(syncCursor)); } catch(e) {}
+}
+function cursorFor(uid) {
+  if (syncCursor.uid !== uid) syncCursor = { uid: uid, rev: 0, projTs: null };
+  return syncCursor;
+}
+
+// What `base` should become after a merge: the clock of every field where the
+// merged answer is what the server already holds — which is exactly what "we
+// agreed" means, and the only definition that gets every case right.
+//
+//   adopted from remote      merged === remote  → agreed, base moves
+//   both changed, equal      merged === remote  → agreed, base moves
+//   local edit, remote stale merged !== remote  → still ours to push
+//   conflict, kept local     merged !== remote  → still ours to push
+//
+// Getting this wrong is invisible until much later: a base advanced too far
+// marks a local edit as already synced and it is never pushed at all.
+function agreedBase(base, merged, mergedClocks, remoteValues) {
+  const next = Object.assign({}, base);
+  Object.keys(merged).forEach(k => {
+    if (Object.prototype.hasOwnProperty.call(remoteValues, k) && remoteValues[k] === merged[k]) {
+      next[k] = mergedClocks[k] || 0;
+    }
+  });
+  return next;
+}
+
+// Merge one remote progress row into local storage. Returns true if anything
+// on this device changed.
+function mergeRemoteProgress(row) {
+  const id = row.project_id;
+  // Deleted here: the progress keys are already purged and the tombstone is on
+  // its way up. Re-materialising them would be the resurrection bug tombstones
+  // exist to prevent.
+  if (isDeleted(id)) return false;
+
+  const local = readLocalProgress(id);
+  const base = readBase(id);
+  const remote = joinFields(row);
+  const r = diffProgress(local, remote, base);
+
+  if (r.conflicts.length) {
+    // Same Phase 6 fallback as the push path: keep what is on screen, with a
+    // fresh clock so it settles rather than ping-ponging. Phase 7 asks.
+    r.conflicts.forEach(c => { r.mergedClocks[c.key] = syncNow(); });
+    noteConflicts(id, r.conflicts);
+  }
+
+  const nextBase = agreedBase(base, r.merged, r.mergedClocks, remote.values);
+  const changed = !sameValues(local.values, r.merged);
+  if (!changed && !r.conflicts.length && sameValues(base, nextBase)) return false;
+
+  if (!writeLocalProgress(id, r.merged, r.mergedClocks, nextBase)) return false;
+
+  // Anything the server does not have yet — a local edit it never saw, or a
+  // conflict we just resolved in this device's favour — has to go back up, or
+  // the two would sit disagreeing until the knitter happened to touch the
+  // field again.
+  if (Object.keys(r.mergedClocks).some(k => (r.mergedClocks[k] || 0) > (nextBase[k] || 0))) {
+    enqueue('progress', id);
+  }
+  reloadIfActive(id);
+  return changed || r.conflicts.length > 0;
+}
+
+async function pull(reason) {
+  if (pulling) return;
+  if (!navigator.onLine) return;
+  if (!canSync()) return;
+
+  pulling = true;
+  // NOT named `cur` — that is the global current-phase index, and shadowing it
+  // inside the one function that also triggers a render is a trap.
+  const cursor = cursorFor(currentUserId());
+  let touchedActive = false, changed = false;
+
+  try {
+    // Projects first: a progress row for a project this device has never heard
+    // of needs the registry record to exist before it can be attributed.
+    let q = sb.from('projects')
+      .select('id,name,pattern_id,created_ms,updated_ms,deleted_ms,server_updated_at');
+    if (cursor.projTs) q = q.gte('server_updated_at', cursor.projTs);
+    const { data: remoteProjects, error: pErr } = await q;
+    if (pErr) throw pErr;
+
+    (remoteProjects || []).forEach(row => {
+      // Checked BEFORE applying: a remote tombstone for the open project
+      // clears activeProjectId, so asking afterwards always says "no".
+      const wasActive = row.id === activeProjectId;
+      if (applyRemoteProject(row)) { changed = true; if (wasActive) touchedActive = true; }
+      if (!cursor.projTs || row.server_updated_at > cursor.projTs) cursor.projTs = row.server_updated_at;
+    });
+
+    const { data: remoteProgress, error: gErr } = await sb.from('project_progress')
+      .select('project_id,steps,counters,cur,chart_rows,global_rows,clocks,server_rev')
+      .gt('server_rev', cursor.rev);
+    if (gErr) throw gErr;
+
+    (remoteProgress || []).forEach(row => {
+      if (mergeRemoteProgress(row)) {
+        changed = true;
+        if (row.project_id === activeProjectId) touchedActive = true;
+      }
+      const rev = Number(row.server_rev) || 0;
+      if (rev > cursor.rev) cursor.rev = rev;
+    });
+
+    saveCursor();
+    noteSyncSuccess();
+    if (changed) {
+      console.info('[sync] pull (' + reason + '): applied ' + (remoteProjects || []).length +
+                   ' project row(s), ' + (remoteProgress || []).length + ' progress row(s)');
+      renderAfterSync(touchedActive);
+    }
+    // A merge that left something for us to send (see mergeRemoteProgress).
+    if (hasPending()) markDirty();
+  } catch (e) {
+    lastSyncError = e;
+    logSync('error', 'pull failed (' + reason + ')', e);
+  } finally {
+    pulling = false;
+  }
+}
+
+// ─────────────────────────────────────────────
 // THREE-WAY MERGE
 //
 // Pure. No I/O, no globals — everything comes in as arguments, which is what
