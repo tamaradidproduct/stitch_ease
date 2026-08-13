@@ -66,6 +66,145 @@ function isDirty(key) {
 }
 
 // ─────────────────────────────────────────────
+// FIELD-KEY ADAPTERS
+//
+// Three representations of the same progress, and everything below converts
+// between them:
+//
+//   localStorage   five buckets — state / ctrs / cur / chartRows / grows
+//   field keys     one flat map, {'s:collar-1': true, 'cr:yoke': 31, …}
+//   server columns steps / counters / cur / chart_rows / global_rows
+//
+// The flat form is the only one the merge can work in — a clock per bucket
+// would call it a conflict whenever two devices touched any two steps — while
+// the other two are fixed by what already exists on disk and in Postgres. So
+// the conversion is not incidental plumbing; it is the seam that lets the
+// merge stay per-field without rewriting how the app saves.
+//
+// Values are compared with === in diffProgress(), so the types have to survive
+// a JSON round trip through Postgres unchanged: booleans stay booleans and
+// counters stay integers, never the strings localStorage would hand back.
+// ─────────────────────────────────────────────
+function projKey(projectId, suffix) { return 'pt3_proj_' + projectId + '_' + suffix; }
+
+function lsGet(projectId, suffix) {
+  try { return localStorage.getItem(projKey(projectId, suffix)); } catch(e) { return null; }
+}
+function lsGetJson(projectId, suffix, fallback) {
+  try { return JSON.parse(lsGet(projectId, suffix) || 'null') || fallback; } catch(e) { return fallback; }
+}
+
+// Which phase a pre-per-phase `chartRow` scalar belonged to: the pattern's only
+// chart phase. Shared with migrateAddClocks() so the clock and the value can
+// never be attributed to different phases.
+function legacyChartPhaseId(projectId) {
+  const proj = projects.find(p => p.id === projectId);
+  const pat = proj && patternById(proj.patternId);
+  const phase = pat && pat.phases.find(ph => ph.hasChart);
+  return phase ? phase.id : null;
+}
+
+// A project's saved progress as { values, clocks } in field-key space.
+//
+// Read from localStorage even for the project that is currently open, rather
+// than from the live globals: every mutator calls save() before anything can
+// reach here, so the two agree, and one source means the merge cannot see a
+// different project state than the one that would survive a reload.
+function readLocalProgress(projectId) {
+  const values = {};
+  const st = lsGetJson(projectId, 'state', {});
+  Object.keys(st).forEach(id => { values['s:' + id] = !!st[id]; });
+  const ct = lsGetJson(projectId, 'ctrs', {});
+  Object.keys(ct).forEach(id => { values['c:' + id] = ct[id] | 0; });
+
+  const cu = lsGet(projectId, 'cur');
+  values.cur = cu === null ? 0 : (parseInt(cu) || 0);
+  const gr = lsGet(projectId, 'grows');
+  values.global_rows = gr === null ? 0 : (parseInt(gr) || 0);
+
+  const rows = lsGetJson(projectId, 'chartRows', null);
+  if (rows) {
+    Object.keys(rows).forEach(pid => { values[chartRowKey(pid)] = rows[pid] | 0; });
+  } else {
+    // Progress saved before charts became per-phase. migrateAddClocks() already
+    // wrote a cr:<phaseId> clock for it; skipping the value here would push a
+    // clock with nothing behind it, which the merge treats as malformed and
+    // ignores — so the row someone knitted would never leave this device.
+    const legacy = lsGet(projectId, 'chartRow');
+    const phaseId = legacy !== null && legacyChartPhaseId(projectId);
+    if (phaseId) values[chartRowKey(phaseId)] = parseInt(legacy) || 1;
+  }
+
+  return { values: values, clocks: lsGetJson(projectId, 'clk', {}) };
+}
+
+// Field keys → the bucketed shape both localStorage and Postgres store.
+// Unknown prefixes are dropped rather than guessed at: a key this version does
+// not understand belongs to a newer one, and inventing a bucket for it would
+// write nonsense that later versions then have to unpick.
+function splitFields(values) {
+  const steps = {}, counters = {}, chart_rows = {};
+  let cur = 0, global_rows = 0;
+  Object.keys(values || {}).forEach(k => {
+    const v = values[k];
+    if (k.indexOf('s:') === 0)       steps[k.slice(2)] = !!v;
+    else if (k.indexOf('c:') === 0)  counters[k.slice(2)] = v | 0;
+    else if (k.indexOf('cr:') === 0) chart_rows[k.slice(3)] = v | 0;
+    else if (k === 'cur')            cur = v | 0;
+    else if (k === 'global_rows')    global_rows = v | 0;
+  });
+  return { steps, counters, cur, chart_rows, global_rows };
+}
+
+// The inverse, over a row as Postgres returns it.
+function joinFields(row) {
+  const values = {};
+  const steps = (row && row.steps) || {};
+  Object.keys(steps).forEach(id => { values['s:' + id] = !!steps[id]; });
+  const counters = (row && row.counters) || {};
+  Object.keys(counters).forEach(id => { values['c:' + id] = counters[id] | 0; });
+  const rows = (row && row.chart_rows) || {};
+  Object.keys(rows).forEach(pid => { values[chartRowKey(pid)] = rows[pid] | 0; });
+  values.cur = (row && row.cur) | 0;
+  values.global_rows = (row && row.global_rows) | 0;
+  return { values: values, clocks: (row && row.clocks) || {} };
+}
+
+// Write merged progress back to a project's localStorage buckets.
+//
+// `base` is written alongside because the two only mean anything together: a
+// merge that persisted values without recording what was agreed would leave
+// every merged field looking locally-edited forever, and the next sync would
+// push it all back as if this device had made the changes.
+//
+// Returns false if the write failed, so a caller never advances a sync cursor
+// past data that is not actually on disk.
+function writeLocalProgress(projectId, values, clocks, base) {
+  const f = splitFields(values);
+  try {
+    localStorage.setItem(projKey(projectId, 'state'), JSON.stringify(f.steps));
+    localStorage.setItem(projKey(projectId, 'ctrs'), JSON.stringify(f.counters));
+    localStorage.setItem(projKey(projectId, 'cur'), f.cur);
+    localStorage.setItem(projKey(projectId, 'chartRows'), JSON.stringify(f.chart_rows));
+    localStorage.setItem(projKey(projectId, 'grows'), f.global_rows);
+    localStorage.setItem(projKey(projectId, 'clk'), JSON.stringify(clocks || {}));
+    if (base) localStorage.setItem(projKey(projectId, 'base'), JSON.stringify(base));
+  } catch(e) {
+    if (typeof showSaveError === 'function') showSaveError(e);
+    return false;
+  }
+  return true;
+}
+
+// Just the baseline, for the push path — which advances `base` without having
+// touched any value.
+function writeBase(projectId, base) {
+  try { localStorage.setItem(projKey(projectId, 'base'), JSON.stringify(base || {})); return true; }
+  catch(e) { if (typeof showSaveError === 'function') showSaveError(e); return false; }
+}
+function readBase(projectId) { return lsGetJson(projectId, 'base', {}); }
+
+// ─────────────────────────────────────────────
 // OUTBOX — which entities have unpushed changes.
 //
 // (Lives here rather than in storage.js, where the original plan put it: it is
