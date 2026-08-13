@@ -290,10 +290,46 @@ function hasPending() { return Object.keys(outbox).length > 0; }
 // ─────────────────────────────────────────────
 const FLUSH_DEBOUNCE_MS = 2500;
 const FLUSH_MAX_WAIT_MS = 20000;
+const FLUSH_RETRY_MS    = 60000;   // after a failed push, before trying again
 
 let flushTimer = null;
 let burstStartedAt = 0;   // 0 = no burst in progress
 let flushing = false;
+
+// ── Sync status, for the account sheet and for debugging a device that has
+// quietly stopped syncing (risk §H4: a silent catch here is unrecoverable —
+// there would be no way to find out why). ──
+const LAST_SYNC_KEY = 'pt3_last_sync';
+const SYNC_LOG_MAX = 20;
+let syncLog = [];
+let lastSyncAt = 0;
+let lastSyncError = null;
+
+function logSync(level, msg, err) {
+  syncLog.push({ at: Date.now(), level: level, msg: msg,
+                 detail: err ? (err.message || String(err)) : '' });
+  if (syncLog.length > SYNC_LOG_MAX) syncLog.shift();
+  (level === 'error' ? console.error : level === 'warn' ? console.warn : console.info)
+    ('[sync] ' + msg, err || '');
+}
+
+function loadSyncStatus() {
+  try { lastSyncAt = parseInt(localStorage.getItem(LAST_SYNC_KEY)) || 0; } catch(e) { lastSyncAt = 0; }
+}
+function noteSyncSuccess() {
+  lastSyncAt = Date.now();
+  lastSyncError = null;
+  try { localStorage.setItem(LAST_SYNC_KEY, lastSyncAt); } catch(e) {}
+}
+
+// Every timer-driven flush goes through here so the async rejection is caught
+// in exactly one place (see flushNow).
+function scheduleFlush(delay, reason) {
+  clearTimeout(flushTimer);
+  flushTimer = setTimeout(() => {
+    Promise.resolve(flush(reason)).catch(e => logSync('error', 'flush threw', e));
+  }, delay);
+}
 
 function markDirty() {
   if (!hasPending()) return;
@@ -302,8 +338,7 @@ function markDirty() {
   // Never let the debounce push past the burst's deadline.
   const untilDeadline = Math.max(0, (burstStartedAt + FLUSH_MAX_WAIT_MS) - now);
   const delay = Math.min(FLUSH_DEBOUNCE_MS, untilDeadline);
-  clearTimeout(flushTimer);
-  flushTimer = setTimeout(() => flush(delay === untilDeadline ? 'max-wait' : 'debounce'), delay);
+  scheduleFlush(delay, delay === untilDeadline ? 'max-wait' : 'debounce');
 }
 
 function cancelScheduledFlush() {
@@ -313,29 +348,277 @@ function cancelScheduledFlush() {
 }
 
 // Skip the wait — used where the page may not survive to run the timer.
+//
+// flush() is async and nothing here awaits it. The .catch is not optional:
+// an unhandled rejection from a background sync would surface as a console
+// error with no context, in a codebase where the sync path is meant to be the
+// one place that never fails silently OR noisily-but-uselessly.
 function flushNow(reason) {
   cancelScheduledFlush();
-  flush(reason);
+  Promise.resolve(flush(reason)).catch(e => logSync('error', 'flush threw', e));
 }
 
-// STUB until a backend exists (Phase 6).
+// ─────────────────────────────────────────────
+// PUSH
 //
-// It deliberately does NOT clear the outbox. Nothing has been sent, so
-// dropping the ops here would silently discard the very changes this whole
-// mechanism exists to preserve. The outbox is cleared per-op by the real
-// flush, only once the server has acknowledged that op.
-function flush(reason) {
+// Draining the outbox is NOT "upload what this device has". A whole-row upsert
+// would be, and it silently destroys data: the iPad pushes chart row 31, the
+// phone — which has never pulled — pushes its own complete row a minute later
+// and the iPad's 31 is gone from the cloud. Neither device ever sees a
+// conflict, because the phone's base still matches the clocks it just sent.
+//
+// So every progress push is a read-merge-write, and the write is guarded by
+// the `server_rev` it read. If someone else wrote in between, the guarded
+// update matches zero rows and the whole op starts again against the newer
+// row. That is the only thing standing between a family sharing an account and
+// losing rows to whoever pressed sync last.
+//
+// Nothing is dequeued until the server has acknowledged it. An op left in the
+// outbox is retried; an op dropped is gone.
+// ─────────────────────────────────────────────
+const MAX_PUSH_ATTEMPTS = 3;
+
+// Sync is off unless a signed-in account has actually claimed the data on this
+// device. Pushing unclaimed projects would hand one family member's knitting
+// to whoever signed in on the shared iPad first — that decision belongs to the
+// claim sheet (see js/cloud/auth.js), not to a background flush.
+function canSync() {
+  return typeof cloudState === 'function' && cloudState() === 'signed-in' &&
+         !!currentUserId() && localOwner() === currentUserId();
+}
+
+// Connectivity and auth failures mean the rest of the queue will fail too;
+// anything else is specific to one row and shouldn't stop the others.
+function isFatalSyncError(e) {
+  const m = (e && e.message) || '';
+  return /fetch|network|failed to fetch/i.test(m) || (e && (e.status === 401 || e.status === 403)) ||
+         /jwt|token/i.test(m);
+}
+
+// A re-render after the sync engine changed something under the UI.
+//
+// On the chart page a full render re-centres the chart, which would yank the
+// view out from under someone mid-row. So a background change to some OTHER
+// project — the common case, since only one is open — must not repaint the
+// screen at all.
+function renderAfterSync(touchedActiveProject) {
+  if (touchedActiveProject || view !== 'project') { resetHeaderKey(); render(); }
+}
+
+// The sync engine writes a project's localStorage keys directly. For the OPEN
+// project the in-memory globals are what save() will persist on the next tap,
+// so they have to be re-read — otherwise the very next row the knitter counts
+// writes the pre-merge state straight back over the merge.
+function reloadIfActive(projectId) {
+  if (projectId !== activeProjectId) return false;
+  loadProjectState();
+  return true;
+}
+
+function sameValues(a, b) {
+  const ka = Object.keys(a || {});
+  if (ka.length !== Object.keys(b || {}).length) return false;
+  return ka.every(k => a[k] === b[k]);
+}
+
+// Apply a remote registry row locally. Last-write-wins on updated_ms: the
+// registry holds a name and a tombstone, not per-field progress, so there is
+// nothing to merge field by field and nothing worth prompting about.
+//
+// Shared by push (which adopts a newer cloud copy instead of overwriting it)
+// and pull. Returns true if the local registry changed.
+function applyRemoteProject(row) {
+  const remoteUpdated = Number(row.updated_ms) || 0;
+  const local = projects.find(p => p.id === row.id);
+  if (local && (local.updatedAt || 0) >= remoteUpdated) return false;
+
+  const wasDeleted = !!(local && local.deletedAt);
+  const nowDeleted = !!row.deleted_ms;
+
+  const rec = local || { id: row.id };
+  rec.patternId = row.pattern_id;
+  rec.name = row.name;
+  rec.created = Number(row.created_ms) || rec.created || Date.now();
+  rec.updatedAt = remoteUpdated;
+  if (nowDeleted) rec.deletedAt = Number(row.deleted_ms); else delete rec.deletedAt;
+  if (!local) projects.push(rec);
+  saveProjects();
+
+  // A delete that arrived from another device has to do locally what
+  // deleteProject() does: drop the progress keys, drop any queued push for
+  // them, and get out of the project if it is the one on screen.
+  if (nowDeleted && !wasDeleted) {
+    purgeProjectData(row.id);
+    dequeue('progress', row.id);
+    if (activeProjectId === row.id) { activeProjectId = null; view = 'home'; }
+  }
+  return true;
+}
+
+// → 'done' (dequeue) | 'retry' (try again) | 'drop' (nothing left to send)
+async function pushProject(id, uid) {
+  const proj = projects.find(p => p.id === id);
+  if (!proj) return 'drop';
+
+  const { data: remote, error } = await sb.from('projects')
+    .select('id,name,pattern_id,created_ms,updated_ms,deleted_ms')
+    .eq('id', id).maybeSingle();
+  if (error) throw error;
+
+  // The cloud copy is newer, so this device's queued change is stale — take
+  // theirs rather than overwriting it. Without this check a rename queued
+  // offline last week would silently undo a rename made since.
+  if (remote && (Number(remote.updated_ms) || 0) > (proj.updatedAt || 0)) {
+    if (applyRemoteProject(remote)) renderAfterSync(id === activeProjectId);
+    return 'drop';
+  }
+
+  const { error: upErr } = await sb.from('projects').upsert({
+    id: proj.id, owner_id: uid, name: proj.name, pattern_id: proj.patternId,
+    created_ms: proj.created || Date.now(),
+    updated_ms: proj.updatedAt || 0,
+    deleted_ms: proj.deletedAt || null
+  }, { onConflict: 'id' });
+  if (upErr) throw upErr;
+  return 'done';
+}
+
+async function pushProgress(id, uid) {
+  // A tombstoned project's progress keys are already purged; the delete rides
+  // on the registry row, so there is nothing here worth sending.
+  if (isDeleted(id)) return 'drop';
+
+  const local = readLocalProgress(id);
+  const base  = readBase(id);
+
+  const { data: remote, error } = await sb.from('project_progress')
+    .select('project_id,steps,counters,cur,chart_rows,global_rows,clocks,server_rev')
+    .eq('project_id', id).maybeSingle();
+  if (error) throw error;
+
+  let values = local.values, clocks = local.clocks;
+
+  if (remote) {
+    const r = diffProgress(local, joinFields(remote), base);
+    values = r.merged; clocks = r.mergedClocks;
+    if (r.conflicts.length) {
+      // Phase 6 fallback: keep this device's value — it is what is already on
+      // screen — but give it a FRESH clock so it wins outright everywhere on
+      // the next round. Leaving the old clock would let the two devices trade
+      // the field back and forth without either ever settling. Phase 7 asks
+      // the knitter instead of deciding for them.
+      r.conflicts.forEach(c => { clocks[c.key] = syncNow(); });
+      noteConflicts(id, r.conflicts);
+    }
+    const changed = !sameValues(local.values, values);
+    if (!writeLocalProgress(id, values, clocks, base)) return 'retry';
+    if (changed || r.conflicts.length) {
+      renderAfterSync(reloadIfActive(id));
+    }
+  }
+
+  const f = splitFields(values);
+  const row = { project_id: id, owner_id: uid, steps: f.steps, counters: f.counters,
+                cur: f.cur, chart_rows: f.chart_rows, global_rows: f.global_rows,
+                clocks: clocks };
+
+  if (remote) {
+    // The guard. Zero rows means another device wrote between the select above
+    // and here, so the merge was against a row that no longer exists — start
+    // over rather than overwrite work we never saw.
+    const { data: hit, error: uErr } = await sb.from('project_progress')
+      .update(row).eq('project_id', id).eq('server_rev', remote.server_rev).select('project_id');
+    if (uErr) throw uErr;
+    if (!hit || !hit.length) { logSync('info', 'progress ' + id + ' moved under us — re-merging'); return 'retry'; }
+  } else {
+    const { error: iErr } = await sb.from('project_progress').insert(row);
+    if (iErr) {
+      if (iErr.code === '23505') return 'retry';        // raced another device's insert
+      // No project row yet — normal for progress migrated in before the outbox
+      // existed, where nothing ever queued the project itself.
+      if (iErr.code === '23503') { await pushProject(id, uid); return 'retry'; }
+      throw iErr;
+    }
+  }
+
+  // Server and device now hold the same thing, which is exactly what `base`
+  // means. Written only after the acknowledgement — advancing it earlier would
+  // mark local edits as agreed when they were never sent.
+  writeBase(id, clocks);
+  reloadIfActive(id);
+  return 'done';
+}
+
+// Kept for the Phase 7 conflict sheet; logged in the meantime so a silent
+// wrong answer at least leaves a trace.
+let lastConflicts = [];
+function noteConflicts(projectId, conflicts) {
+  lastConflicts = conflicts.map(c => Object.assign({ projectId: projectId }, c));
+  logSync('warn', conflicts.length + ' field(s) changed on both devices for ' + projectId +
+    ' — kept this device\'s values');
+}
+
+async function flush(reason) {
+  // Re-arm rather than drop. The edits that triggered this call are still in
+  // the outbox, but the in-flight flush has already read past them — and
+  // cancelling the timer below without rescheduling would strand them until
+  // the next tap.
+  if (flushing) {
+    scheduleFlush(FLUSH_DEBOUNCE_MS, 'after-inflight');
+    return;
+  }
   cancelScheduledFlush();
   if (!hasPending()) return;
-  if (flushing) return;                 // a real flush is async; don't overlap
   if (!navigator.onLine) {
     // Not an error — the `online` listener below picks it up again.
     console.info('[sync] offline, deferring flush (' + reason + '):', pendingOps().length, 'op(s)');
     return;
   }
+  if (!canSync()) return;   // signed out, or the data here isn't this account's
+
+  flushing = true;
+  const uid = currentUserId();
   const ops = pendingOps();
+  let failed = 0;
   console.info('[sync] flush (' + reason + '):', ops.map(o => o.k + ':' + o.id).join(', '));
-  // ...network push lands here. Outbox intentionally left intact.
+
+  try {
+    for (const op of ops) {
+      try {
+        let outcome = 'retry';
+        for (let attempt = 0; attempt < MAX_PUSH_ATTEMPTS && outcome === 'retry'; attempt++) {
+          outcome = op.k === 'project' ? await pushProject(op.id, uid)
+                                       : await pushProgress(op.id, uid);
+        }
+        if (outcome === 'retry') {
+          // Left queued on purpose — contention that outlasts three attempts
+          // is better retried later than resolved by giving up on the data.
+          failed++;
+          logSync('warn', 'gave up on ' + op.k + ':' + op.id + ' for now — still queued');
+          continue;
+        }
+        dequeue(op.k, op.id);
+      } catch (e) {
+        failed++;
+        lastSyncError = e;
+        logSync('error', 'push failed for ' + op.k + ':' + op.id, e);
+        if (isFatalSyncError(e)) break;   // the rest will fail the same way
+      }
+    }
+    if (!failed) noteSyncSuccess();
+  } finally {
+    flushing = false;
+  }
+
+  if (!hasPending()) return;
+  if (failed) {
+    // Something is still queued and the last attempt didn't work. Without a
+    // retry the queue would sit untouched until the knitter happened to make
+    // another edit — a transient blip would look like sync had simply stopped.
+    scheduleFlush(FLUSH_RETRY_MS, 'retry');
+  } else {
+    markDirty();   // edits made while the flush was in flight
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -411,6 +694,11 @@ function diffProgress(local, remote, base) {
 
 // Backgrounding is the last reliable moment on mobile — a phone may freeze or
 // kill the tab without ever firing anything else.
+//
+// The flush is async, so on `pagehide` it will usually not finish: the page is
+// gone before the request resolves. That is fine and is why the outbox is
+// persisted — the next open pushes it. What these listeners buy is the common
+// case where the tab is merely backgrounded and does survive.
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') flushNow('hidden');
 });

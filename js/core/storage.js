@@ -20,6 +20,8 @@
 //   pt3_schema                    migration sentinel — GLOBAL
 //   pt3_outbox                    entities with unpushed changes — GLOBAL
 //                                 (see js/cloud/sync.js)
+//   pt3_last_sync                 epoch_ms of the last fully successful sync
+//                                 — GLOBAL (see js/cloud/sync.js)
 //   pt3_cellSz                    chart cell size — GLOBAL, shared across projects
 // ─────────────────────────────────────────────
 
