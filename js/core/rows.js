@@ -94,11 +94,65 @@ function advanceRepeat(entry, pos, delta) {
   return repeatPosFromRowsDone(entry, repeatRowsDone(entry, pos) + (delta | 0));
 }
 
+// ── The chart, as an entry ──
+//
+// A chart section's rows are N rows worked once. That is a position like any
+// other, so the model treats it as a fourth entry kind rather than as a branch
+// in every function that counts rows.
+//
+// It is SYNTHESIZED rather than written in the pattern files, because a chart
+// section already declares its rows — as a grid. Writing them out again as
+// entries would be two sources for one fact.
+//
+// Its position still lives in `chartRows`, keyed by phase id, and still clocks
+// as cr:<phaseId>. That is a storage fact this file deliberately does not
+// care about: positionsOf() flattens both buckets into one map and everything
+// below reads that.
+function chartEntryFor(section, pattern) {
+  if (!section || !section.hasChart) return null;
+  const n = chartForPhaseOf(pattern, section).length;
+  return n ? { kind: 'chart', id: section.id, rows: n } : null;
+}
+
+// A section's entries, chart included. One list, so nothing downstream has to
+// ask whether this section happens to have a grid in it.
+function sectionEntries(section, pattern) {
+  if (!section) return [];
+  const own = section.entries || [];
+  const chart = chartEntryFor(section, pattern);
+  return chart ? [chart].concat(own) : own;
+}
+
+// One flat position map out of however many buckets a project stores them in.
+// The two buckets are a storage fact, not a model one — this is the single
+// place the difference is spent.
+function positionsOf(ctx) {
+  const c = ctx || {};
+  const m = Object.assign({}, c.entries || {});
+  const cr = c.chartRows || {};
+  Object.keys(cr).forEach(id => { m[chartRowKey(id)] = cr[id]; });
+  return m;
+}
+
+// The row a chart is standing on, 1…N — the same "standing" number the repeat
+// dock shows, and clamped the same way. A chart is a repeat with one pass and
+// no inside, so advancing it is the same operation minus the pass arithmetic.
+function chartRowOf(entry, progress) {
+  const n = entry.rows | 0;
+  const raw = (progress || {})[chartRowKey(entry.id)] || 1;
+  return Math.max(1, Math.min(n, raw | 0));
+}
+
+function advanceChartRow(entry, row, delta) {
+  return Math.max(1, Math.min(entry.rows | 0, (row | 0) + (delta | 0)));
+}
+
 // ── Entries ──
 
 function entryRowCount(entry) {
   if (!entry) return 0;
   if (entry.kind === 'row')    return 1;
+  if (entry.kind === 'chart')  return entry.rows | 0;
   if (entry.kind === 'repeat') return repeatRowCount(entry);
   return 0; // notes, and anything unrecognised
 }
@@ -108,6 +162,9 @@ function entryRowsDone(entry, progress) {
   const pr = progress || {};
   if (entry.kind === 'row')    return pr[rowKey(entry.id)] ? 1 : 0;
   if (entry.kind === 'repeat') return repeatRowsDone(entry, pr[repeatKey(entry.id)]);
+  // Standing on row 1 means nothing is finished — the same off-by-one a
+  // repeat has, for the same reason.
+  if (entry.kind === 'chart')  return chartRowOf(entry, pr) - 1;
   return 0;
 }
 
@@ -119,41 +176,27 @@ function entryDone(entry, progress) {
   if (entry.kind === 'note')   return !!pr[noteKey(entry.id)];
   if (entry.kind === 'row')    return !!pr[rowKey(entry.id)];
   if (entry.kind === 'repeat') return repeatComplete(entry, pr[repeatKey(entry.id)]);
+  if (entry.kind === 'chart')  return (entry.rows | 0) > 0 && chartRowOf(entry, pr) >= (entry.rows | 0);
   return false;
 }
 
 // ── Sections ──
 
-// Total rows in a section.
+// Total rows in a section — chart included, since the chart is an entry.
 function sectionRowCount(section, pattern) {
-  if (!section) return 0;
-  // A chart section's rows are the CHART's, and they are not entries — chart.js
-  // still owns them. It can carry entries as well (the post-chart confirm
-  // note), so the two are added rather than one branch winning: checking
-  // `entries` first and returning would silently drop all 44 yoke rows, since
-  // the only entry there is a note worth zero.
-  const chartRows = section.hasChart ? chartForPhaseOf(pattern, section).length : 0;
-  return chartRows + (section.entries || []).reduce((n, e) => n + entryRowCount(e), 0);
+  return sectionEntries(section, pattern).reduce((n, e) => n + entryRowCount(e), 0);
 }
 
 // Rows finished in a section.
 //
-// Takes a CONTEXT rather than one map, because a project's progress does not
-// all live in one place: entry progress is in `entries`, and a chart's
-// position is in `chartRows` — chart.js still owns those.
+// Takes a CONTEXT rather than one map, because a project's positions are
+// stored in two buckets — `entries` and `chartRows`. positionsOf() is where
+// that stops mattering; from there down there is one kind of thing.
 //
 //   ctx = { entries, chartRows }   — both optional
-//
-// The chart contributes `row - 1`: standing on row 1 means nothing is
-// finished, which is the same arithmetic changeChartRow() used when it was
-// nudging the tally by hand.
-function sectionRowsDone(section, ctx) {
-  if (!section) return 0;
-  const c = ctx || {};
-  const chartDone = section.hasChart
-    ? Math.max(0, ((c.chartRows || {})[section.id] || 1) - 1)
-    : 0;
-  return chartDone + (section.entries || []).reduce((n, e) => n + entryRowsDone(e, c.entries), 0);
+function sectionRowsDone(section, ctx, pattern) {
+  const pr = positionsOf(ctx);
+  return sectionEntries(section, pattern).reduce((n, e) => n + entryRowsDone(e, pr), 0);
 }
 
 // Σ over the pattern. This is what the header's Rows tally IS, rather than a
@@ -162,12 +205,16 @@ function sectionRowsDone(section, ctx) {
 // drift away from the truth.
 function patternRowsDone(pattern, ctx) {
   return ((pattern && pattern.phases) || [])
-    .reduce((n, s) => n + sectionRowsDone(s, ctx), 0);
+    .reduce((n, s) => n + sectionRowsDone(s, ctx, pattern), 0);
 }
 
-function sectionComplete(section, progress) {
-  if (!section || !section.entries) return false;
-  return section.entries.every(e => entryDone(e, progress));
+// A chart section is not complete until the chart itself has been worked to
+// its last row, not merely because the confirm note underneath it was ticked.
+function sectionComplete(section, ctx, pattern) {
+  const list = sectionEntries(section, pattern);
+  if (!list.length) return false;
+  const pr = positionsOf(ctx);
+  return list.every(e => entryDone(e, pr));
 }
 
 // Σ over the pattern. Named apart from the existing global patternTotalRows()

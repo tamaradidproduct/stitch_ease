@@ -1,10 +1,7 @@
 // ─────────────────────────────────────────────
 // RENDER — all view builders and layout functions
 // ─────────────────────────────────────────────
-function phaseComplete(p) {
-  if (p.entries) return sectionComplete(p, entryProg);
-  return (p.steps || []).every(s => state[s.id]);
-}
+function phaseComplete(p) { return sectionComplete(p, progressCtx(), activeDoc); }
 
 function renderTabs() {
   const el = document.getElementById('phase-tabs');

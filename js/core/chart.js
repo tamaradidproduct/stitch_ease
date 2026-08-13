@@ -271,8 +271,14 @@ function resizeChart(delta) {
 }
 
 function changeChartRow(delta) {
+  // The clamp lives in the model, beside the repeat's, because it IS the
+  // repeat's: a chart is one pass with no inside, so advancing it is the same
+  // operation minus the pass arithmetic. What stays here is the targeted DOM
+  // update and the scroll — the parts that are genuinely the chart's own.
+  const entry = chartEntryFor(PHASES[cur], activeDoc);
+  if (!entry) return;
   const prevRow = chartCurrentRow;
-  chartCurrentRow = Math.max(1, Math.min(CHART_TOTAL, chartCurrentRow + delta));
+  chartCurrentRow = advanceChartRow(entry, chartCurrentRow, delta);
   if (chartCurrentRow === prevRow) return; // clamped tap — nothing moved, nothing to stamp
   // Remember this phase's own position, so switching to another chart phase
   // and back returns to the row you were on rather than a shared one.

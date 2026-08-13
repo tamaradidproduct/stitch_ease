@@ -210,24 +210,24 @@ function rowsSelfTest() {
   const ectx = pr => ({ entries: pr });
 
   check('empty progress: nothing done anywhere',
-    [sectionRowsDone(COL, ectx({})), sectionRowsDone(RAG, ectx({})), sectionRowsDone(GSR, ectx({}))],
+    [sectionRowsDone(COL, ectx({}), PEACOCK), sectionRowsDone(RAG, ectx({}), PEACOCK), sectionRowsDone(GSR, ectx({}), PEACOCK)],
     [0, 0, 0]);
   check('fully worked collar: rows done equals row count, section complete',
     (() => {
       const pr = { 'n:c1': true, 'rp:c2': { y: 7, z: 1 }, 'r:c3': true, 'n:c4': true };
-      return [sectionRowsDone(COL, ectx(pr)), sectionRowCount(COL, PEACOCK), sectionComplete(COL, pr)];
+      return [sectionRowsDone(COL, ectx(pr), PEACOCK), sectionRowCount(COL, PEACOCK), sectionComplete(COL, ectx(pr), PEACOCK)];
     })(),
     [8, 8, true]);
   check('a finished repeat with an unticked note: rows done, section not complete',
     (() => {
       const pr = { 'n:r1': true, 'rp:r2': { y: 4, z: 1 } };   // r3 note left unticked
-      return [sectionRowsDone(RAG, ectx(pr)), sectionComplete(RAG, pr)];
+      return [sectionRowsDone(RAG, ectx(pr), PEACOCK), sectionComplete(RAG, ectx(pr), PEACOCK)];
     })(),
     [8, false]);
   check('notes never add rows, however many are ticked',
-    sectionRowsDone(RAG, ectx({ 'n:r1': true, 'n:r3': true })), 0);
+    sectionRowsDone(RAG, ectx({ 'n:r1': true, 'n:r3': true }), PEACOCK), 0);
   check('mid-repeat: standing on row 1 of pass 3 = 4 rows done',
-    sectionRowsDone(RAG, ectx({ 'rp:r2': { y: 2, z: 1 } })), 4);
+    sectionRowsDone(RAG, ectx({ 'rp:r2': { y: 2, z: 1 } }), PEACOCK), 4);
 
   // ── L. The derived tally ──
   //
@@ -237,9 +237,9 @@ function rowsSelfTest() {
 
   const CHART_SEC = sec(PEACOCK, 'chart');
   check('chart section: standing on row 1 is zero done, row 44 is 43 done',
-    [sectionRowsDone(CHART_SEC, { chartRows: {} }),
-     sectionRowsDone(CHART_SEC, { chartRows: { chart: 1 } }),
-     sectionRowsDone(CHART_SEC, { chartRows: { chart: 44 } })],
+    [sectionRowsDone(CHART_SEC, { chartRows: {} }, PEACOCK),
+     sectionRowsDone(CHART_SEC, { chartRows: { chart: 1 } }, PEACOCK),
+     sectionRowsDone(CHART_SEC, { chartRows: { chart: 44 } }, PEACOCK)],
     [0, 0, 43]);
   check('a whole project mid-progress: collar + chart + raglan add up',
     patternRowsDone(PEACOCK, {
@@ -310,6 +310,67 @@ function rowsSelfTest() {
     [{ y: 2, z: 2 }, 5]);
   check('a passes-counter at its target clamps to complete, not past it',
     seedEntryProgress({}, {}, { 'r1-qr': 99 }, [ROW1])['rp:r1-qr'], { y: 11, z: 1 });
+
+  // ── M. The chart, as an entry ──
+  //
+  // Step 7, model half: a chart section's rows are an entry like any other, so
+  // nothing downstream branches on whether a section happens to hold a grid.
+  // Its position still lives in `chartRows` and still clocks as cr:<phaseId> —
+  // positionsOf() is the single place that difference is spent.
+
+  const CH = chartEntryFor(CHART_SEC, PEACOCK);
+
+  check('a chart section synthesizes one chart entry, ahead of its own',
+    sectionEntries(CHART_SEC, PEACOCK).map(e => e.kind + ':' + e.id),
+    ['chart:chart', 'note:ch2']);
+  check('a section with no chart synthesizes nothing extra',
+    sectionEntries(COL, PEACOCK).length, COL.entries.length);
+  check('the chart entry carries the chart\'s own length',
+    [CH.kind, CH.rows], ['chart', 44]);
+  check('a chart counts its rows through the same entry function as everything else',
+    entryRowCount(CH), 44);
+
+  check('positionsOf flattens both buckets into one map',
+    positionsOf({ entries: { 'n:a': true }, chartRows: { chart: 12 } }),
+    { 'n:a': true, 'cr:chart': 12 });
+
+  check('standing on row 1 is nothing done; row 44 is 43 done',
+    [entryRowsDone(CH, {}), entryRowsDone(CH, { 'cr:chart': 1 }), entryRowsDone(CH, { 'cr:chart': 44 })],
+    [0, 0, 43]);
+  check('a stored row outside the chart is clamped, not trusted',
+    [chartRowOf(CH, { 'cr:chart': 0 }), chartRowOf(CH, { 'cr:chart': 999 })], [1, 44]);
+  check('a chart is done when it reaches its last row',
+    [entryDone(CH, { 'cr:chart': 43 }), entryDone(CH, { 'cr:chart': 44 })], [false, true]);
+
+  // The same clamp the repeat uses, which is the point of folding it in.
+  check('advancing a chart clamps at both ends',
+    [advanceChartRow(CH, 1, -1), advanceChartRow(CH, 44, 1),
+     advanceChartRow(CH, 20, 1), advanceChartRow(CH, 20, -1)],
+    [1, 44, 21, 19]);
+  check('+1 then −1 returns to the same row, as it must for a repeat too',
+    advanceChartRow(CH, advanceChartRow(CH, 12, 1), -1), 12);
+
+  // A chart section is not complete because the note under it was ticked —
+  // it is complete when the chart has actually been worked to the end.
+  check('the confirm note alone does not complete a chart section',
+    sectionComplete(CHART_SEC, { entries: { 'n:ch2': true }, chartRows: { chart: 20 } }, PEACOCK), false);
+  check('note ticked AND the chart at its last row does',
+    sectionComplete(CHART_SEC, { entries: { 'n:ch2': true }, chartRows: { chart: 44 } }, PEACOCK), true);
+
+  // Known gap, deliberately not fixed by the model-only fold: `chartRows`
+  // stores a row and has nowhere to record "and I have worked it", so the
+  // last row can never be counted. Peacock therefore tops out one short.
+  check('a chart contributes at most rows-1, so the pattern cannot reach its own total',
+    (() => {
+      const entries = {};
+      PEACOCK.phases.forEach(s => (s.entries || []).forEach(e => {
+        if (e.kind === 'repeat') entries[repeatKey(e.id)] = { y: e.times, z: 1 };
+        else entries[e.kind === 'note' ? noteKey(e.id) : rowKey(e.id)] = true;
+      }));
+      const done = patternRowsDone(PEACOCK, { entries, chartRows: { chart: 44 } });
+      return [done, patternRowTotal(PEACOCK), patternRowTotal(PEACOCK) - done];
+    })(),
+    [183, 184, 1]);
 
   const failed = results.filter(r => !r.ok);
   console.table(results.map(r => ({ case: r.case, ok: r.ok })));
