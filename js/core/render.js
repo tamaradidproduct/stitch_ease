@@ -468,6 +468,9 @@ function escapeHtml(s) {
 function render() {
   closeNotes(); // navigation/re-render dismisses the notes sheet
   closeFinishedScreen();
+  // The chip belongs to the open project, so every render decides afresh
+  // whether it should be up — including the renders that navigate away.
+  showPatternChip();
   if (view === 'home')   { renderHome();   requestAnimationFrame(updatePhaseHeaderOffset); return; }
   if (view === 'picker') { renderPicker(); requestAnimationFrame(updatePhaseHeaderOffset); return; }
   renderProject();
@@ -592,3 +595,76 @@ function renderHeader() {
 // where the view/project key is unchanged but the title text changed).
 function resetHeaderKey() { const h = document.getElementById('header'); if (h) h.dataset.key = ''; }
 
+
+// ─────────────────────────────────────────────
+// PATTERN-UPDATED CHIP
+//
+// Non-blocking by design. The project keeps knitting the structure it started
+// on; this only says a newer version exists. It appears while a changed
+// project is open and goes away when the project is closed or the update is
+// taken — there is nothing to answer from the library screen, where no
+// particular project is in hand.
+// ─────────────────────────────────────────────
+function showPatternChip() {
+  if (view !== 'project' || !patternChanged) return hidePatternChip();
+  if (document.getElementById('pattern-chip')) return;
+  const b = document.createElement('div');
+  b.id = 'pattern-chip';
+  b.innerHTML = '<span>Pattern updated</span><button onclick="openPatternUpdateSheet()">Review</button>';
+  bannerStack().appendChild(b);
+}
+
+function hidePatternChip() {
+  const b = document.getElementById('pattern-chip');
+  if (b) { b.remove(); pruneBannerStack(); }
+}
+
+function openPatternUpdateSheet() {
+  const id = activeProjectId;
+  const sum = patternChangeSummary(id);
+  if (!sum) return;
+
+  // The counts come first because they are the decision. "3 new steps, 1
+  // removed, 24 of your 27 ticks kept" is answerable; "the pattern changed"
+  // is not.
+  const bits = [];
+  if (sum.added)   bits.push(sum.added + (sum.added === 1 ? ' new step' : ' new steps'));
+  if (sum.removed) bits.push(sum.removed + (sum.removed === 1 ? ' step removed' : ' steps removed'));
+  const changeLine = bits.length ? bits.join(', ') : 'Some steps changed';
+
+  const kept = sum.ticks
+    ? sum.kept + ' of your ' + sum.ticks + (sum.ticks === 1 ? ' tick is kept' : ' ticks are kept')
+    : 'You haven’t ticked anything yet';
+
+  // Only mention losses when there are some. A reassurance that nothing is
+  // lost reads as a warning when it is the only thing in the box.
+  const lost = sum.ticks - sum.kept;
+  const lostNote = lost > 0
+    ? `<p class="acct-err">${lost === 1 ? 'One tick belongs to a step that no longer exists'
+        : lost + ' ticks belong to steps that no longer exist'} — they stay saved, and come back if the step does.</p>`
+    : '';
+
+  openSheet('Pattern updated', `
+    <p class="sheet-msg">A newer version of this pattern is available.</p>
+    <div class="pu-facts">
+      <div class="pu-line">${escapeHtml(changeLine)}</div>
+      <div class="pu-line">${escapeHtml(kept)}</div>
+    </div>
+    ${lostNote}
+    <div class="sheet-actions">
+      <button class="sheet-btn" onclick="dismissSheet()">Not now</button>
+      <button class="sheet-btn primary" id="pu-adopt">Use the new version</button>
+    </div>
+    <p class="acct-note">Until you take it, this project keeps the version you started on. Nothing is deleted either way.</p>`,
+    {
+      onOpen: el => {
+        el.querySelector('#pu-adopt').onclick = () => {
+          if (!adoptPattern(id)) return;
+          closeSheet();
+          activateProject(id);   // re-open on the new structure
+          hidePatternChip();
+          render();
+        };
+      }
+    });
+}

@@ -17,7 +17,10 @@
 //   pt3_proj_<id>_grows           project-wide row tally
 //   pt3_proj_<id>_clk             {fieldKey: epoch_ms} last local change per field
 //   pt3_proj_<id>_base            {fieldKey: epoch_ms} clocks at last sync
-//   pt3_schema                    migration sentinel — GLOBAL
+//   pt3_proj_<id>_phash           structure hash the project was started on
+//   pt3_proj_<id>_pattern         frozen copy of the pattern as it was then —
+//                                 the only record of it once the code moves on
+//   pt3_schema                    migration sentinel (version number) — GLOBAL
 //   pt3_outbox                    entities with unpushed changes — GLOBAL
 //                                 (see js/cloud/sync.js)
 //   pt3_last_sync                 epoch_ms of the last fully successful sync
@@ -65,7 +68,7 @@ function isDeleted(projectId) {
 // `chartRow` is the superseded scalar and `chartRows` the per-phase map: both
 // are listed because a project saved before that change still has the old key
 // on disk, and purging only the new one would leave it orphaned forever.
-const PROJ_KEYS = ['state','ctrs','cur','chartRow','chartRows','grows','clk','base'];
+const PROJ_KEYS = ['state','ctrs','cur','chartRow','chartRows','grows','clk','base','phash','pattern'];
 function purgeProjectData(projectId) {
   PROJ_KEYS.forEach(k => { try { localStorage.removeItem('pt3_proj_' + projectId + '_' + k); } catch(e){} });
 }
@@ -85,8 +88,38 @@ function createProject(patternId) {
                  created: Date.now(), updatedAt: syncNow() };
   projects.push(proj);
   saveProjects();
+  freezePattern(proj.id, pat);
   enqueue('project', proj.id);
   return proj;
+}
+
+// Record which structure a project was started on, and keep a copy of the
+// pattern as it was.
+//
+// The copy is taken at CREATE, not lazily when a change is noticed, because by
+// then it is too late — the old pattern has already been replaced in the code
+// and cannot be reconstructed. Roughly 10-40KB per project, which is nothing
+// at family scale (see the quota banner for when it stops being nothing).
+function freezePattern(projectId, pattern) {
+  try {
+    localStorage.setItem('pt3_proj_' + projectId + '_phash', structHash(pattern));
+    localStorage.setItem('pt3_proj_' + projectId + '_pattern', JSON.stringify(pattern));
+  } catch(e) { showSaveError(e); }
+}
+
+function storedHash(projectId) {
+  try { return localStorage.getItem('pt3_proj_' + projectId + '_phash'); } catch(e) { return null; }
+}
+
+// The pattern as it was when the project started, or null if the snapshot is
+// missing or unreadable. Callers fall back to the live pattern — a project that
+// opens on slightly the wrong structure beats one that will not open at all.
+function frozenPattern(projectId) {
+  try {
+    const raw = localStorage.getItem('pt3_proj_' + projectId + '_pattern');
+    const doc = raw ? JSON.parse(raw) : null;
+    return (doc && doc.phases && doc.phases.length) ? doc : null;
+  } catch(e) { return null; }
 }
 
 function renameProject(projectId) {
@@ -323,12 +356,44 @@ function migrateAddClocks() {
   }
 }
 
+// One-time migration: give every existing project a structure hash and a frozen
+// copy of its pattern.
+//
+// These projects predate the mechanism, so there is no record of what they were
+// started on. The live pattern is the only available claim — and it is the
+// right one in practice, since it is what they have been rendering against all
+// along. Running this now is what makes the NEXT structural edit detectable;
+// without it every pre-existing project would be frozen on nothing.
+//
+// `pt3_schema` is a version number, not a boolean. migrateAddClocks() wrote '1'
+// and returns early on any value, so this needs its own comparison rather than
+// its own key — one sentinel that counts is easier to extend than a new key per
+// migration.
+const SCHEMA_VERSION = 2;
+function migrateAddPatternHash() {
+  try {
+    if ((parseInt(localStorage.getItem('pt3_schema')) || 0) >= SCHEMA_VERSION) return;
+    JSON.parse(localStorage.getItem('pt3_projects') || '[]').forEach(proj => {
+      if (localStorage.getItem('pt3_proj_' + proj.id + '_phash')) return;
+      const pat = patternById(proj.patternId);
+      if (pat) freezePattern(proj.id, pat);
+    });
+    localStorage.setItem('pt3_schema', String(SCHEMA_VERSION));
+  } catch(e) {
+    // Not silent: without a hash a project can never be told that its pattern
+    // changed, which is the whole point of this phase.
+    console.error('migrateAddPatternHash failed', e);
+  }
+}
+
 // Done-steps / total for a project, read from its saved state (for home cards).
 // Counts only real step ids — a step's checkable bullets (stepId + '__b' +
 // index, see toggleSubStep()) live in the same state object but aren't steps
 // of their own, so they're excluded rather than inflating the tally.
 function projectProgress(proj) {
-  const pat = patternById(proj.patternId);
+  // The version this project actually knits — a frozen project's totals come
+  // from its own snapshot, or the card would count steps it cannot see.
+  const pat = patternForProject(proj).pattern;
   const total = pat ? pat.phases.reduce((a, ph) => a + ph.steps.length, 0) : 0;
   let done = 0;
   try {
@@ -382,4 +447,79 @@ function resetPattern() {
   syncActiveChart();
   save();
   render();
+}
+
+// ─────────────────────────────────────────────
+// ADOPTING A PATTERN UPDATE
+//
+// Explicit, never automatic, and it destroys nothing.
+//
+// Progress keys for steps that no longer exist are LEFT IN PLACE rather than
+// stripped. They render nowhere, so they cost a few bytes and nothing else —
+// and if the step comes back (an edit reverted, a rename undone), the tick
+// comes back with it. Deleting them would also fight sync: the other device,
+// which has not adopted yet, would push them straight back.
+//
+// The one thing that genuinely has to move is `cur`, which is a phase INDEX.
+// The same number means a different phase after a phase is inserted, so it is
+// translated through the phase id it used to point at.
+// ─────────────────────────────────────────────
+function patternChangeSummary(projectId) {
+  const proj = projects.find(p => p.id === projectId);
+  const live = proj && patternById(proj.patternId);
+  if (!live) return null;
+  const oldPat = frozenPattern(projectId) || live;
+
+  const idsOf = pat => new Set(pat.phases.reduce((a, ph) => a.concat(ph.steps.map(s => s.id)), []));
+  const oldIds = idsOf(oldPat), newIds = idsOf(live);
+
+  let added = 0, removed = 0;
+  newIds.forEach(id => { if (!oldIds.has(id)) added++; });
+  oldIds.forEach(id => { if (!newIds.has(id)) removed++; });
+
+  // Ticks counted the way the home card counts them: real step ids only, so a
+  // step's checkable bullets don't inflate the number the user is shown.
+  let ticks = 0, kept = 0;
+  try {
+    const st = JSON.parse(localStorage.getItem('pt3_proj_' + projectId + '_state') || '{}');
+    Object.keys(st).forEach(k => {
+      if (!st[k] || !oldIds.has(k)) return;
+      ticks++;
+      if (newIds.has(k)) kept++;
+    });
+  } catch(e) {}
+
+  return { added: added, removed: removed, ticks: ticks, kept: kept };
+}
+
+function adoptPattern(projectId) {
+  const proj = projects.find(p => p.id === projectId);
+  const live = proj && patternById(proj.patternId);
+  if (!live) return false;
+
+  // Translate `cur` before the snapshot is replaced — afterwards there is
+  // nothing left to say which phase the old index meant.
+  const oldPat = frozenPattern(projectId) || live;
+  const oldPhase = oldPat.phases[readCur(projectId)];
+  let nextCur = live.phases.findIndex(ph => oldPhase && ph.id === oldPhase.id);
+  if (nextCur < 0) nextCur = Math.min(readCur(projectId), live.phases.length - 1);
+  nextCur = Math.max(0, nextCur);
+
+  try { localStorage.setItem('pt3_proj_' + projectId + '_cur', nextCur); } catch(e) { showSaveError(e); }
+  freezePattern(projectId, live);
+
+  // `cur` moved and the frozen doc changed, so both have to be announced:
+  // stamp the clock or the other device's older `cur` wins the next merge, and
+  // enqueue the project so the new hash and doc go up.
+  if (projectId === activeProjectId) { cur = nextCur; stampClock('cur'); }
+  proj.updatedAt = syncNow();
+  saveProjects();
+  enqueue('project', projectId);
+  enqueue('progress', projectId);
+  return true;
+}
+
+function readCur(projectId) {
+  const v = localStorage.getItem('pt3_proj_' + projectId + '_cur');
+  return v === null ? 0 : (parseInt(v) || 0);
 }

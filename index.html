@@ -846,6 +846,28 @@
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
 
+  /* ── Pattern-updated chip ── quieter than the banners above it: this is an
+     offer, not a problem, and the project is perfectly usable without it. */
+  #pattern-chip {
+    background: var(--card); color: var(--text);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 10px 12px 10px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 13.5px; gap: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    animation: slide-up 0.25s ease;
+  }
+  #pattern-chip button {
+    background: var(--accent); color: #fff; border: none;
+    border-radius: 8px; padding: 7px 14px;
+    font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  }
+  .pu-facts { margin-top: 12px; }
+  .pu-line {
+    font-size: 14px; color: var(--text); line-height: 1.5;
+    padding: 7px 0; border-top: 1px solid var(--border);
+  }
+
   /* ── Save-failure banner ── persistent and buttonless: the only fix is
      freeing space, which the user has to do themselves. */
   #save-error {

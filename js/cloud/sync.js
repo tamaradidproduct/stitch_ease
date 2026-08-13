@@ -546,6 +546,7 @@ function applyRemoteProject(row) {
   if (nowDeleted) rec.deletedAt = Number(row.deleted_ms); else delete rec.deletedAt;
   if (!local) projects.push(rec);
   saveProjects();
+  applyRemotePattern(row);
 
   // A delete that arrived from another device has to do locally what
   // deleteProject() does: drop the progress keys, drop any queued push for
@@ -558,13 +559,38 @@ function applyRemoteProject(row) {
   return true;
 }
 
+// Take the structure this project is knitting from a remote row.
+//
+// This is what lets a family member open a frozen project on a device that has
+// never seen it. Without the hash it would compare against nothing and use the
+// live pattern; without the doc it would know the structure had changed but
+// have no copy of the one the ticks belong to.
+//
+// A local snapshot is never overwritten. If this device already has one it is
+// either the same structure or a decision its owner made here, and neither is
+// improved by a round trip through the server.
+function applyRemotePattern(row) {
+  if (!row.pattern_struct_hash || storedHash(row.id)) return;
+  try {
+    localStorage.setItem('pt3_proj_' + row.id + '_phash', row.pattern_struct_hash);
+    if (row.pattern_doc && row.pattern_doc.phases) {
+      localStorage.setItem('pt3_proj_' + row.id + '_pattern', JSON.stringify(row.pattern_doc));
+    } else {
+      // No doc means the sending device was still on the code's version, so
+      // the pattern in this bundle IS the snapshot.
+      const live = patternById(row.pattern_id);
+      if (live) localStorage.setItem('pt3_proj_' + row.id + '_pattern', JSON.stringify(live));
+    }
+  } catch(e) { showSaveError(e); }
+}
+
 // → 'done' (dequeue) | 'retry' (try again) | 'drop' (nothing left to send)
 async function pushProject(id, uid) {
   const proj = projects.find(p => p.id === id);
   if (!proj) return 'drop';
 
   const { data: remote, error } = await sb.from('projects')
-    .select('id,name,pattern_id,created_ms,updated_ms,deleted_ms')
+    .select('id,name,pattern_id,created_ms,updated_ms,deleted_ms,pattern_struct_hash,pattern_doc')
     .eq('id', id).maybeSingle();
   if (error) throw error;
 
@@ -576,14 +602,36 @@ async function pushProject(id, uid) {
     return 'drop';
   }
 
-  const { error: upErr } = await sb.from('projects').upsert({
+  const { error: upErr } = await sb.from('projects').upsert(Object.assign({
     id: proj.id, owner_id: uid, name: proj.name, pattern_id: proj.patternId,
     created_ms: proj.created || Date.now(),
     updated_ms: proj.updatedAt || 0,
     deleted_ms: proj.deletedAt || null
-  }, { onConflict: 'id' });
+  }, patternColumns(proj.id)), { onConflict: 'id' });
   if (upErr) throw upErr;
   return 'done';
+}
+
+// The structure hash always; the frozen pattern doc only once this project has
+// diverged from the code.
+//
+// The doc is 10-40KB. Sending it with every project upsert would make a rename
+// cost more than a day's knitting, and in the normal case it is pure
+// redundancy — the receiving device has the same pattern in its own bundle and
+// can rebuild the snapshot from it. It is only irreplaceable once the code has
+// moved on, which is exactly when this starts sending it: a family member
+// opening a frozen project on a NEW device has no other way to get the
+// structure their ticks belong to.
+function patternColumns(projectId) {
+  const hash = storedHash(projectId);
+  if (!hash) return {};
+  const proj = projects.find(p => p.id === projectId);
+  const live = proj && patternById(proj.patternId);
+  const diverged = !live || structHash(live) !== hash;
+  return {
+    pattern_struct_hash: hash,
+    pattern_doc: diverged ? frozenPattern(projectId) : null
+  };
 }
 
 async function pushProgress(id, uid) {
@@ -1035,7 +1083,7 @@ async function pull(reason) {
     // Projects first: a progress row for a project this device has never heard
     // of needs the registry record to exist before it can be attributed.
     let q = sb.from('projects')
-      .select('id,name,pattern_id,created_ms,updated_ms,deleted_ms,server_updated_at');
+      .select('id,name,pattern_id,created_ms,updated_ms,deleted_ms,server_updated_at,pattern_struct_hash,pattern_doc');
     if (cursor.projTs) q = q.gte('server_updated_at', cursor.projTs);
     const { data: remoteProjects, error: pErr } = await q;
     if (pErr) throw pErr;

@@ -614,6 +614,151 @@ async function syncPushPullTest() {
       })(),
       'js/core/app.js');
 
+    // ─────────────────────────────────────────
+    // PATTERN VERSIONS
+    // ─────────────────────────────────────────
+
+    // ── 27. The hash ignores prose and catches structure ──
+    //
+    // Both halves matter and they pull in opposite directions. Too sensitive
+    // and every typo fix freezes every project in the family; too blunt and a
+    // renamed step silently moves someone's ticks onto the wrong rows.
+    const REF = PATTERNS[0];
+    const refHash = structHash(REF);
+    const variant = fn => { const c = JSON.parse(JSON.stringify(REF)); fn(c); return structHash(c); };
+    const steps = c => c.phases.reduce((a, ph) => a.concat(ph.steps), []);
+
+    check('prose edits do not move the hash',
+      {
+        stepText:    variant(c => { c.phases[0].steps[0].text = 'rewritten entirely'; }) === refHash,
+        phaseName:   variant(c => { c.phases[0].name = 'Renamed'; }) === refHash,
+        patternName: variant(c => { c.name = 'New'; c.desc = 'New'; }) === refHash,
+        bulletText:  variant(c => { const s = steps(c).find(x => x.bullets); if (s) s.bullets[0] = 'reworded'; }) === refHash,
+        deepCopy:    structHash(JSON.parse(JSON.stringify(REF))) === refHash
+      },
+      { stepText: true, phaseName: true, patternName: true, bulletText: true, deepCopy: true });
+
+    check('structural edits always move the hash',
+      {
+        addStep:    variant(c => c.phases[0].steps.push({ id: 'new', text: 'x' })) !== refHash,
+        removeStep: variant(c => c.phases[0].steps.pop()) !== refHash,
+        renameId:   variant(c => { c.phases[0].steps[0].id = 'renamed'; }) !== refHash,
+        reorder:    variant(c => { const a = c.phases[0].steps; a.unshift(a.pop()); }) !== refHash,
+        movePhase:  variant(c => { c.phases.unshift(c.phases.pop()); }) !== refHash,
+        target:     variant(c => { const s = steps(c).find(x => x.rows); s.target += 2; }) !== refHash,
+        chartLen:   variant(c => { c.chart.push(c.chart[0].slice()); }) !== refHash,
+        hasChart:   variant(c => { c.phases[0].hasChart = true; }) !== refHash
+      },
+      { addStep: true, removeStep: true, renameId: true, reorder: true,
+        movePhase: true, target: true, chartLen: true, hasChart: true });
+
+    check('the shipped patterns all hash differently',
+      new Set(PATTERNS.map(structHash)).size, PATTERNS.length);
+
+    // ── 28. Freeze, then adopt ──
+    //
+    // Stages a real structural "deploy" against the live registry entry: one
+    // step dropped, one added, one phase inserted at the front. The inserted
+    // phase is the interesting part — it shifts every later index, so `cur`
+    // has to move to stay on the same section.
+    db = makeMockDb();
+    device(db);
+    const patBackup = JSON.parse(JSON.stringify(REF));
+    const patIndex = PATTERNS.findIndex(p => p.id === REF.id);
+    try {
+      const proj = createProject(REF.id);
+      activateProject(proj.id);
+      const doomed = PHASES[0].steps[2].id;
+      const keptA = PHASES[0].steps[0].id, keptB = PHASES[0].steps[1].id;
+      state[keptA] = state[keptB] = state[doomed] = true;
+      cur = 2;
+      const sectionBefore = PHASES[2].id;
+      save();
+
+      const frozenHash = storedHash(proj.id);
+      const live = PATTERNS[patIndex];
+      live.phases[0].steps = live.phases[0].steps.filter(s => s.id !== doomed);
+      live.phases[0].steps.push({ id: 'newly-added', text: 'did not exist before' });
+      live.phases.unshift({ id: 'inserted-phase', name: 'Inserted', steps: [{ id: 'ins-1', text: 'new' }] });
+
+      activateProject(proj.id);
+      check('a structural change freezes the project on the version it started on',
+        { changed: patternChanged, frozen: patternFrozen,
+          firstPhase: PHASES[0].id, stillOnSection: PHASES[cur].id },
+        { changed: true, frozen: true, firstPhase: 'mat', stillOnSection: sectionBefore });
+
+      check('the summary counts what actually changed',
+        patternChangeSummary(proj.id), { added: 2, removed: 1, ticks: 3, kept: 2 });
+
+      // Until adopted, nothing about the project moves.
+      check('the frozen hash is not quietly re-stamped',
+        storedHash(proj.id), frozenHash);
+
+      outbox = {}; saveOutbox();
+      adoptPattern(proj.id);
+      activateProject(proj.id);
+      const st = lsGetJson(proj.id, 'state', {});
+      check('adopting takes the new structure and keeps the knitter in place',
+        { changed: patternChanged, frozen: patternFrozen,
+          firstPhase: PHASES[0].id, stillOnSection: PHASES[cur].id,
+          hashRealigned: storedHash(proj.id) === structHash(PATTERNS[patIndex]),
+          queued: Object.keys(outbox).sort() },
+        { changed: false, frozen: false,
+          firstPhase: 'inserted-phase', stillOnSection: sectionBefore,
+          hashRealigned: true,
+          queued: ['progress:' + proj.id, 'project:' + proj.id] });
+
+      // Nothing is destroyed. The orphaned tick costs a few bytes and comes
+      // back if the step ever does — and deleting it would fight sync, since
+      // the other device has not adopted yet and would push it straight back.
+      check('a tick for a step that no longer exists is kept, not deleted',
+        { orphan: st[doomed], kept: [st[keptA], st[keptB]] },
+        { orphan: true, kept: [true, true] });
+
+      // ── 29. The pattern columns that go up ──
+      //
+      // The doc is 10-40KB, so sending it with every rename would cost more
+      // than a day's knitting. It is only irreplaceable once the code has
+      // moved on — which is exactly when it starts being sent.
+      const proj2 = createProject(REF.id);
+      check('an up-to-date project sends its hash but no doc',
+        (() => { const c = patternColumns(proj2.id);
+                 return { hash: !!c.pattern_struct_hash, doc: c.pattern_doc }; })(),
+        { hash: true, doc: null });
+
+      const frozenProj = createProject(REF.id);
+      PATTERNS[patIndex].phases[0].steps.push({ id: 'another-new', text: 'x' });
+      check('a diverged project sends the doc, because nothing else has it',
+        (() => { const c = patternColumns(frozenProj.id);
+                 return { hash: !!c.pattern_struct_hash, docPhases: !!(c.pattern_doc && c.pattern_doc.phases.length) }; })(),
+        { hash: true, docPhases: true });
+
+      // ── 30. A frozen project opening on a device that has never seen it ──
+      const arriving = { id: 'remote-frozen', name: 'From elsewhere', pattern_id: REF.id,
+                         created_ms: 1000, updated_ms: 1000, deleted_ms: null,
+                         pattern_struct_hash: 'deadbeefdeadbeef',
+                         pattern_doc: JSON.parse(JSON.stringify(patBackup)) };
+      applyRemoteProject(arriving);
+      check('a pulled project brings the structure its ticks belong to',
+        { hash: storedHash('remote-frozen'),
+          snapshotPhases: (frozenPattern('remote-frozen') || {}).phases.length },
+        { hash: 'deadbeefdeadbeef', snapshotPhases: patBackup.phases.length });
+
+      // A local snapshot is a decision made here; a round trip through the
+      // server must not overwrite it.
+      //
+      // Called directly rather than through applyRemoteProject(), which
+      // early-returns on a row that isn't newer — routing through it would
+      // mean the guard below was never reached and the assertion passed for
+      // the wrong reason.
+      applyRemotePattern(Object.assign({}, arriving, { pattern_struct_hash: 'ffffffffffffffff' }));
+      check('a remote row never overwrites a snapshot this device already has',
+        storedHash('remote-frozen'), 'deadbeefdeadbeef');
+
+    } finally {
+      PATTERNS[patIndex] = patBackup;   // undo the simulated deploy
+    }
+
   } finally {
     // Put the device back exactly as it was found — disk first, then memory
     // from disk, so the two cannot disagree.

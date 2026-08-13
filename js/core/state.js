@@ -50,6 +50,11 @@ let clocks = {}, baseClocks = {};
 let outbox = {};
 let activePatternId = null;
 let activeProjectId = null;
+// Set by activateProject(). `patternChanged` means the code's pattern no longer
+// matches the structure this project started on; `patternFrozen` means we are
+// rendering the frozen snapshot rather than the live pattern. They differ only
+// when the snapshot is missing or unreadable — see activateProject().
+let patternChanged = false, patternFrozen = false;
 // Includes tombstones — records with `deletedAt` set. Use liveProjects() for
 // anything user-facing; the raw array is what gets persisted and synced.
 let projects = [];                 // [{ id, patternId, name, created, updatedAt, deletedAt? }]
@@ -88,6 +93,70 @@ function syncActiveChart() {
   }
 }
 
+// ─────────────────────────────────────────────
+// PATTERN STRUCTURE HASH
+//
+// Patterns are hardcoded and ship with the deploy, so a text edit reaches
+// everyone the moment it lands — fix a typo, push, done. That is the point,
+// and it must keep working.
+//
+// The danger is STRUCTURAL edits. Progress is keyed on step ids, so adding,
+// removing or renaming a step moves someone's ticks onto the wrong rows or
+// drops them entirely, silently, in the middle of a half-knitted sweater.
+//
+// So: hash the structure, not the prose. Same hash → use the live pattern and
+// let text edits flow. Different hash → the project keeps knitting the version
+// it started on until its owner says otherwise.
+//
+// What counts as structure is "anything that changes the set of progress keys
+// or what they mean":
+//
+//   phase id            keys are namespaced by it (cr:<phaseId>)
+//   phase.hasChart      adds or removes a chart-row key
+//   phase.countable     changes how a tick moves the row tally
+//   chart length        changes the range a saved chart row is valid in
+//   step id             the key itself
+//   step.rows/.target   a counter at 12/12 means something else at 12/14
+//   step.cadence        changes which rounds the step is asking about
+//   bullets.length      each bullet is its own key (<stepId>__b<i>)
+//
+// Prose — a step's text, a phase's name, notes — is deliberately absent.
+// ─────────────────────────────────────────────
+function chartForPhaseOf(pattern, phase) {
+  return (phase && phase.chart) || (pattern && pattern.chart) || [];
+}
+
+function structSignature(pattern) {
+  return ((pattern && pattern.phases) || []).map(ph => [
+    ph.id,
+    ph.hasChart ? 'C' + chartForPhaseOf(pattern, ph).length : '-',
+    ph.countable ? 'K' : '-',
+    (ph.steps || []).map(s => [
+      s.id,
+      s.rows ? 'r' + (s.target | 0) : '-',
+      s.cadence ? 'c' + s.cadence : '-',
+      s.bullets ? 'b' + s.bullets.length : '-'
+    ].join(':')).join(',')
+  ].join('|')).join(';');
+}
+
+// Two FNV-1a passes with different offset bases, concatenated. One 32-bit hash
+// would be small enough that a collision is worth worrying about, and a
+// collision here fails in the silent direction: the app would decide a changed
+// pattern was unchanged and quietly remap progress onto it.
+function structHash(pattern) {
+  const s = structSignature(pattern);
+  const fnv = seed => {
+    let h = seed >>> 0;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+    }
+    return ('0000000' + h.toString(16)).slice(-8);
+  };
+  return fnv(0x811c9dc5) + fnv(0x01000193);
+}
+
 // Swap the active-pattern data pointers (PHASES / CHART_B / …) + reset step
 // defaults. No load — the caller loads the project's progress.
 function applyPattern(p) {
@@ -113,11 +182,42 @@ function activateProject(projectId) {
   // pattern is worse than not opening it: loadProjectState() would
   // Object.assign this project's saved step-ids onto a different pattern's
   // step set, silently corrupting both.
-  const pat = patternById(proj.patternId);
-  if (!pat) { console.warn('No pattern "' + proj.patternId + '" for project "' + proj.name + '"'); return false; }
+  const resolved = patternForProject(proj);
+  if (!resolved.pattern) { console.warn('No pattern "' + proj.patternId + '" for project "' + proj.name + '"'); return false; }
+
   activeProjectId = proj.id;
-  activePatternId = pat.id;
-  applyPattern(pat);
+  activePatternId = proj.patternId;
+  patternChanged = resolved.changed;
+  patternFrozen = resolved.frozen;
+
+  applyPattern(resolved.pattern);
   loadProjectState();
   return true;
+}
+
+// Which version of the pattern a project knits, and why.
+//
+// Same structure → the live pattern, so a typo fixed this morning is there this
+// afternoon. Different structure → the frozen snapshot, so the ticks stay on
+// the rows they were put on. Knitting continues either way; a chip is the only
+// thing that appears, and only until it is answered.
+//
+// The snapshot is 10-40KB of JSON, so it is only parsed when the cheap check —
+// a stored hash string against a hash of the live pattern — says it is needed.
+// renderHome() calls this once per card on every render.
+function patternForProject(proj) {
+  const live = proj && patternById(proj.patternId);
+  if (!live) return { pattern: null, changed: false, frozen: false };
+
+  const stored = storedHash(proj.id);
+  if (!stored || stored === structHash(live)) return { pattern: live, changed: false, frozen: false };
+
+  const frozen = frozenPattern(proj.id);
+  // No snapshot (a project from before this existed, or storage was cleared):
+  // fall back to live. Opening on a slightly wrong structure beats refusing to
+  // open at all — but this must NOT quietly re-stamp the new hash, which is the
+  // silent remap the whole mechanism exists to prevent. The chip still appears
+  // and adopting is still the user's call.
+  if (!frozen) return { pattern: live, changed: true, frozen: false };
+  return { pattern: frozen, changed: true, frozen: true };
 }

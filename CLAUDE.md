@@ -72,10 +72,12 @@ Progress is **namespaced per project**. Keys:
 - `pt3_proj_<projectId>_grows` — global row tally (see below)
 - `pt3_proj_<projectId>_clk` — `{fieldKey: epoch_ms}` when this device last changed each field
 - `pt3_proj_<projectId>_base` — the same map as of the last successful sync. **Never uploaded** — each device's baseline legitimately differs, and that difference is what makes the merge three-way.
+- `pt3_proj_<projectId>_phash` — the pattern structure hash the project was started on
+- `pt3_proj_<projectId>_pattern` — frozen copy of the pattern as it was then (~15KB); the only record of it once the code moves on
 - `pt3_cellSz` — chart cell-size pref (10–32px, default 16) — **global**
 - `pt3_schema` / `pt3_outbox` / `pt3_last_sync` / `pt3_sync_cursor` / `pt3_conflicts` / `pt3_owner` / `pt3_claim_declined` / `pt3_sb_auth` — **global**, see the Cloud sync section
 
-`save()` writes the active project's keys (via `pkey(suffix)` → `pt3_proj_<id>_*`); `loadProjectState()` reads them; `loadGlobal()` loads shared prefs. Three one-time migrations run on startup, in order: `migrateLegacy()` folds the original single-pattern keys (`pt3_state`, …) into `pt3_peacock-tee_*`; `migrateToProjects()` turns any pattern-namespaced progress into a first project and writes `pt3_projects`; `migrateAddClocks()` backfills `clk`/`base` for every existing project. Each has its **own** sentinel — `migrateAddClocks` gates on `pt3_schema`, **not** on `pt3_projects`, which `migrateToProjects` already claims. **Keep the `pt3_` prefix and all three migrations** — removing them breaks saved progress.
+`save()` writes the active project's keys (via `pkey(suffix)` → `pt3_proj_<id>_*`); `loadProjectState()` reads them; `loadGlobal()` loads shared prefs. Three one-time migrations run on startup, in order: `migrateLegacy()` folds the original single-pattern keys (`pt3_state`, …) into `pt3_peacock-tee_*`; `migrateToProjects()` turns any pattern-namespaced progress into a first project and writes `pt3_projects`; `migrateAddClocks()` backfills `clk`/`base` for every existing project; `migrateAddPatternHash()` backfills `phash`/`pattern`. Each has its **own** sentinel — `migrateAddClocks` gates on `pt3_schema`, **not** on `pt3_projects`, which `migrateToProjects` already claims. **Keep the `pt3_` prefix and all four migrations** — removing them breaks saved progress. `pt3_schema` is a version *number* (`SCHEMA_VERSION`), not a boolean — later migrations compare against it rather than adding a key each.
 
 ### Cloud sync (Supabase)
 localStorage stays the source of truth; the cloud is a background replica. **No sign-in wall** — signed out, `flush()` and `pull()` no-op and the app is exactly what it was before any of this existed. Same if `js/vendor/supabase.js` fails to load (`cloudState() === 'unavailable'`).
@@ -89,6 +91,15 @@ localStorage stays the source of truth; the cloud is a background replica. **No 
 - **Pull triggers:** sign-in, `online`, refocus after 30s away, and a 60s interval **while visible only**. Never a timer while hidden — this PWA sits open for weeks.
 - Schema and RLS live in `supabase/migrations/`; runbooks in `docs/`.
 - `js/cloud/sync.selftest.js` and `js/cloud/sync.pushpull.selftest.js` are **not shipped**. Load one from the console and call `syncSelfTest()` / `syncPushPullTest()`. The second stands up a mock server and snapshots/restores every `pt3_*` key, so it is safe to run on a device with real progress.
+
+### Pattern versions (structure hash)
+Patterns ship with the deploy, so **text edits reach everyone immediately** — fix a typo, push, done. Structural edits are the danger: progress is keyed on step ids, so adding, removing or renaming a step moves someone's ticks onto the wrong rows.
+
+- `structHash(pattern)` hashes **structure, not prose**: ordered phase ids, `hasChart`, `countable`, chart length, step ids, `rows`/`target`, `cadence`, `bullets.length`. A step's `text`, a phase's `name` and the notes are deliberately excluded. Two FNV-1a passes → 16 hex chars; one 32-bit hash would fail in the silent direction (a collision means a changed pattern is treated as unchanged).
+- `createProject` stores the hash **and a frozen copy of the pattern**. The copy is taken at create because by the time a change is noticed the old pattern is already gone from the code.
+- `patternForProject(proj)` decides what a project knits: hashes match → the **live** pattern (text edits flow through); they differ → the **frozen snapshot**, and `patternChanged`/`patternFrozen` go true. The snapshot is only parsed when the cheap hash comparison says it's needed — `renderHome()` calls this per card.
+- A non-blocking **"Pattern updated · Review"** chip appears while a changed project is open. Adopting (`adoptPattern`) is an explicit tap, shows a kept/dropped summary first, and **destroys nothing**: orphaned progress keys are left in place, so a step that comes back brings its tick with it — and deleting them would fight sync, since a device that hasn't adopted would push them straight back. The one thing that must move is `cur`, a phase *index*, which is translated through the phase id it pointed at.
+- Sync: `pattern_struct_hash` always; `pattern_doc` **only once the project has diverged** from the code, since otherwise the receiving device can rebuild the snapshot from its own bundle. `applyRemotePattern` never overwrites a snapshot this device already has.
 
 ### Global row tally
 A read-only **Rows** display in the header. `globalRows` auto-advances by the real change whenever a section row counter (`changeCount`) or the yoke-chart row (`changeChartRow`) moves; clamped taps (counter already at min/max) don't move it. It's a project-wide total (persisted as `pt3_proj_<id>_grows`), updated in place by `renderGlobalRows()`.
@@ -128,6 +139,8 @@ HTML is fetched **network-first** (fresh page on each load when online; cache fa
 - `openProject(id)` / `goHome()` / `startNewProject()` / `choosePattern(id)` — view navigation
 - `createProject` / `renameProject` / `deleteProject` — manage the projects list
 - `activateProject(id)` / `applyPattern(p)` — open a project: swap active-pattern pointers + load its progress
+- `structHash(p)` / `patternForProject(proj)` — which version of a pattern a project knits, and why
+- `freezePattern` / `frozenPattern` / `storedHash` / `patternChangeSummary` / `adoptPattern` — the freeze-and-adopt flow
 - `projectProgress(proj)` — done/total/pct for a project's home card (no activation)
 - `renderProject()` — header + phase content + tabs + progress + chart wiring
 - `renderPhase()` — builds current phase HTML (chart if `hasChart`)
@@ -166,6 +179,9 @@ Within a pattern, phase nav is at the bottom. On non-chart phases it's the fixed
 - Don't upload `pt3_proj_<id>_base` — each device's baseline is its own, and sharing it corrupts the other device's merge
 - Don't put a network call, an `await`, or a pattern-doc `JSON.stringify` on the `changeChartRow` path (budget: 100 taps under 50ms)
 - Don't `await` anything on a render path — read `session` synchronously, never `supabase.auth.getSession()`
+- Don't put a step's `text` (or any prose) into `structHash` — every typo fix would freeze every project in the family
+- Don't strip "orphaned" progress keys when adopting a pattern update — they're inert, they come back if the step does, and a device that hasn't adopted would push them back anyway
+- Don't load a script after `js/core/app.js` — it ends with the bootstrap, so anything it calls must already be defined
 - Don't run the panel auto-hide/collapse animation off the chart screen — keep it scoped to `body.chart-page`
 - Don't deploy or push unless the user asks
 

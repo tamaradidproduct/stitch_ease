@@ -242,6 +242,7 @@ window.addEventListener('resize', updatePhaseHeaderOffset);
 migrateLegacy();
 migrateToProjects();
 migrateAddClocks();
+migrateAddPatternHash();
 loadGlobal();
 loadOutbox();
 loadSyncStatus();
