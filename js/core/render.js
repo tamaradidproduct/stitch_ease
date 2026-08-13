@@ -71,11 +71,9 @@ function bulletsHtml(e) {
 // ─────────────────────────────────────────────
 // CONVERTED SECTIONS — entries rather than steps
 //
-// The only step/entry renderer there is, as of the entries model. The one
-// thing a
-// repeat shows is its POSITION, and even that reuses `.round-hint` — the box
-// the cadence step used to render into, which is fitting, since a repeat block
-// is what replaces cadence.
+// The only entry renderer there is. A note and a row are one tappable card; a
+// repeat gets the chart dock's layout, because a repeat's position is the one
+// thing the old counter could never express.
 // ─────────────────────────────────────────────
 function entryHtml(e) {
   if (e.kind === 'repeat') return repeatEntryHtml(e);
@@ -96,6 +94,19 @@ function noteOrRowEntryHtml(e) {
   </div>`;
 }
 
+// A repeat block, on the chart dock's own layout.
+//
+// A knitter mid-repeat needs three things at once, and the whole reason this
+// model exists is that the old counter could only ever answer the first:
+//
+//   how far through the block   the big number, and its total beneath
+//   where in the current pass   "pass 2 of 4 · row 2 of 2" above it
+//   which pattern row that is   the absolute row, beside the total
+//
+// The big number is the row of the BLOCK you are standing on (1…R×T), which
+// is exactly what the chart's big number means for a chart — same control,
+// same reading. It is rows-done + 1: standing on row 1 with nothing finished
+// is where a repeat starts.
 function repeatEntryHtml(e) {
   const pos      = repeatPos(e, entryProg);
   const R        = repeatLength(e), T = e.times | 0;
@@ -105,26 +116,38 @@ function repeatEntryHtml(e) {
   const pct      = total ? Math.round(Math.min(100, rowsDone / total * 100)) : 0;
   const nowRow   = e.rows[pos.z - 1];
   const abs      = absoluteRow(activeDoc, PHASES[cur].id, e.id, entryProg);
-  // Counter reads rows done out of rows total, not passes: "3 / 7" while
-  // knitting seven rib rounds means three rounds are behind you.
+  const standing = Math.min(rowsDone + 1, total);   // the block row you are ON
+
+  // A single-row repeat ("work 7 rounds rib") has no inside to be part-way
+  // through — its pass IS its row, so "pass 4 of 7 · row 1 of 1" would both
+  // restate the big number and invent a distinction. Say what the chart says.
+  // "Pass 1 of 3 · row 3 of 6" wraps mid-phrase at 320px — the narrowest phone
+  // this has to work on — and "· row 3 / of 6" reads worse than the slash form
+  // does. The label is set in small caps, where 1/3 is unambiguous.
+  const label = done ? 'All ' + T + ' repeats worked'
+    : R === 1 ? 'Current row'
+    : 'Pass ' + (pos.y + 1) + '/' + T + ' · row ' + pos.z + '/' + R;
+  const beneath = done
+    ? total + ' rows'
+    : 'of ' + total + (abs ? ' · pattern row ' + abs : '');
+
   return `<div class="step repeat-step ${done ? 'done' : ''}">
     <div class="step-body">
-      <div class="repeat-head">
-        <div class="step-text">${(e.text || 'Repeat').replace(/\n/g, '<br>')}</div>
-        <div class="row-counter inline">
-          <div class="rc-controls">
-            <button class="rc-btn" onclick="advanceEntry('${e.id}',-1)">−</button>
-            <span class="rc-val">${rowsDone}</span>
-            <span class="rc-target">/ ${total}</span>
-            <button class="rc-btn" onclick="advanceEntry('${e.id}',1)">+</button>
-          </div>
-        </div>
-      </div>
-      ${done ? '' : `<div class="round-hint on">
-        <span class="round-hint-lbl">Row ${pos.z} of ${R} · pass ${pos.y + 1} of ${T}${abs ? ' · pattern row ' + abs : ''}</span>
-        <span class="round-hint-txt">${nowRow ? nowRow.text : ''}</span>
+      <div class="step-text">${(e.text || 'Repeat').replace(/\n/g, '<br>')}</div>
+      ${done || !nowRow ? '' : `<div class="round-hint on repeat-now">
+        <span class="round-hint-lbl">Work now</span>
+        <span class="round-hint-txt">${nowRow.text}</span>
       </div>`}
       <div class="rc-mini-bar"><div class="rc-mini-fill" style="width:${pct}%"></div></div>
+      <div class="chart-footer repeat-dock">
+        <button class="cc-ctrl cc-minus" onclick="advanceEntry('${e.id}',-1)" aria-label="Back one row">−</button>
+        <div class="cc-stats">
+          <span class="cc-stat-lbl">${label}</span>
+          <span class="cc-cur-val">${done ? total : standing}</span>
+          <span class="cc-total-lbl">${beneath}</span>
+        </div>
+        <button class="cc-ctrl cc-plus" onclick="advanceEntry('${e.id}',1)" aria-label="Forward one row">+</button>
+      </div>
     </div>
   </div>`;
 }

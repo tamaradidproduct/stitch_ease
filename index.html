@@ -613,6 +613,29 @@
   .rc-mini-bar { width: 100%; height: 3px; background: var(--border); border-radius: 2px; margin-top: 8px; overflow: hidden; }
   .rc-mini-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; }
 
+  /* ── Repeat dock ──
+     A repeat block gets the chart dock's own layout (.chart-footer + .cc-*):
+     one large current number, its total beneath, and 44px circular ± either
+     side. That is not a coincidence to be tidied away later — a chart row and
+     a repeat row are the same thing wearing different code, and giving them
+     the same control is the first half of admitting it.
+
+     Inline rather than fixed to the viewport, unlike the chart's: Body has two
+     repeat blocks and Lenore's Row 1 has three, so a single docked control
+     would have to guess which one a tap meant. */
+  .repeat-dock { border-top: 1px solid var(--border); margin-top: 10px; }
+  /* Green, not the chart's blue — this is a section control, and the blue is
+     the chart's own signal for "the row you are on". */
+  .repeat-dock .cc-cur-val { color: var(--accent); font-size: 30px; }
+  .repeat-dock .cc-plus { background: var(--accent); }
+  .repeat-dock .cc-plus:active { background: #3c584a; }
+  .repeat-dock .cc-stat-lbl { text-transform: uppercase; letter-spacing: 0.05em; font-size: 10px; font-weight: 600; }
+  .repeat-dock .cc-total-lbl { font-variant-numeric: tabular-nums; }
+  /* The instruction for the row you are actually on. Reuses .round-hint's box
+     (see below) so a repeat reads the way the cadence step used to. */
+  .repeat-now { margin-top: 10px; }
+  .step.repeat-step.done .repeat-dock { opacity: 0.55; }
+
   /* ── Nav buttons — fixed at bottom ── */
   .nav-btns {
     display: flex; gap: 10px;
