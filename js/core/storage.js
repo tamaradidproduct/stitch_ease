@@ -68,7 +68,7 @@ function isDeleted(projectId) {
 // `chartRow` is the superseded scalar and `chartRows` the per-phase map: both
 // are listed because a project saved before that change still has the old key
 // on disk, and purging only the new one would leave it orphaned forever.
-const PROJ_KEYS = ['state','ctrs','cur','chartRow','chartRows','grows','clk','base','phash','pattern'];
+const PROJ_KEYS = ['state','ctrs','cur','chartRow','chartRows','grows','clk','base','phash','pattern','entries'];
 function purgeProjectData(projectId) {
   PROJ_KEYS.forEach(k => { try { localStorage.removeItem('pt3_proj_' + projectId + '_' + k); } catch(e){} });
 }
@@ -213,6 +213,7 @@ function save() {
   try {
     localStorage.setItem(pkey('state'), JSON.stringify(state));
     localStorage.setItem(pkey('ctrs'), JSON.stringify(ctrs));
+    localStorage.setItem(pkey('entries'), JSON.stringify(entryProg));
     localStorage.setItem(pkey('cur'), cur);
     localStorage.setItem(pkey('chartRows'), JSON.stringify(chartRows));
     localStorage.setItem(pkey('grows'), globalRows);
@@ -237,6 +238,7 @@ function loadProjectState() {
   try {
     const st = localStorage.getItem(pkey('state')); if (st) state = Object.assign(state, JSON.parse(st));
     const ct = localStorage.getItem(pkey('ctrs')); if (ct) ctrs = Object.assign(ctrs, JSON.parse(ct));
+    const en = localStorage.getItem(pkey('entries')); if (en) entryProg = Object.assign(entryProg, JSON.parse(en));
     const cu = localStorage.getItem(pkey('cur')); if (cu !== null) cur = Math.max(0, Math.min(PHASES.length - 1, parseInt(cu) || 0));
 
     const crs = localStorage.getItem(pkey('chartRows'));
@@ -258,9 +260,39 @@ function loadProjectState() {
     // ones this project already has on disk — see syncNow() in js/cloud/sync.js.
     noteExistingClocks(clocks);
   } catch(e) {}
+  // Converted sections keep their original ids, so a project that ticked
+  // "cast on 88 sts" under the old shape must still see it ticked under the
+  // new one. Runs after state/ctrs are restored, and fills gaps only.
+  seedEntryProgress(entryProg, state, ctrs, PHASES);
   // `cur` and `chartRows` are both restored above, so the active chart and
   // its row have to be recomputed from them.
   syncActiveChart();
+}
+
+// Read the pre-conversion progress through into the entries map, for entries
+// that have no value of their own yet.
+//
+// This is the doc's migration #4 mapping, run early and non-destructively: the
+// old keys are read, never written or removed. Without it, adopting a pattern
+// whose section just got converted would look exactly like losing that
+// section's progress, since the renderer would be asking for 'rp:c2' while the
+// tick still lives in ctrs.c2.
+//
+// The counter → position mapping is floor(count/R) and count%R + 1, which is
+// exact whenever the old counter counted whole passes — true for every repeat
+// converted so far, since they are all single-row.
+function seedEntryProgress(target, legacyState, legacyCtrs, phases) {
+  (phases || []).forEach(ph => (ph.entries || []).forEach(e => {
+    if (e.kind === 'repeat') {
+      const k = repeatKey(e.id);
+      const n = (legacyCtrs || {})[e.id];
+      if (!(k in target) && n) target[k] = repeatPosFromRowsDone(e, n);
+    } else {
+      const k = e.kind === 'note' ? noteKey(e.id) : rowKey(e.id);
+      if (!(k in target) && (legacyState || {})[e.id]) target[k] = true;
+    }
+  }));
+  return target;
 }
 
 // Global (non-project) prefs.
@@ -394,14 +426,24 @@ function projectProgress(proj) {
   // The version this project actually knits — a frozen project's totals come
   // from its own snapshot, or the card would count steps it cannot see.
   const pat = patternForProject(proj).pattern;
-  const total = pat ? pat.phases.reduce((a, ph) => a + ph.steps.length, 0) : 0;
+  // A converted section counts its entries; an unconverted one its steps. Both
+  // are "things you tick", which is what the card's percentage means.
+  const total = pat ? pat.phases.reduce((a, ph) => a + (ph.entries || ph.steps || []).length, 0) : 0;
   let done = 0;
   try {
-    const raw = localStorage.getItem('pt3_proj_' + proj.id + '_state');
-    if (raw && pat) {
-      const st = JSON.parse(raw);
-      const ids = new Set(pat.phases.flatMap(ph => ph.steps.map(s => s.id)));
-      done = Object.keys(st).filter(k => ids.has(k) && st[k]).length;
+    if (pat) {
+      const st = JSON.parse(localStorage.getItem('pt3_proj_' + proj.id + '_state') || '{}');
+      const ep = JSON.parse(localStorage.getItem('pt3_proj_' + proj.id + '_entries') || '{}');
+      // Same read-through as loadProjectState(), on a throwaway copy — a card
+      // must show the right number for a project that has not been opened
+      // since its pattern was converted.
+      seedEntryProgress(ep, st, JSON.parse(localStorage.getItem('pt3_proj_' + proj.id + '_ctrs') || '{}'), pat.phases);
+      const stepIds = new Set();
+      pat.phases.forEach(ph => {
+        if (ph.entries) ph.entries.forEach(e => { if (entryDone(e, ep)) done++; });
+        else (ph.steps || []).forEach(s => stepIds.add(s.id));
+      });
+      done += Object.keys(st).filter(k => stepIds.has(k) && st[k]).length;
     }
   } catch(e) {}
   return { done, total, pct: total ? Math.round(done / total * 100) : 0 };
@@ -415,10 +457,24 @@ function resetStep(s) {
   if (s.bullets) s.bullets.forEach((_, i) => { state[s.id + '__b' + i] = false; stampClock('s:' + s.id + '__b' + i); });
 }
 
+// Clears one entry. Writes an explicit false / {y:0,z:1} rather than deleting
+// the key, because deleting it would re-expose the pre-conversion value that
+// seedEntryProgress() reads through — a reset that quietly undoes itself on
+// the next open.
+function resetEntry(e) {
+  if (e.kind === 'repeat') entryProg[repeatKey(e.id)] = { y: 0, z: 1 };
+  else entryProg[e.kind === 'note' ? noteKey(e.id) : rowKey(e.id)] = false;
+}
+
+function resetSection(ph) {
+  if (ph.entries) ph.entries.forEach(resetEntry);
+  else (ph.steps || []).forEach(resetStep);
+}
+
 // Reset progress for the current phase only.
 function resetPhase() {
   if (!activeProjectId || !PHASES[cur]) return;
-  PHASES[cur].steps.forEach(resetStep);
+  resetSection(PHASES[cur]);
   save();
   render();
 }
@@ -428,6 +484,7 @@ function resetPattern() {
   if (!activeProjectId) return;
   state = {};
   ctrs = {};
+  entryProg = {};
   chartRows = {};
   chartCurrentRow = 1;
   globalRows = 0;
@@ -443,7 +500,7 @@ function resetPattern() {
   stampClocks(['cur', 'global_rows'].concat(
     PHASES.filter(ph => ph.hasChart).map(ph => chartRowKey(ph.id))
   ));
-  PHASES.forEach(ph => ph.steps.forEach(resetStep));
+  PHASES.forEach(resetSection);
   syncActiveChart();
   save();
   render();
@@ -470,7 +527,10 @@ function patternChangeSummary(projectId) {
   if (!live) return null;
   const oldPat = frozenPattern(projectId) || live;
 
-  const idsOf = pat => new Set(pat.phases.reduce((a, ph) => a.concat(ph.steps.map(s => s.id)), []));
+  // Entry ids and step ids share one namespace on purpose: a section converted
+  // in place keeps its ids, so the summary correctly reports nothing added or
+  // removed rather than claiming the whole section was replaced.
+  const idsOf = pat => new Set(pat.phases.reduce((a, ph) => a.concat((ph.entries || ph.steps || []).map(x => x.id)), []));
   const oldIds = idsOf(oldPat), newIds = idsOf(live);
 
   let added = 0, removed = 0;

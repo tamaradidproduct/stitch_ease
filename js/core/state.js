@@ -35,6 +35,18 @@ let cur = 0;
 let phaseNavOpen = false;
 let state = {}, ctrs = {}, chartCurrentRow = 1, cellSz = 16, globalRows = 0;
 
+// Progress for CONVERTED sections — those with `entries` rather than `steps`.
+// A flat map keyed the way js/core/rows.js documents: 'n:<id>' / 'r:<id>' for
+// done-flags, 'rp:<id>' for a repeat's {y,z} position.
+//
+// Deliberately a separate bucket from `state`/`ctrs`, and NOT yet synced: the
+// server has no column for it until step 5, and stuffing it into the existing
+// steps/counters buckets would push a {y,z} object through joinFields(), which
+// coerces counters with |0 and would flatten the position to zero.
+let entryProg = {};
+// The resolved pattern doc behind PHASES — see applyPattern().
+let activeDoc = null;
+
 // Sync bookkeeping for the open project (see js/cloud/sync.js).
 //   clocks     {fieldKey: epoch_ms}  when this device last changed each field
 //   baseClocks {fieldKey: epoch_ms}  the clocks as of the last successful sync
@@ -131,12 +143,26 @@ function structSignature(pattern) {
     ph.id,
     ph.hasChart ? 'C' + chartForPhaseOf(pattern, ph).length : '-',
     ph.countable ? 'K' : '-',
-    (ph.steps || []).map(s => [
-      s.id,
-      s.rows ? 'r' + (s.target | 0) : '-',
-      s.cadence ? 'c' + s.cadence : '-',
-      s.bullets ? 'b' + s.bullets.length : '-'
-    ].join(':')).join(',')
+    // A converted section signs its entries instead of its steps. Everything
+    // that decides what a progress key MEANS is in here: the kind (a row's
+    // done-flag and a repeat's position are different keys), the repeat's
+    // times and its row ids (both change how far a stored {y,z} can reach).
+    // Prose stays out, same as below.
+    ph.entries
+      ? 'E' + ph.entries.map(e => [
+          e.kind === 'note' ? 'n' : e.kind === 'row' ? 'r' : 'p',
+          e.id,
+          e.kind === 'repeat'
+            ? 'x' + (e.times | 0) + 'x' + ((e.rows || []).map(r => r.id).join('+'))
+            : '-',
+          e.bullets ? 'b' + e.bullets.length : '-'
+        ].join(':')).join(',')
+      : (ph.steps || []).map(s => [
+          s.id,
+          s.rows ? 'r' + (s.target | 0) : '-',
+          s.cadence ? 'c' + s.cadence : '-',
+          s.bullets ? 'b' + s.bullets.length : '-'
+        ].join(':')).join(',')
   ].join('|')).join(';');
 }
 
@@ -161,11 +187,17 @@ function structHash(pattern) {
 // defaults. No load — the caller loads the project's progress.
 function applyPattern(p) {
   PHASES = p.phases;
-  TOTAL_STEPS = PHASES.reduce((a, ph) => a + ph.steps.length, 0);
+  // The resolved pattern doc — live registry entry or a project's frozen
+  // snapshot, whichever PHASES came from. Needed wherever a helper has to
+  // reason about the whole pattern (absoluteRow), since activePattern()
+  // always returns the LIVE entry and would be the wrong one for a frozen
+  // project.
+  activeDoc = p;
+  TOTAL_STEPS = PHASES.reduce((a, ph) => a + (ph.entries || ph.steps || []).length, 0);
   cur = 0; chartRows = {}; globalRows = 0;
-  state = {}; ctrs = {};
+  state = {}; ctrs = {}; entryProg = {};
   clocks = {}; baseClocks = {};
-  PHASES.forEach(ph => ph.steps.forEach(s => { state[s.id] = false; if (s.rows) ctrs[s.id] = 0; }));
+  PHASES.forEach(ph => (ph.steps || []).forEach(s => { state[s.id] = false; if (s.rows) ctrs[s.id] = 0; }));
   syncActiveChart();
 }
 

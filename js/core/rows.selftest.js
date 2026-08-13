@@ -40,20 +40,20 @@ function rowsSelfTest() {
     ]
   };
 
-  // Collar. The judgment calls:
-  //   c1 casting on is not a row — note.
-  //   c2 "Work 7 rounds k1,p1 rib" is one row worked 7 times — repeat, R=1.
-  //   c3 IS a round (it is worked) — row, not note. Today it counts for
-  //      nothing in the tally; see the divergence case at the bottom.
-  //   c4 changing needles is not a row — note.
-  const FX_COL = {
-    id: 'col', name: 'Collar', entries: [
-      { kind: 'note', id: 'c1', text: 'Cast on 88 sts on 3 mm circular. Join to round.' },
-      { kind: 'repeat', id: 'c2', times: 7, rows: [
-        { id: 'c2-1', text: 'Rib round — k1, p1 to end' },
-      ] },
-      { kind: 'row', id: 'c3', text: 'Increase round: rib 4, *M1, rib 8*, rep to last 4, M1, rib 4 → 99 sts' },
-      { kind: 'note', id: 'c4', text: 'Switch to 4 mm circular needle' },
+  // Collar is CONVERTED IN THE SHIPPED PATTERN as of step 2, so the fixture is
+  // the real section rather than a copy — a copy would silently stop testing
+  // the thing that ships the moment the two drifted.
+  const realPeacockEarly = patternById('peacock-tee');
+  const FX_COL = realPeacockEarly.phases.find(p => p.id === 'col');
+
+  // The pre-conversion shape of the same section, kept only so the divergence
+  // it introduced stays asserted after the real one moved on.
+  const LEGACY_COL = {
+    id: 'col', name: 'Collar', steps: [
+      { id: 'c1', text: 'Cast on 88 sts on 3 mm circular. Join to round.' },
+      { id: 'c2', text: 'Work 7 rounds k1, p1 rib', rows: true, target: 7, lbl: 'rib rounds' },
+      { id: 'c3', text: 'Increase round: rib 4, *M1, rib 8*, rep to last 4, M1, rib 4 → 99 sts' },
+      { id: 'c4', text: 'Switch to 4 mm circular needle' },
     ]
   };
 
@@ -298,12 +298,34 @@ function rowsSelfTest() {
   // model those are rows, so converted sections report MORE rows than the old
   // tally did. This is the intended correction, not a regression, but it means
   // step 4 cannot verify by asserting the header total is unchanged.
-  const realCol = realPeacock.phases.find(p => p.id === 'col');
   const realGsr = realPeacock.phases.find(p => p.id === 'gsr');
   check('collar: old tally 7 (counter only) → new 8 (+ the increase round)',
-    [sectionRowCount(realCol, realPeacock), sectionRowCount(FX_COL, FX_PEACOCK)], [7, 8]);
-  check('short rows: old tally 0 (no counters) → new 7',
+    [sectionRowCount(LEGACY_COL, FX_PEACOCK), sectionRowCount(FX_COL, FX_PEACOCK)], [7, 8]);
+  check('short rows: old tally 0 (no counters) → new 7 — still to convert',
     [sectionRowCount(realGsr, realPeacock), sectionRowCount(FX_GSR, FX_PEACOCK)], [0, 7]);
+
+  // ── I. The legacy read-through (step 2) ──
+  //
+  // Converted sections keep their ids, so a project mid-Collar must not appear
+  // to lose it. seedEntryProgress() reads the old keys through; the failure it
+  // guards against is silent, since nothing throws when a tick simply is not
+  // rendered.
+  const REAL_C2 = FX_COL.entries.find(e => e.id === 'c2');
+
+  check('a pre-conversion collar reads through: ticks and counter both land',
+    seedEntryProgress({}, { c1: true, c3: true }, { c2: 4 }, [FX_COL]),
+    { 'n:c1': true, 'rp:c2': { y: 4, z: 1 }, 'r:c3': true });
+  check('R=1 makes the counter → position mapping exact, not lossy',
+    repeatRowsDone(REAL_C2, seedEntryProgress({}, {}, { c2: 5 }, [FX_COL])['rp:c2']), 5);
+  check('an entry that already has a value is left alone',
+    seedEntryProgress({ 'rp:c2': { y: 1, z: 1 } }, {}, { c2: 6 }, [FX_COL])['rp:c2'],
+    { y: 1, z: 1 });
+  check('an explicit reset survives the read-through — the key exists, so it wins',
+    seedEntryProgress({ 'n:c1': false, 'rp:c2': { y: 0, z: 1 } },
+                      { c1: true }, { c2: 4 }, [FX_COL]),
+    { 'n:c1': false, 'rp:c2': { y: 0, z: 1 } });
+  check('nothing to read through leaves an untouched project empty',
+    seedEntryProgress({}, {}, {}, [FX_COL]), {});
 
   const failed = results.filter(r => !r.ok);
   console.table(results.map(r => ({ case: r.case, ok: r.ok })));

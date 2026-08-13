@@ -184,7 +184,7 @@ function recapHtml(row) {
   // alongside the row instructions (same "what do I do now" panel) rather
   // than as a separate block further down. Only relevant once the last row
   // is reached — it's the count you take after finishing the chart.
-  const confirmStep = PHASES[cur].steps.find(s => s.postChart);
+  const confirmStep = (PHASES[cur].steps || []).find(s => s.postChart);
   if (confirmStep && row === CHART_TOTAL) {
     const done = state[confirmStep.id];
     html += `<div class="chart-confirm-step ${done ? 'done' : ''}" onclick="toggleStep('${confirmStep.id}')">

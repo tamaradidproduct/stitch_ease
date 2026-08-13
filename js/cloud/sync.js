@@ -803,7 +803,11 @@ function conflictLabel(c) {
   const proj = projects.find(p => p.id === c.p);
   const pat = proj && patternById(proj.patternId);
   const phases = (pat && pat.phases) || [];
-  const steps = phases.reduce((a, ph) => a.concat(ph.steps), []);
+  // `|| []` because a converted section has `entries`, not `steps`. Conflict
+  // labelling only ever resolves s:/c: keys, which converted sections do not
+  // produce, so there is nothing for it to find there — but it must not throw
+  // while walking past one.
+  const steps = phases.reduce((a, ph) => a.concat(ph.steps || []), []);
   const num = v => String(v);
 
   if (c.k === 'cur') {

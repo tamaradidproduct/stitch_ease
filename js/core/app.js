@@ -52,9 +52,52 @@ function toggleStep(id) {
   stampClock('s:' + id);
   // On "countable" phases (e.g. tatting rings/chains) each completed step is one
   // unit of work — advance the Rows tally by the real change.
-  const ph = PHASES.find(p => p.steps.some(s => s.id === id));
+  const ph = PHASES.find(p => (p.steps || []).some(s => s.id === id));
   if (ph && ph.countable) { globalRows = Math.max(0, globalRows + (nowDone ? 1 : -1)); stampClock('global_rows'); }
   save(); render();
+}
+
+// ── Converted sections (entries) ──
+//
+// The entry equivalents of toggleStep/changeCount. They write entryProg, which
+// is local-only until the sync column lands: the entry keys are deliberately
+// NOT clocked, since a clock for a field readLocalProgress() cannot see would
+// read to the merge engine as an edit with no value. `global_rows` IS stamped,
+// because that field is synced and does move.
+function findEntry(id) {
+  for (const ph of PHASES) {
+    for (const e of (ph.entries || [])) if (e.id === id) return e;
+  }
+  return null;
+}
+
+function toggleEntry(id) {
+  const e = findEntry(id);
+  if (!e || e.kind === 'repeat') return;
+  const key = e.kind === 'note' ? noteKey(id) : rowKey(id);
+  const nowDone = !entryProg[key];
+  entryProg[key] = nowDone;
+  // A row is a row; a note is setup. Only the former moves the tally.
+  if (e.kind === 'row') {
+    globalRows = Math.max(0, globalRows + (nowDone ? 1 : -1));
+    stampClock('global_rows');
+  }
+  save(); render();
+}
+
+function advanceEntry(id, delta) {
+  const e = findEntry(id);
+  if (!e || e.kind !== 'repeat') return;
+  const prev = repeatPos(e, entryProg);
+  const next = advanceRepeat(e, prev, delta);
+  const moved = repeatRowsDone(e, next) - repeatRowsDone(e, prev);
+  // A tap that hit either end moved nothing — same rule as changeCount():
+  // stamping it would claim an edit this device never made.
+  if (!moved) return;
+  entryProg[repeatKey(id)] = next;
+  globalRows = Math.max(0, globalRows + moved);
+  stampClock('global_rows');
+  save(); render(); renderGlobalRows();
 }
 
 // A step's bullets (when it also has a repeat counter) are individually
@@ -64,7 +107,7 @@ function toggleStep(id) {
 // the last one is left checked (changeCount() marks the whole step done
 // once the target is reached, so there's nothing left to reset for).
 function toggleSubStep(stepId, idx) {
-  const step = PHASES.flatMap(p => p.steps).find(s => s.id === stepId);
+  const step = PHASES.flatMap(p => p.steps || []).find(s => s.id === stepId);
   if (!step || !step.bullets) return;
   const key = stepId + '__b' + idx;
   state[key] = !state[key];
@@ -82,7 +125,7 @@ function toggleSubStep(stepId, idx) {
 }
 
 function changeCount(id, delta) {
-  const step = PHASES.flatMap(p => p.steps).find(s => s.id === id);
+  const step = PHASES.flatMap(p => p.steps || []).find(s => s.id === id);
   const max  = step ? step.target : 999;
   const prev = ctrs[id] || 0;
   ctrs[id]   = Math.max(0, Math.min(max, prev + delta));
@@ -112,6 +155,9 @@ function patternTotalRows() {
     // Each chart phase contributes its OWN chart's length — a pattern can
     // have several differently-sized charts (see chartForPhase()).
     if (p.hasChart) return sum + chartForPhase(p).length;
+    // A converted section derives its own count — see sectionRowCount() in
+    // js/core/rows.js, which also holds the fallback for the unconverted ones.
+    if (p.entries) return sum + sectionRowCount(p, activeDoc);
     if (p.countable) return sum + p.steps.length;
     return sum + p.steps.reduce((s, st) => s + (st.rows ? st.target : 0), 0);
   }, 0);

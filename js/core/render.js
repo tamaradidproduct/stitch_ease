@@ -1,7 +1,10 @@
 // ─────────────────────────────────────────────
 // RENDER — all view builders and layout functions
 // ─────────────────────────────────────────────
-function phaseComplete(p) { return p.steps.every(s => state[s.id]); }
+function phaseComplete(p) {
+  if (p.entries) return sectionComplete(p, entryProg);
+  return (p.steps || []).every(s => state[s.id]);
+}
 
 function renderTabs() {
   const el = document.getElementById('phase-tabs');
@@ -144,10 +147,74 @@ function stepHtml(s) {
   </div>`;
 }
 
+// ─────────────────────────────────────────────
+// CONVERTED SECTIONS — entries rather than steps
+//
+// Same markup and the same CSS classes as stepHtml()/repeatStepHtml() above,
+// on purpose: this step changes the model, not the look. The one new thing a
+// repeat shows is its POSITION, and even that reuses `.round-hint` — the box
+// the cadence step used to render into, which is fitting, since a repeat block
+// is what replaces cadence.
+// ─────────────────────────────────────────────
+function entryHtml(e) {
+  if (e.kind === 'repeat') return repeatEntryHtml(e);
+  return noteOrRowEntryHtml(e);
+}
+
+// A note and a row tick identically. They differ in what a tick MEANS — a row
+// moves the Rows tally, a note does not — which is toggleEntry()'s business,
+// not the markup's.
+function noteOrRowEntryHtml(e) {
+  const done = entryDone(e, entryProg);
+  return `<div class="step ${done ? 'done' : ''}" onclick="toggleEntry('${e.id}')">
+    <div class="step-circle">${CHECK_SVG}</div>
+    <div class="step-body">
+      <div class="step-text">${e.text.replace(/\n/g, '<br>')}</div>
+      ${bulletsHtml(e)}
+    </div>
+  </div>`;
+}
+
+function repeatEntryHtml(e) {
+  const pos      = repeatPos(e, entryProg);
+  const R        = repeatLength(e), T = e.times | 0;
+  const total    = repeatRowCount(e);
+  const rowsDone = repeatRowsDone(e, pos);
+  const done     = repeatComplete(e, pos);
+  const pct      = total ? Math.round(Math.min(100, rowsDone / total * 100)) : 0;
+  const nowRow   = e.rows[pos.z - 1];
+  const abs      = absoluteRow(activeDoc, PHASES[cur].id, e.id, entryProg);
+  // Counter reads rows done out of rows total, not passes: "3 / 7" while
+  // knitting seven rib rounds means three rounds are behind you.
+  return `<div class="step repeat-step ${done ? 'done' : ''}">
+    <div class="step-body">
+      <div class="repeat-head">
+        <div class="step-text">${(e.text || 'Repeat').replace(/\n/g, '<br>')}</div>
+        <div class="row-counter inline">
+          <div class="rc-controls">
+            <button class="rc-btn" onclick="advanceEntry('${e.id}',-1)">−</button>
+            <span class="rc-val">${rowsDone}</span>
+            <span class="rc-target">/ ${total}</span>
+            <button class="rc-btn" onclick="advanceEntry('${e.id}',1)">+</button>
+          </div>
+        </div>
+      </div>
+      ${done ? '' : `<div class="round-hint on">
+        <span class="round-hint-lbl">Row ${pos.z} of ${R} · pass ${pos.y + 1} of ${T}${abs ? ' · pattern row ' + abs : ''}</span>
+        <span class="round-hint-txt">${nowRow ? nowRow.text : ''}</span>
+      </div>`}
+      <div class="rc-mini-bar"><div class="rc-mini-fill" style="width:${pct}%"></div></div>
+    </div>
+  </div>`;
+}
+
 function renderPhase() {
   const p = PHASES[cur];
-  const totalSteps = p.steps.length;
-  const doneSteps  = p.steps.filter(s => state[s.id]).length;
+  const items = p.entries || p.steps || [];
+  const totalSteps = items.length;
+  const doneSteps  = p.entries
+    ? p.entries.filter(e => entryDone(e, entryProg)).length
+    : items.filter(s => state[s.id]).length;
   const showCompleted = !p.hasChart && totalSteps > 0;
   const phaseHeaderHtml = `<div class="phase-header">
     <div class="phase-head-row">
@@ -174,7 +241,7 @@ function renderPhase() {
   } else {
     html += phaseHeaderHtml;
     if (showCompleted) html += `<div class="steps-row"><span class="steps-row-label">Steps</span><span class="steps-row-count"><span class="src-num">${doneSteps} / ${totalSteps}</span><span class="src-lbl">completed</span></span></div>`;
-    if (p.steps.length) html += '<div class="steps">' + p.steps.map(stepHtml).join('') + '</div>';
+    if (totalSteps) html += '<div class="steps">' + items.map(p.entries ? entryHtml : stepHtml).join('') + '</div>';
 
     html += '<div class="nav-btns">';
     if (cur > 0) html += `<button class="nav-btn" onclick="go(${cur - 1})">← Back</button>`;

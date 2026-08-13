@@ -112,12 +112,24 @@ const PEACOCK_PHASES = [
     ]
   },
   {
+    // FIRST SECTION CONVERTED to the entries model (docs/rows-sections-model.md
+    // step 2). Ids are deliberately unchanged, so a project that already ticked
+    // these under the old shape reads through — see seedEntryProgress().
+    //
+    // The judgment calls, since they set the precedent for the rest:
+    //   c1  casting on is setup, not a round        → note
+    //   c2  one rib round worked seven times        → repeat, R=1
+    //   c3  IS a round — it is worked               → row (it counted for
+    //       nothing in the old tally, which is why Collar goes 7 rows → 8)
+    //   c4  changing needles is not a round         → note
     id:'col', name:'Collar', desc:'3 mm needle · cast on 88 sts',
-    steps:[
-      {id:'c1', text:'Cast on 88 sts on 3 mm circular (40 cm). Join to round. BOR = mid-back. Place marker.'},
-      {id:'c2', text:'Work 7 rounds k1, p1 rib', rows:true, target:7, lbl:'rib rounds'},
-      {id:'c3', text:'Increase round: work 4 sts rib, *M1 (pick up strand front-to-back, k through back loop), work 8 sts rib*. Repeat to last 4 sts, M1, work 4 sts rib → 99 sts'},
-      {id:'c4', text:'Switch to 4 mm circular needle'},
+    entries:[
+      {kind:'note', id:'c1', text:'Cast on 88 sts on 3 mm circular (40 cm). Join to round. BOR = mid-back. Place marker.'},
+      {kind:'repeat', id:'c2', text:'Work 7 rounds k1, p1 rib', times:7, rows:[
+        {id:'c2-1', text:'Rib round — k1, p1 to end of round'},
+      ]},
+      {kind:'row', id:'c3', text:'Increase round: work 4 sts rib, *M1 (pick up strand front-to-back, k through back loop), work 8 sts rib*. Repeat to last 4 sts, M1, work 4 sts rib → 99 sts'},
+      {kind:'note', id:'c4', text:'Switch to 4 mm circular needle'},
     ]
   },
   {
