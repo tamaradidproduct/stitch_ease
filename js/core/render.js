@@ -441,6 +441,26 @@ function closeFinishedScreen() {
 // user-authored or fetched from a server, every one of those sites needs
 // escapeHtml() too, and the `${…id}` interpolations inside onclick attributes
 // need to become delegated data-* handlers.
+// Bottom-of-screen banner host, shared by the save-error, update and conflict
+// banners. Created on demand, removed when it empties, so it never sits in the
+// DOM intercepting taps on the nav buttons below it.
+//
+// This lived in a trailing inline <script> in index.html, which put it AFTER
+// js/core/app.js — so anything the bootstrap wanted to show at startup threw a
+// ReferenceError and took the rest of the bootstrap with it, initCloud()
+// included. Nothing caught it: a device with a saved conflict would come up
+// with sync silently dead. It belongs with the render code that uses it.
+function bannerStack() {
+  let s = document.getElementById('banner-stack');
+  if (!s) { s = document.createElement('div'); s.id = 'banner-stack'; document.body.appendChild(s); }
+  return s;
+}
+
+function pruneBannerStack() {
+  const s = document.getElementById('banner-stack');
+  if (s && !s.children.length) s.remove();
+}
+
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 }

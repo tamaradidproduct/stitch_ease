@@ -166,6 +166,8 @@ async function syncPushPullTest() {
     activeProjectId = null;
     view = 'home';
     syncCursor = { uid: null, rev: 0, projTs: null };
+    pendingConflicts = [];
+    hideConflictBanner();
     localStorage.setItem('pt3_owner', UID);
     Object.defineProperty(navigator, 'onLine', { value: true, configurable: true });
   }
@@ -362,7 +364,7 @@ async function syncPushPullTest() {
     check('disjoint edits merge silently → both sides survive',
       readLocalProgress('q2').values,
       { 's:a': true, 's:b': true, 'cr:chart': 31, cur: 0, global_rows: 31 });
-    check('disjoint edits merge silently → no conflicts raised', lastConflicts.length, 0);
+    check('disjoint edits merge silently → no conflicts raised', pendingConflicts.length, 0);
     check('disjoint edits merge silently → local-only edits queued to push back',
       Object.keys(outbox), ['progress:q2']);
 
@@ -382,7 +384,7 @@ async function syncPushPullTest() {
     check('conflict → this device keeps its value',
       readLocalProgress('q3').values['cr:chart'], 31);
     check('conflict → reported, and the kept value gets a decisive fresh clock',
-      { n: lastConflicts.length, key: lastConflicts[0] && lastConflicts[0].key,
+      { n: pendingConflicts.length, key: pendingConflicts[0] && pendingConflicts[0].k,
         fresh: (lsGetJson('q3', 'clk', {})['cr:chart'] || 0) >= beforeClash },
       { n: 1, key: 'cr:chart', fresh: true });
     check('conflict → queued to push, since the server does not have it yet',
@@ -492,6 +494,126 @@ async function syncPushPullTest() {
       { hidden: hiddenTimer, visible: !!visibleTimer, stopped: pullTimer },
       { hidden: null, visible: true, stopped: null });
 
+    // ─────────────────────────────────────────
+    // CONFLICT RESOLUTION
+    // ─────────────────────────────────────────
+
+    // A project on a real pattern, so the labels have something to name.
+    const setupClash = async () => {
+      db = makeMockDb();
+      device(db);
+      const chartPhase = PATTERNS[0].phases.find(ph => ph.hasChart);
+      projects.push({ id: 'c1', patternId: 'peacock-tee', name: 'Clashing Tee',
+                      created: 1000, updatedAt: 1000 });
+      cloudProject(db, 'c1', 'Clashing Tee');
+      cloudProgress(db, 'c1', { ['cr:' + chartPhase.id]: 23, cur: 0, global_rows: 23 },
+                              { ['cr:' + chartPhase.id]: 800 });
+      seedProgress('c1', { ['cr:' + chartPhase.id]: 31, cur: 0, global_rows: 0 },
+                         { ['cr:' + chartPhase.id]: 900 }, { ['cr:' + chartPhase.id]: 100 });
+      await pull('test');
+      return 'cr:' + chartPhase.id;
+    };
+
+    // ── 19. The other device's value is kept, or the choice isn't reversible ──
+    let key = await setupClash();
+    check('conflict recorded with BOTH values, so the choice can be undone',
+      pendingConflicts.map(c => ({ p: c.p, k: c.k, mine: c.mine, theirs: c.theirs })),
+      [{ p: 'c1', k: key, mine: 31, theirs: 23 }]);
+
+    // ── 20. It survives a reload — a conflict can land while the phone is away ──
+    const persisted = JSON.parse(localStorage.getItem('pt3_conflicts') || '[]');
+    pendingConflicts = [];
+    loadConflicts();
+    check('conflicts persist across a reload',
+      { onDisk: persisted.length, reloaded: pendingConflicts.length }, { onDisk: 1, reloaded: 1 });
+
+    // ── 21. The label is read from the pattern, not the field key ──
+    check('the row names the chart and formats the values',
+      (() => { const L = conflictLabel(pendingConflicts[0]);
+               return { field: L.field, mine: L.fmt(31) }; })(),
+      { field: 'Yoke chart — chart row', mine: '31' });
+
+    // ── 22. Choosing the other device ──
+    //
+    // The outbox is drained first, deliberately. The pull that produced the
+    // clash already queued this project, so leaving it would make "queued"
+    // true no matter what resolveConflict did — the assertion would pass an
+    // implementation that never tells the other device the answer.
+    outbox = {}; saveOutbox();
+    resolveConflict('c1', key, true);
+    check('use the other → their value is written, queued, and the question is gone',
+      { value: readLocalProgress('c1').values[key],
+        queued: Object.keys(outbox).indexOf('progress:c1') >= 0,
+        left: pendingConflicts.length },
+      { value: 23, queued: true, left: 0 });
+
+    // ── 23. Choosing this device keeps what is on screen ──
+    key = await setupClash();
+    const clockBefore = lsGetJson('c1', 'clk', {})[key];
+    outbox = {}; saveOutbox();
+    resolveConflict('c1', key, false);
+    check('keep this device → value stands, with a fresh clock so it wins next time',
+      { value: readLocalProgress('c1').values[key],
+        clockMoved: lsGetJson('c1', 'clk', {})[key] > clockBefore,
+        queued: Object.keys(outbox).indexOf('progress:c1') >= 0,
+        left: pendingConflicts.length },
+      { value: 31, clockMoved: true, queued: true, left: 0 });
+
+    // ── 23b. The banner count follows the answers ──
+    // It kept saying "3 things" after two had been settled, which is worse
+    // than no banner: it advertises questions that no longer exist.
+    key = await setupClash();
+    pendingConflicts.push({ p: 'c1', k: 'global_rows', mine: 5, theirs: 9, at: Date.now() });
+    saveConflicts();
+    showConflictBanner();
+    const bannerText = () => { const b = document.getElementById('conflict-banner');
+                               return b ? b.textContent.replace('Review', '').trim() : null; };
+    const two = bannerText();
+    resolveConflict('c1', 'global_rows', false);
+    const one = bannerText();
+    resolveConflict('c1', key, false);
+    check('the banner counts down as questions are answered, then goes away',
+      { two: two, one: one, none: bannerText() },
+      { two: '2 things were changed in two places',
+        one: 'One thing was changed in two places',
+        none: null });
+
+    // ── 24. Dismissing the sheet is an answer, not a deferral ──
+    key = await setupClash();
+    resolveAll(false);
+    check('dismiss → this device wins and nothing is left to nag about',
+      { value: readLocalProgress('c1').values[key], left: liveConflicts().length },
+      { value: 31, left: 0 });
+
+    // ── 25. Questions that answered themselves are dropped ──
+    key = await setupClash();
+    projects.find(p => p.id === 'c1').deletedAt = 9000;
+    check('a conflict on a deleted project is not asked about', liveConflicts().length, 0);
+
+    key = await setupClash();
+    // A later sync settled on the other device's value anyway.
+    (() => { const l = readLocalProgress('c1'); const v = Object.assign({}, l.values);
+             v[key] = 23; writeLocalProgress('c1', v, l.clocks, readBase('c1')); })();
+    check('a conflict the two devices have since agreed on is dropped',
+      liveConflicts().length, 0);
+
+    // ── 26. Nothing may load after app.js ──
+    //
+    // app.js ends with the bootstrap, so everything it calls must already
+    // exist. bannerStack() used to live in a trailing inline <script>, which
+    // meant the boot-time conflict banner threw a ReferenceError and took the
+    // rest of the bootstrap with it — initCloud() included. A device with an
+    // unanswered conflict came up with sync silently dead, and nothing on
+    // screen said so. This asserts the ordering that makes that impossible.
+    check('js/core/app.js is the last script the page loads',
+      (() => {
+        const real = Array.from(document.scripts)
+          .filter(s => !(s.src || '').includes('selftest'));
+        const last = real[real.length - 1];
+        return last && last.src ? last.src.split('/').slice(-3).join('/') : 'INLINE SCRIPT';
+      })(),
+      'js/core/app.js');
+
   } finally {
     // Put the device back exactly as it was found — disk first, then memory
     // from disk, so the two cannot disagree.
@@ -502,10 +624,11 @@ async function syncPushPullTest() {
 
     sb = saved.sb; session = saved.session;
     activeProjectId = saved.activeProjectId; view = saved.view;
-    lastSyncError = null; lastConflicts = [];
+    lastSyncError = null; pendingConflicts = [];
     delete navigator.onLine;          // reveal the real getter again
     syncCursor = { uid: null, rev: 0, projTs: null };
-    loadProjects(); loadOutbox(); loadSyncStatus(); loadCursor();
+    loadProjects(); loadOutbox(); loadSyncStatus(); loadCursor(); loadConflicts();
+    hideConflictBanner();
     if (activeProjectId) loadProjectState();
     resetHeaderKey(); render();
   }

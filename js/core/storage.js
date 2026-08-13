@@ -24,6 +24,9 @@
 //                                 — GLOBAL (see js/cloud/sync.js)
 //   pt3_sync_cursor               {uid, rev, projTs} — how far this device has
 //                                 pulled, per account — GLOBAL
+//   pt3_conflicts                 fields both devices changed, awaiting an
+//                                 answer; holds the OTHER device's value, which
+//                                 is what makes the choice reversible — GLOBAL
 //   pt3_cellSz                    chart cell size — GLOBAL, shared across projects
 // ─────────────────────────────────────────────
 

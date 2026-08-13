@@ -652,13 +652,219 @@ async function pushProgress(id, uid) {
   return 'done';
 }
 
-// Kept for the Phase 7 conflict sheet; logged in the meantime so a silent
-// wrong answer at least leaves a trace.
-let lastConflicts = [];
+// ─────────────────────────────────────────────
+// CONFLICTS
+//
+// A conflict is the one case the merge cannot decide: both devices changed the
+// same field to different values since they last agreed. Push and pull have
+// already applied every non-conflicting change and kept THIS device's value
+// for the clash — the safe default, since it is what is on screen.
+//
+// What is recorded here is the other device's value, which is the only thing
+// that makes the choice reversible. Without it "use the other one" has nothing
+// to restore, and the merge's decision would be final whether or not it was
+// right.
+//
+// Persisted, because a conflict can arrive while the phone is in a bag. It has
+// to still be there to answer when someone next looks.
+// ─────────────────────────────────────────────
+const CONFLICTS_KEY = 'pt3_conflicts';
+const MAX_CONFLICTS = 50;
+let pendingConflicts = [];    // [{ p: projectId, k: fieldKey, mine, theirs, at }]
+
+function loadConflicts() {
+  try { pendingConflicts = JSON.parse(localStorage.getItem(CONFLICTS_KEY) || '[]') || []; }
+  catch(e) { pendingConflicts = []; }
+}
+function saveConflicts() {
+  try { localStorage.setItem(CONFLICTS_KEY, JSON.stringify(pendingConflicts)); } catch(e) {}
+}
+
 function noteConflicts(projectId, conflicts) {
-  lastConflicts = conflicts.map(c => Object.assign({ projectId: projectId }, c));
+  conflicts.forEach(c => {
+    const i = pendingConflicts.findIndex(x => x.p === projectId && x.k === c.key);
+    // Replace rather than append: a field that clashes twice is still one
+    // question, and the newer remote value is the one worth offering.
+    const rec = { p: projectId, k: c.key, mine: c.local, theirs: c.remote, at: Date.now() };
+    if (i >= 0) pendingConflicts[i] = rec; else pendingConflicts.push(rec);
+  });
+  while (pendingConflicts.length > MAX_CONFLICTS) pendingConflicts.shift();
+  saveConflicts();
   logSync('warn', conflicts.length + ' field(s) changed on both devices for ' + projectId +
-    ' — kept this device\'s values');
+    ' — keeping this device\'s values until reviewed');
+  showConflictBanner();
+}
+
+// Entries that are still a real question. Prunes the ones that answered
+// themselves: the project was deleted, the field no longer exists, or a later
+// sync settled on the other device's value anyway.
+function liveConflicts() {
+  const kept = pendingConflicts.filter(c => {
+    if (isDeleted(c.p)) return false;
+    const v = readLocalProgress(c.p).values;
+    if (!Object.prototype.hasOwnProperty.call(v, c.k)) return false;
+    return v[c.k] !== c.theirs;
+  });
+  if (kept.length !== pendingConflicts.length) { pendingConflicts = kept; saveConflicts(); }
+  return kept;
+}
+
+// Apply one answer. `useTheirs` writes the other device's value; otherwise
+// this device's value simply stands, since it is already what is stored.
+//
+// Either way the field gets a FRESH clock, so the answer wins outright on the
+// next push instead of being re-litigated the next time the two devices meet.
+function resolveConflict(projectId, key, useTheirs) {
+  const rec = pendingConflicts.find(c => c.p === projectId && c.k === key);
+  pendingConflicts = pendingConflicts.filter(c => !(c.p === projectId && c.k === key));
+  saveConflicts();
+  // Before the early return: the entry is gone either way, so the count on the
+  // banner has to move with it or it keeps advertising questions that have
+  // already been answered.
+  showConflictBanner();
+  if (!rec) return;
+
+  const local = readLocalProgress(projectId);
+  const values = Object.assign({}, local.values);
+  const clocks = Object.assign({}, local.clocks);
+  if (useTheirs) values[key] = rec.theirs;
+  clocks[key] = syncNow();
+
+  if (!writeLocalProgress(projectId, values, clocks, readBase(projectId))) return;
+  enqueue('progress', projectId);
+  const wasActive = reloadIfActive(projectId);
+  renderAfterSync(wasActive);
+}
+
+function resolveAll(useTheirs) {
+  liveConflicts().slice().forEach(c => resolveConflict(c.p, c.k, useTheirs));
+}
+
+// ── Naming the thing that clashed ──
+//
+// "cr:yoke-chart: 31 vs 23" is not a question anyone can answer. The label has
+// to come from the pattern, so the row reads "Yoke chart — chart row" with the
+// numbers beside it. The pattern is looked up per project, not from the active
+// one: a conflict can belong to a project that isn't open.
+function plainText(s, max) {
+  const txt = String(s || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+  return txt.length > (max || 44) ? txt.slice(0, (max || 44) - 1) + '…' : txt;
+}
+
+function conflictLabel(c) {
+  const proj = projects.find(p => p.id === c.p);
+  const pat = proj && patternById(proj.patternId);
+  const phases = (pat && pat.phases) || [];
+  const steps = phases.reduce((a, ph) => a.concat(ph.steps), []);
+  const num = v => String(v);
+
+  if (c.k === 'cur') {
+    return { field: 'Section', fmt: v => (phases[v] && phases[v].name) || ('Section ' + ((v | 0) + 1)) };
+  }
+  if (c.k === 'global_rows') return { field: 'Total rows', fmt: num };
+  if (c.k.indexOf('cr:') === 0) {
+    const ph = phases.find(x => x.id === c.k.slice(3));
+    return { field: (ph ? plainText(ph.name, 28) : 'Chart') + ' — chart row', fmt: num };
+  }
+  if (c.k.indexOf('c:') === 0) {
+    const s = steps.find(x => x.id === c.k.slice(2));
+    return { field: (s && plainText(s.lbl || s.text)) || 'Row counter', fmt: num };
+  }
+  if (c.k.indexOf('s:') === 0) {
+    const raw = c.k.slice(2);
+    const m = raw.match(/^(.*)__b(\d+)$/);
+    const s = steps.find(x => x.id === (m ? m[1] : raw));
+    let field = (s && plainText(s.text)) || 'Step';
+    if (m) field += ' · part ' + (parseInt(m[2]) + 1);
+    return { field: field, fmt: v => (v ? 'Done' : 'Not done') };
+  }
+  return { field: c.k, fmt: num };
+}
+
+// ── The sheet ──
+//
+// Only the clashes appear. Everything else merged already and saying so would
+// bury the two or three rows that actually need a person.
+function openConflictSheet() {
+  const list = liveConflicts();
+  if (!list.length) { closeSheet(); hideConflictBanner(); return; }
+
+  // Grouped by project, because "chart row 31 or 23" means nothing until you
+  // know which sweater.
+  const byProject = {};
+  list.forEach(c => { (byProject[c.p] = byProject[c.p] || []).push(c); });
+
+  const groups = Object.keys(byProject).map(pid => {
+    const proj = projects.find(p => p.id === pid);
+    const rows = byProject[pid].map(c => {
+      const L = conflictLabel(c);
+      return `<div class="cfl-row">
+          <div class="cfl-field">${escapeHtml(L.field)}</div>
+          <div class="cfl-opts">
+            <button class="cfl-opt" data-p="${escapeHtml(c.p)}" data-k="${escapeHtml(c.k)}" data-t="0">
+              <span class="cfl-who">This device</span><span class="cfl-val">${escapeHtml(L.fmt(c.mine))}</span>
+            </button>
+            <button class="cfl-opt" data-p="${escapeHtml(c.p)}" data-k="${escapeHtml(c.k)}" data-t="1">
+              <span class="cfl-who">Other device</span><span class="cfl-val">${escapeHtml(L.fmt(c.theirs))}</span>
+            </button>
+          </div>
+        </div>`;
+    }).join('');
+    return `<div class="cfl-group"><div class="cfl-proj">${escapeHtml((proj && proj.name) || 'Project')}</div>${rows}</div>`;
+  }).join('');
+
+  openSheet('Two devices disagree',
+    `<p class="sheet-msg">These were changed in both places. Everything else has already been merged.</p>
+     ${groups}
+     <div class="sheet-actions">
+       <button class="sheet-btn" id="cfl-mine">Keep this device</button>
+       <button class="sheet-btn" id="cfl-theirs">Use the other</button>
+     </div>
+     <p class="acct-note">Closing this keeps what's on this device — nothing is lost either way.</p>`,
+    {
+      // Dismissing is an answer, not a deferral: this device's values are
+      // already stored, so leaving them is the only outcome that changes
+      // nothing. Re-asking on every sync would be nagging about a question
+      // that has, in effect, been answered.
+      onDismiss: () => { resolveAll(false); hideConflictBanner(); },
+      onOpen: el => {
+        el.querySelectorAll('.cfl-opt').forEach(b => {
+          b.onclick = () => {
+            resolveConflict(b.dataset.p, b.dataset.k, b.dataset.t === '1');
+            openConflictSheet();       // redraw with that row gone
+          };
+        });
+        el.querySelector('#cfl-mine').onclick   = () => { resolveAll(false); closeSheet(); hideConflictBanner(); };
+        el.querySelector('#cfl-theirs').onclick = () => { resolveAll(true);  closeSheet(); hideConflictBanner(); };
+      }
+    });
+}
+
+// ── The prompt ──
+//
+// A banner, not an auto-opening sheet. The plan called for opening the sheet
+// as soon as conflicts exist, but a sync can land mid-row on the chart page,
+// and a modal appearing over the chart while someone is counting is exactly
+// the "blocking knitting" the plan forbids two lines later. The banner is
+// persistent — it does not go away until the question is answered — so nothing
+// is missed, and it opens the same sheet on tap.
+function showConflictBanner() {
+  if (!liveConflicts().length) return hideConflictBanner();
+  let b = document.getElementById('conflict-banner');
+  if (!b) {
+    b = document.createElement('div');
+    b.id = 'conflict-banner';
+    bannerStack().appendChild(b);
+  }
+  const n = liveConflicts().length;
+  b.innerHTML = `<span>${n === 1 ? 'One thing was changed in two places' :
+                          n + ' things were changed in two places'}</span>` +
+                `<button onclick="openConflictSheet()">Review</button>`;
+}
+
+function hideConflictBanner() {
+  const b = document.getElementById('conflict-banner');
+  if (b) { b.remove(); pruneBannerStack(); }
 }
 
 async function flush(reason) {

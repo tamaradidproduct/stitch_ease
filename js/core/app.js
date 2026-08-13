@@ -246,9 +246,15 @@ loadGlobal();
 loadOutbox();
 loadSyncStatus();
 loadCursor();
+loadConflicts();
 loadProjects();
 view = 'home';
 render();
+
+// A clash recorded before the app was last closed is still unanswered. Re-ask
+// after the first paint, not before — it needs the projects loaded to name
+// what disagreed, and nothing may delay the app appearing.
+showConflictBanner();
 
 // Cloud comes up AFTER the first paint, and nothing above it awaits. The app
 // has to work with no network, no session, and no vendor file.

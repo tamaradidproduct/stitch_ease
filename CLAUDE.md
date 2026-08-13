@@ -73,7 +73,7 @@ Progress is **namespaced per project**. Keys:
 - `pt3_proj_<projectId>_clk` — `{fieldKey: epoch_ms}` when this device last changed each field
 - `pt3_proj_<projectId>_base` — the same map as of the last successful sync. **Never uploaded** — each device's baseline legitimately differs, and that difference is what makes the merge three-way.
 - `pt3_cellSz` — chart cell-size pref (10–32px, default 16) — **global**
-- `pt3_schema` / `pt3_outbox` / `pt3_last_sync` / `pt3_sync_cursor` / `pt3_owner` / `pt3_claim_declined` / `pt3_sb_auth` — **global**, see the Cloud sync section
+- `pt3_schema` / `pt3_outbox` / `pt3_last_sync` / `pt3_sync_cursor` / `pt3_conflicts` / `pt3_owner` / `pt3_claim_declined` / `pt3_sb_auth` — **global**, see the Cloud sync section
 
 `save()` writes the active project's keys (via `pkey(suffix)` → `pt3_proj_<id>_*`); `loadProjectState()` reads them; `loadGlobal()` loads shared prefs. Three one-time migrations run on startup, in order: `migrateLegacy()` folds the original single-pattern keys (`pt3_state`, …) into `pt3_peacock-tee_*`; `migrateToProjects()` turns any pattern-namespaced progress into a first project and writes `pt3_projects`; `migrateAddClocks()` backfills `clk`/`base` for every existing project. Each has its **own** sentinel — `migrateAddClocks` gates on `pt3_schema`, **not** on `pt3_projects`, which `migrateToProjects` already claims. **Keep the `pt3_` prefix and all three migrations** — removing them breaks saved progress.
 
@@ -81,7 +81,8 @@ Progress is **namespaced per project**. Keys:
 localStorage stays the source of truth; the cloud is a background replica. **No sign-in wall** — signed out, `flush()` and `pull()` no-op and the app is exactly what it was before any of this existed. Same if `js/vendor/supabase.js` fails to load (`cloudState() === 'unavailable'`).
 
 - **Clock per field, not per blob.** Keys are `s:<stepId>`, `c:<stepId>`, `cur`, `cr:<phaseId>`, `global_rows`. Ticking steps on the phone while the iPad sits on a chart row touches disjoint keys, so both survive with nothing to ask about.
-- **Three-way merge** (`diffProgress`) against `base`. Without a baseline you cannot tell "the other side is stale" from "the other side diverged". Conflicts currently keep this device's value with a **fresh clock** so it settles; Phase 7 will ask instead.
+- **Three-way merge** (`diffProgress`) against `base`. Without a baseline you cannot tell "the other side is stale" from "the other side diverged".
+- **Conflicts** — both devices changed one field differently. The merge keeps THIS device's value (it's what's on screen) with a **fresh clock** so it settles rather than ping-pongs, records the other device's value in `pt3_conflicts`, and raises a persistent amber banner. Tapping it opens the conflict sheet: one row per clash, labelled from the pattern, with both values side by side. Storing the other value is what makes the choice reversible — without it "use the other one" has nothing to restore. **Dismissing is an answer** (keep this device), not a deferral.
 - **Push is read-merge-write**, guarded by the row's `server_rev`. A plain whole-row upsert silently erases whatever the other device pushed and reports no conflict — this is the single most important invariant in the sync code.
 - **`base` advances only for fields the server already agrees with** (`agreedBase`). Advancing it further marks a local edit as synced and it is never pushed at all.
 - **Sync only runs once the signed-in account has claimed this device's data** (`pt3_owner`), so a shared iPad can't hand one person's projects to another.
@@ -148,6 +149,7 @@ HTML is fetched **network-first** (fresh page on each load when online; cache fa
 - `flush(reason)` / `pushProject` / `pushProgress` — push (read-merge-write, `server_rev` guarded)
 - `pull(reason)` / `mergeRemoteProgress` / `applyRemoteProject` / `agreedBase` — pull and apply
 - `enqueue` / `dequeue` / `markDirty` / `flushNow` — the outbox and its scheduler
+- `noteConflicts` / `liveConflicts` / `resolveConflict` / `openConflictSheet` / `showConflictBanner` — the conflict flow
 
 ## Nav buttons
 Within a pattern, phase nav is at the bottom. On non-chart phases it's the fixed `.nav-btns` (first phase shows only "Next →" full-width; others "← Back" + "Next →"). On the chart phase it lives in the fixed `.chart-dock` alongside the row counter.
