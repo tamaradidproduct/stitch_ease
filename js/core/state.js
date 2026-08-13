@@ -33,20 +33,19 @@ let CHART_TOTAL = 0;
 let TOTAL_STEPS = 0;
 let cur = 0;
 let phaseNavOpen = false;
-// No `globalRows` here any more: the Rows tally is DERIVED from the progress
-// above (see globalRowsNow() in js/core/app.js). It used to be a stored number
-// that five separate mutators nudged by hand, which meant nothing could
-// reconstruct it — so it could only ever drift away from the truth, and did.
+// `state` and `ctrs` are PRE-CONVERSION RELICS. Nothing writes them any more;
+// migrateToEntries() read them into entryProg and they are kept on disk only
+// as the record of what a project looked like before. No `globalRows` either:
+// the Rows tally is derived (globalRowsNow() in js/core/app.js), where it used
+// to be a stored number five mutators nudged by hand — nothing could
+// reconstruct it, so it could only drift, and did.
 let state = {}, ctrs = {}, chartCurrentRow = 1, cellSz = 16;
 
-// Progress for CONVERTED sections — those with `entries` rather than `steps`.
-// A flat map keyed the way js/core/rows.js documents: 'n:<id>' / 'r:<id>' for
-// done-flags, 'rp:<id>' for a repeat's {y,z} position.
-//
-// Deliberately a separate bucket from `state`/`ctrs`, and NOT yet synced: the
-// server has no column for it until step 5, and stuffing it into the existing
-// steps/counters buckets would push a {y,z} object through joinFields(), which
-// coerces counters with |0 and would flatten the position to zero.
+// Progress. A flat map keyed the way js/core/rows.js documents: 'n:<id>' /
+// 'r:<id>' for done-flags, 'rp:<id>' for a repeat's {y,z} position. Synced to
+// its own `entries` jsonb column — reusing `counters` would have pushed a
+// {y,z} through joinFields(), which coerces with |0 and would flatten the
+// position to zero.
 let entryProg = {};
 // The resolved pattern doc behind PHASES — see applyPattern().
 let activeDoc = null;
@@ -54,9 +53,11 @@ let activeDoc = null;
 // Sync bookkeeping for the open project (see js/cloud/sync.js).
 //   clocks     {fieldKey: epoch_ms}  when this device last changed each field
 //   baseClocks {fieldKey: epoch_ms}  the clocks as of the last successful sync
-// Field keys are namespaced — 's:<stepId>', 'c:<stepId>', plus bare 'cur',
-// 'chart_row', 'global_rows' — NOT the localStorage suffixes, so a clock
-// identifies one field rather than the whole blob it is stored in.
+// Field keys are namespaced — 'n:<id>', 'r:<id>', 'rp:<id>', plus bare 'cur'
+// and 'cr:<phaseId>' — NOT the localStorage suffixes, so a clock identifies
+// one field rather than the whole blob it is stored in. 'rp:' is ONE key for
+// the {y,z} pair: taking y from one device and z from another yields a
+// position neither device was ever at.
 let clocks = {}, baseClocks = {};
 
 // Pending changes not yet pushed to the cloud, keyed '<kind>:<projectId>' so a
@@ -129,12 +130,11 @@ function syncActiveChart() {
 //
 //   phase id            keys are namespaced by it (cr:<phaseId>)
 //   phase.hasChart      adds or removes a chart-row key
-//   phase.countable     changes how a tick moves the row tally
 //   chart length        changes the range a saved chart row is valid in
-//   step id             the key itself
-//   step.rows/.target   a counter at 12/12 means something else at 12/14
-//   step.cadence        changes which rounds the step is asking about
-//   bullets.length      each bullet is its own key (<stepId>__b<i>)
+//   entry id + kind     the key itself, and which namespace it is in
+//   repeat.times        a position at pass 4 of 4 means something else of 6
+//   repeat row ids      how far a stored {y,z} can legitimately reach
+//   bullets.length      changes what a note renders
 //
 // Prose — a step's text, a phase's name, notes — is deliberately absent.
 // ─────────────────────────────────────────────
@@ -146,27 +146,18 @@ function structSignature(pattern) {
   return ((pattern && pattern.phases) || []).map(ph => [
     ph.id,
     ph.hasChart ? 'C' + chartForPhaseOf(pattern, ph).length : '-',
-    ph.countable ? 'K' : '-',
-    // A converted section signs its entries instead of its steps. Everything
-    // that decides what a progress key MEANS is in here: the kind (a row's
-    // done-flag and a repeat's position are different keys), the repeat's
-    // times and its row ids (both change how far a stored {y,z} can reach).
-    // Prose stays out, same as below.
-    ph.entries
-      ? 'E' + ph.entries.map(e => [
-          e.kind === 'note' ? 'n' : e.kind === 'row' ? 'r' : 'p',
-          e.id,
-          e.kind === 'repeat'
-            ? 'x' + (e.times | 0) + 'x' + ((e.rows || []).map(r => r.id).join('+'))
-            : '-',
-          e.bullets ? 'b' + e.bullets.length : '-'
-        ].join(':')).join(',')
-      : (ph.steps || []).map(s => [
-          s.id,
-          s.rows ? 'r' + (s.target | 0) : '-',
-          s.cadence ? 'c' + s.cadence : '-',
-          s.bullets ? 'b' + s.bullets.length : '-'
-        ].join(':')).join(',')
+    // Everything that decides what a progress key MEANS is in here: the kind
+    // (a row's done-flag and a repeat's position are different keys), the
+    // repeat's times and its row ids (both change how far a stored {y,z} can
+    // reach). Prose — a step's text, a phase's name, notes — stays out.
+    'E' + (ph.entries || []).map(e => [
+      e.kind === 'note' ? 'n' : e.kind === 'row' ? 'r' : 'p',
+      e.id,
+      e.kind === 'repeat'
+        ? 'x' + (e.times | 0) + 'x' + ((e.rows || []).map(r => r.id).join('+'))
+        : '-',
+      e.bullets ? 'b' + e.bullets.length : '-'
+    ].join(':')).join(',')
   ].join('|')).join(';');
 }
 

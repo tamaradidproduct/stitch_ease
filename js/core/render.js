@@ -61,97 +61,18 @@ const LOGO_SVG = `<svg class="lib-logo" viewBox="0 0 40 40" width="34" height="3
   <circle cx="35.5" cy="4.5" r="1.7" fill="var(--accent)"/>
 </svg>`;
 
-// For stepped-cadence rows (e.g. "increase every 2nd round"), show what to do
-// on the round the tracker says you're currently working.
-function cadenceHintHtml(s, ctr, done) {
-  if (!s.cadence || done || ctr >= s.target) return '';
-  const round = ctr + 1;               // the round you're about to work
-  const isOn  = round % s.cadence === 0;
-  return `<div class="round-hint ${isOn ? 'on' : ''}">
-    <span class="round-hint-lbl">Round ${round} of ${s.target}</span>
-    <span class="round-hint-txt">${isOn ? s.cadenceOn : s.cadenceOff}</span>
-  </div>`;
-}
-
-// Plain bullets (a one-off step's sub-items, e.g. a corner transition) are
-// just an informational list — no counter, no checkbox of their own.
-function bulletsHtml(s) {
-  if (!s.bullets) return '';
-  return `<ul class="step-bullets">${s.bullets.map(b => `<li>${b}</li>`).join('')}</ul>`;
-}
-
-// A "repeat unit" — a step that pairs a repeat counter with a bulleted list
-// of rings/chains (see toggleSubStep() in app.js) — renders as a header (no
-// checkbox of its own; ticking every bullet for one pass IS what advances
-// it) with the counter inline to its right, then the checkable bullets
-// below. The counter/toggleSubStep keep `state[s.id]` in sync: once the
-// target is reached the header shows done and the bullets stay checked
-// (the last pass isn't reset), instead of the header being independently
-// tappable like a normal step.
-function repeatStepHtml(s) {
-  const done = state[s.id];
-  const ctr  = ctrs[s.id] || 0;
-  const pct  = Math.round(Math.min(100, ctr / s.target * 100));
-  const items = s.bullets.map((b, i) => {
-    const bd = !!state[s.id + '__b' + i];
-    return `<li class="${bd ? 'done' : ''}" onclick="toggleSubStep('${s.id}', ${i})">
-      <span class="sub-check">${bd ? CHECK_SVG : ''}</span>
-      <span class="sub-text">${b}</span>
-    </li>`;
-  }).join('');
-  return `<div class="step repeat-step ${done ? 'done' : ''}">
-    <div class="step-body">
-      <div class="repeat-head">
-        <div class="step-text">${s.text.replace(/\n/g, '<br>')}</div>
-        <div class="row-counter inline">
-          <div class="rc-controls">
-            <button class="rc-btn" onclick="changeCount('${s.id}',-1)">−</button>
-            <span class="rc-val">${ctr}</span>
-            <span class="rc-target">/ ${s.target}</span>
-            <button class="rc-btn" onclick="changeCount('${s.id}',1)">+</button>
-          </div>
-        </div>
-      </div>
-      <ul class="step-bullets checkable spaced">${items}</ul>
-      <div class="rc-mini-bar"><div class="rc-mini-fill" style="width:${pct}%"></div></div>
-    </div>
-  </div>`;
-}
-
-function stepHtml(s) {
-  if (s.rows && s.bullets) return repeatStepHtml(s);
-  const done = state[s.id];
-  const ctr  = s.rows ? (ctrs[s.id] || 0) : 0;
-  const pct  = s.rows ? Math.round(Math.min(100, ctr / s.target * 100)) : 0;
-  // Cadence steps count the round you're working (1-based: round 1..N, no
-  // "round 0"); plain row counters show completed rounds.
-  const rcVal = s.cadence ? Math.min(ctr + 1, s.target) : ctr;
-  return `<div class="step ${done ? 'done' : ''}" onclick="toggleStep('${s.id}')">
-    <div class="step-circle">${CHECK_SVG}</div>
-    <div class="step-body">
-      <div class="step-text">${s.text.replace(/\n/g, '<br>')}</div>
-      ${bulletsHtml(s)}
-      ${cadenceHintHtml(s, ctr, done)}
-      ${s.rows ? `
-      <div class="row-counter" onclick="event.stopPropagation()">
-        <span class="rc-label">${s.lbl}</span>
-        <div class="rc-controls">
-          <button class="rc-btn" onclick="changeCount('${s.id}',-1)">−</button>
-          <span class="rc-val">${rcVal}</span>
-          <span class="rc-target">/ ${s.target}</span>
-          <button class="rc-btn" onclick="changeCount('${s.id}',1)">+</button>
-        </div>
-      </div>
-      <div class="rc-mini-bar"><div class="rc-mini-fill" style="width:${pct}%"></div></div>` : ''}
-    </div>
-  </div>`;
+// A note's bullets are an informational list — no counter, no checkbox of
+// their own. A bulleted list that IS repeated work is a repeat block instead.
+function bulletsHtml(e) {
+  if (!e.bullets) return '';
+  return `<ul class="step-bullets">${e.bullets.map(b => `<li>${b}</li>`).join('')}</ul>`;
 }
 
 // ─────────────────────────────────────────────
 // CONVERTED SECTIONS — entries rather than steps
 //
-// Same markup and the same CSS classes as stepHtml()/repeatStepHtml() above,
-// on purpose: this step changes the model, not the look. The one new thing a
+// The only step/entry renderer there is, as of the entries model. The one
+// thing a
 // repeat shows is its POSITION, and even that reuses `.round-hint` — the box
 // the cadence step used to render into, which is fitting, since a repeat block
 // is what replaces cadence.
@@ -241,7 +162,12 @@ function renderPhase() {
   } else {
     html += phaseHeaderHtml;
     if (showCompleted) html += `<div class="steps-row"><span class="steps-row-label">Steps</span><span class="steps-row-count"><span class="src-num">${doneSteps} / ${totalSteps}</span><span class="src-lbl">completed</span></span></div>`;
-    if (totalSteps) html += '<div class="steps">' + items.map(p.entries ? entryHtml : stepHtml).join('') + '</div>';
+    if (totalSteps) html += '<div class="steps">' + items.map(entryHtml).join('') + '</div>';
+    // Only reachable if migrateToEntries() skipped this project because its
+    // pattern is no longer in the code. Say so rather than rendering nothing.
+    else if (!p.entries && !p.hasChart) html += '<div class="steps"><div class="step"><div class="step-body">' +
+      '<div class="step-text">This section can\'t be shown — its pattern is no longer in this version of the app.</div>' +
+      '</div></div></div>';
 
     html += '<div class="nav-btns">';
     if (cur > 0) html += `<button class="nav-btn" onclick="go(${cur - 1})">← Back</button>`;

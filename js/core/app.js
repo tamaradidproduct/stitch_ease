@@ -46,20 +46,11 @@ function go(i) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function toggleStep(id) {
-  const nowDone = !state[id];
-  state[id] = nowDone;
-  stampClock('s:' + id);
-  save(); render();
-}
-
-// ── Converted sections (entries) ──
+// ── Entry mutators ──
 //
-// The entry equivalents of toggleStep/changeCount. They write entryProg, which
-// is local-only until the sync column lands: the entry keys are deliberately
-// NOT clocked, since a clock for a field readLocalProgress() cannot see would
-// read to the merge engine as an edit with no value. `global_rows` IS stamped,
-// because that field is synced and does move.
+// The only progress mutators there are, now that migration #4 has moved every
+// project onto entries. Each writes entryProg and stamps the field's clock in
+// the new namespace; save() derives the Rows tally from what they wrote.
 function findEntry(id) {
   for (const ph of PHASES) {
     for (const e of (ph.entries || [])) if (e.id === id) return e;
@@ -72,6 +63,7 @@ function toggleEntry(id) {
   if (!e || e.kind === 'repeat') return;
   const key = e.kind === 'note' ? noteKey(id) : rowKey(id);
   entryProg[key] = !entryProg[key];
+  stampClock(key);
   save(); render();
 }
 
@@ -81,55 +73,13 @@ function advanceEntry(id, delta) {
   const prev = repeatPos(e, entryProg);
   const next = advanceRepeat(e, prev, delta);
   const moved = repeatRowsDone(e, next) - repeatRowsDone(e, prev);
-  // A tap that hit either end moved nothing — same rule as changeCount():
-  // stamping it would claim an edit this device never made.
+  // A tap that hit either end moved nothing — stamping it would claim an edit
+  // this device never made, and lose a real one from the other device.
   if (!moved) return;
   entryProg[repeatKey(id)] = next;
-  save(); render(); renderGlobalRows();
-}
-
-// A step's bullets (when it also has a repeat counter) are individually
-// checkable sub-steps: completing every bullet for the current pass advances
-// the counter by one, instead of requiring a separate tap on the +/-
-// counter. Every pass but the last resets the bullets for the next repeat;
-// the last one is left checked (changeCount() marks the whole step done
-// once the target is reached, so there's nothing left to reset for).
-function toggleSubStep(stepId, idx) {
-  const step = PHASES.flatMap(p => p.steps || []).find(s => s.id === stepId);
-  if (!step || !step.bullets) return;
-  const key = stepId + '__b' + idx;
-  state[key] = !state[key];
-  stampClock('s:' + key);
-  const allDone = step.bullets.every((_, i) => state[stepId + '__b' + i]);
-  if (allDone) {
-    const isLastRepeat = (ctrs[stepId] || 0) + 1 >= step.target;
-    if (!isLastRepeat) {
-      step.bullets.forEach((_, i) => { state[stepId + '__b' + i] = false; stampClock('s:' + stepId + '__b' + i); });
-    }
-    changeCount(stepId, 1); // saves + renders
-  } else {
-    save(); render();
-  }
-}
-
-function changeCount(id, delta) {
-  const step = PHASES.flatMap(p => p.steps || []).find(s => s.id === id);
-  const max  = step ? step.target : 999;
-  const prev = ctrs[id] || 0;
-  ctrs[id]   = Math.max(0, Math.min(max, prev + delta));
-  // A tap that hit the min/max moved nothing — stamping it would claim an edit
-  // this device never made, and lose a real one from the other device.
-  if (ctrs[id] !== prev) {
-    stampClock('c:' + id);
-    // Repeat-unit steps (bullets + counter, see toggleSubStep()) have no
-    // independent checkbox of their own — the counter reaching its target
-    // IS "done", and backing off below it reopens the step, so state[id]
-    // always mirrors the counter rather than being toggled separately.
-    if (step && step.bullets) {
-      const nowDone = ctrs[id] >= step.target;
-      if (state[id] !== nowDone) { state[id] = nowDone; stampClock('s:' + id); }
-    }
-  }
+  // ONE clock for the pair. Taking y from one device and z from another yields
+  // a position neither device was ever at.
+  stampClock(repeatKey(id));
   save(); render(); renderGlobalRows();
 }
 
@@ -279,6 +229,7 @@ migrateLegacy();
 migrateToProjects();
 migrateAddClocks();
 migrateAddPatternHash();
+migrateToEntries();
 loadGlobal();
 loadOutbox();
 loadSyncStatus();

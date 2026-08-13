@@ -182,8 +182,8 @@ async function syncPushPullTest() {
   function cloudProgress(db, id, values, clocks) {
     const f = splitFields(values);
     db.project_progress.push({
-      project_id: id, owner_id: UID, steps: f.steps, counters: f.counters, cur: f.cur,
-      chart_rows: f.chart_rows, global_rows: f.global_rows, clocks: clocks,
+      project_id: id, owner_id: UID, entries: f.entries, cur: f.cur,
+      chart_rows: f.chart_rows, clocks: clocks, schema_ver: PROGRESS_SCHEMA,
       server_rev: ++db.rev
     });
   }
@@ -193,8 +193,8 @@ async function syncPushPullTest() {
     let db = makeMockDb();
     device(db);
     seedProject('p1', 'Peacock Tee');
-    seedProgress('p1', { 's:a': true, 'c:b': 3, 'cr:chart': 10, cur: 1, global_rows: 13 },
-                       { 's:a': 100, 'c:b': 100, 'cr:chart': 100, cur: 100, global_rows: 100 }, {});
+    seedProgress('p1', { 'r:a': true, 'rp:b': { y: 3, z: 1 }, 'cr:chart': 10, cur: 1 },
+                       { 'r:a': 100, 'rp:b': 100, 'cr:chart': 100, cur: 100 }, {});
     enqueue('project', 'p1'); enqueue('progress', 'p1');
     await flush('test');
 
@@ -203,13 +203,13 @@ async function syncPushPullTest() {
       [{ id: 'p1', owner: UID, name: 'Peacock Tee', del: null }]);
     check('first push → progress row created with the right columns',
       (() => { const r = db.project_progress[0];
-        return { steps: r.steps, counters: r.counters, cur: r.cur,
-                 chart_rows: r.chart_rows, global_rows: r.global_rows, owner: r.owner_id }; })(),
-      { steps: { a: true }, counters: { b: 3 }, cur: 1,
-        chart_rows: { chart: 10 }, global_rows: 13, owner: UID });
+        return { entries: r.entries, cur: r.cur, chart_rows: r.chart_rows,
+                 schema: r.schema_ver, owner: r.owner_id }; })(),
+      { entries: { 'r:a': true, 'rp:b': { y: 3, z: 1 } }, cur: 1,
+        chart_rows: { chart: 10 }, schema: PROGRESS_SCHEMA, owner: UID });
     check('first push → outbox drained', Object.keys(outbox).length, 0);
     check('first push → base advanced to the pushed clocks',
-      readBase('p1'), { 's:a': 100, 'c:b': 100, 'cr:chart': 100, cur: 100, global_rows: 100 });
+      readBase('p1'), { 'r:a': 100, 'rp:b': 100, 'cr:chart': 100, cur: 100 });
 
     // ── 2. THE ONE THAT MATTERS ──
     // Another device has already pushed a chart row this device has never seen.
@@ -221,21 +221,21 @@ async function syncPushPullTest() {
     db.projects.push({ id: 'p2', owner_id: UID, name: 'Shared', pattern_id: 'peacock-tee',
                        created_ms: 1000, updated_ms: 1000, deleted_ms: null });
     db.project_progress.push({ project_id: 'p2', owner_id: UID,
-      steps: {}, counters: {}, cur: 0, chart_rows: { chart: 31 }, global_rows: 31,
-      clocks: { 'cr:chart': 300, global_rows: 300 }, server_rev: ++db.rev });
+      entries: {}, cur: 0, chart_rows: { chart: 31 }, schema_ver: PROGRESS_SCHEMA,
+      clocks: { 'cr:chart': 300 }, server_rev: ++db.rev });
     // This device ticked a step instead, and last agreed with the cloud at t=100.
-    seedProgress('p2', { 's:a': true, cur: 0, global_rows: 0 }, { 's:a': 400 },
-                       { 's:a': 100 });
+    seedProgress('p2', { 'r:a': true, cur: 0 }, { 'r:a': 400 },
+                       { 'r:a': 100 });
     enqueue('progress', 'p2');
     await flush('test');
 
     check('push merges instead of clobbering → cloud keeps BOTH changes',
       (() => { const r = db.project_progress[0];
-        return { steps: r.steps, chart_rows: r.chart_rows, global_rows: r.global_rows }; })(),
-      { steps: { a: true }, chart_rows: { chart: 31 }, global_rows: 31 });
+        return { entries: r.entries, chart_rows: r.chart_rows }; })(),
+      { entries: { 'r:a': true }, chart_rows: { chart: 31 } });
     check('push merges instead of clobbering → local picks up the remote row too',
       readLocalProgress('p2').values,
-      { 's:a': true, 'cr:chart': 31, cur: 0, global_rows: 31 });
+      { 'r:a': true, 'cr:chart': 31, cur: 0 });
 
     // ── 3. The race the server_rev guard exists for ──
     // Another device writes in the window between this device's select and its
@@ -246,22 +246,22 @@ async function syncPushPullTest() {
     db.projects.push({ id: 'p3', owner_id: UID, name: 'Racy', pattern_id: 'peacock-tee',
                        created_ms: 1000, updated_ms: 1000, deleted_ms: null });
     db.project_progress.push({ project_id: 'p3', owner_id: UID,
-      steps: {}, counters: {}, cur: 0, chart_rows: {}, global_rows: 0,
+      entries: {}, cur: 0, chart_rows: {}, schema_ver: PROGRESS_SCHEMA,
       clocks: {}, server_rev: ++db.rev });
     db.beforeWrite = d => {                 // the other device slips in here
       const row = d.project_progress[0];
-      row.counters = { b: 9 };
-      row.clocks = Object.assign({}, row.clocks, { 'c:b': 500 });
+      row.entries = Object.assign({}, row.entries, { 'rp:b': { y: 9, z: 1 } });
+      row.clocks = Object.assign({}, row.clocks, { 'rp:b': 500 });
       row.server_rev = ++d.rev;
     };
-    seedProgress('p3', { 's:a': true, cur: 0, global_rows: 0 }, { 's:a': 400 }, {});
+    seedProgress('p3', { 'r:a': true, cur: 0 }, { 'r:a': 400 }, {});
     enqueue('progress', 'p3');
     await flush('test');
 
     check('server_rev guard → the interleaved write survives',
       (() => { const r = db.project_progress[0];
-        return { steps: r.steps, counters: r.counters }; })(),
-      { steps: { a: true }, counters: { b: 9 } });
+        return { entries: r.entries }; })(),
+      { entries: { 'rp:b': { y: 9, z: 1 }, 'r:a': true } });
     check('server_rev guard → outbox drained after the retry',
       Object.keys(outbox).length, 0);
 
@@ -286,14 +286,14 @@ async function syncPushPullTest() {
     db = makeMockDb();
     device(db);
     seedProject('p5', 'Orphan');
-    seedProgress('p5', { 's:a': true, cur: 0, global_rows: 0 }, { 's:a': 400 }, {});
+    seedProgress('p5', { 'r:a': true, cur: 0 }, { 'r:a': 400 }, {});
     enqueue('progress', 'p5');            // deliberately NOT enqueueing the project
     await flush('test');
 
     check('orphan progress → project row created on the fly',
       db.projects.map(p => p.id), ['p5']);
     check('orphan progress → progress landed',
-      db.project_progress[0].steps, { a: true });
+      db.project_progress[0].entries, { 'r:a': true });
 
     // ── 6. Signed out: nothing leaves the device ──
     db = makeMockDb();
@@ -335,18 +335,18 @@ async function syncPushPullTest() {
     db = makeMockDb();
     device(db);
     cloudProject(db, 'q1', 'From the cloud');
-    cloudProgress(db, 'q1', { 's:a': true, 'cr:chart': 12, cur: 2, global_rows: 12 },
-                            { 's:a': 700, 'cr:chart': 700, cur: 700, global_rows: 700 });
+    cloudProgress(db, 'q1', { 'r:a': true, 'cr:chart': 12, cur: 2 },
+                            { 'r:a': 700, 'cr:chart': 700, cur: 700 });
     await pull('test');
 
     check('fresh device pull → project appears',
       projects.map(p => ({ id: p.id, name: p.name })), [{ id: 'q1', name: 'From the cloud' }]);
     check('fresh device pull → progress lands',
       readLocalProgress('q1').values,
-      { 's:a': true, 'cr:chart': 12, cur: 2, global_rows: 12 });
+      { 'r:a': true, 'cr:chart': 12, cur: 2 });
     check('fresh device pull → base records agreement, so nothing is re-pushed',
       { base: readBase('q1'), queued: Object.keys(outbox).length },
-      { base: { 's:a': 700, 'cr:chart': 700, cur: 700, global_rows: 700 }, queued: 0 });
+      { base: { 'r:a': 700, 'cr:chart': 700, cur: 700 }, queued: 0 });
 
     // ── 10. THE HEADLINE CASE ──
     // Phone ticks Materials steps; iPad sits on chart row 31. Different fields,
@@ -355,15 +355,15 @@ async function syncPushPullTest() {
     device(db);
     seedProject('q2', 'Both');
     cloudProject(db, 'q2', 'Both');
-    cloudProgress(db, 'q2', { 'cr:chart': 31, cur: 0, global_rows: 31 },
-                            { 'cr:chart': 800, global_rows: 800 });
-    seedProgress('q2', { 's:a': true, 's:b': true, cur: 0, global_rows: 0 },
-                       { 's:a': 900, 's:b': 900 }, {});
+    cloudProgress(db, 'q2', { 'cr:chart': 31, cur: 0 },
+                            { 'cr:chart': 800 });
+    seedProgress('q2', { 'r:a': true, 'r:b': true, cur: 0 },
+                       { 'r:a': 900, 'r:b': 900 }, {});
     await pull('test');
 
     check('disjoint edits merge silently → both sides survive',
       readLocalProgress('q2').values,
-      { 's:a': true, 's:b': true, 'cr:chart': 31, cur: 0, global_rows: 31 });
+      { 'r:a': true, 'r:b': true, 'cr:chart': 31, cur: 0 });
     check('disjoint edits merge silently → no conflicts raised', pendingConflicts.length, 0);
     check('disjoint edits merge silently → local-only edits queued to push back',
       Object.keys(outbox), ['progress:q2']);
@@ -375,8 +375,8 @@ async function syncPushPullTest() {
     device(db);
     seedProject('q3', 'Clash');
     cloudProject(db, 'q3', 'Clash');
-    cloudProgress(db, 'q3', { 'cr:chart': 23, cur: 0, global_rows: 23 }, { 'cr:chart': 800 });
-    seedProgress('q3', { 'cr:chart': 31, cur: 0, global_rows: 0 }, { 'cr:chart': 900 },
+    cloudProgress(db, 'q3', { 'cr:chart': 23, cur: 0 }, { 'cr:chart': 800 });
+    seedProgress('q3', { 'cr:chart': 31, cur: 0 }, { 'cr:chart': 900 },
                        { 'cr:chart': 100 });
     const beforeClash = Date.now();
     await pull('test');
@@ -394,7 +394,7 @@ async function syncPushPullTest() {
     db = makeMockDb();
     device(db);
     seedProject('q4', 'Doomed');
-    seedProgress('q4', { 's:a': true, cur: 0, global_rows: 0 }, { 's:a': 100 }, {});
+    seedProgress('q4', { 'r:a': true, cur: 0 }, { 'r:a': 100 }, {});
     activeProjectId = 'q4'; view = 'project';
     cloudProject(db, 'q4', 'Doomed', { updated_ms: 9000, deleted_ms: 9000 });
     await pull('test');
@@ -413,7 +413,7 @@ async function syncPushPullTest() {
     projects.push({ id: 'q5', patternId: 'peacock-tee', name: 'Gone', created: 1000,
                     updatedAt: 9000, deletedAt: 9000 });
     cloudProject(db, 'q5', 'Gone');                       // cloud still has it live
-    cloudProgress(db, 'q5', { 's:a': true, cur: 0, global_rows: 0 }, { 's:a': 800 });
+    cloudProgress(db, 'q5', { 'r:a': true, cur: 0 }, { 'r:a': 800 });
     await pull('test');
 
     check('local tombstone survives a stale cloud copy',
@@ -424,7 +424,7 @@ async function syncPushPullTest() {
     db = makeMockDb();
     device(db);
     cloudProject(db, 'q6', 'Cursor');
-    cloudProgress(db, 'q6', { 's:a': true, cur: 0, global_rows: 0 }, { 's:a': 700 });
+    cloudProgress(db, 'q6', { 'r:a': true, cur: 0 }, { 'r:a': 700 });
     await pull('test');
     const afterFirst = { rev: syncCursor.rev, projTs: syncCursor.projTs, uid: syncCursor.uid };
     db.calls.length = 0;
@@ -506,9 +506,9 @@ async function syncPushPullTest() {
       projects.push({ id: 'c1', patternId: 'peacock-tee', name: 'Clashing Tee',
                       created: 1000, updatedAt: 1000 });
       cloudProject(db, 'c1', 'Clashing Tee');
-      cloudProgress(db, 'c1', { ['cr:' + chartPhase.id]: 23, cur: 0, global_rows: 23 },
+      cloudProgress(db, 'c1', { ['cr:' + chartPhase.id]: 23, cur: 0 },
                               { ['cr:' + chartPhase.id]: 800 });
-      seedProgress('c1', { ['cr:' + chartPhase.id]: 31, cur: 0, global_rows: 0 },
+      seedProgress('c1', { ['cr:' + chartPhase.id]: 31, cur: 0 },
                          { ['cr:' + chartPhase.id]: 900 }, { ['cr:' + chartPhase.id]: 100 });
       await pull('test');
       return 'cr:' + chartPhase.id;
@@ -563,13 +563,13 @@ async function syncPushPullTest() {
     // It kept saying "3 things" after two had been settled, which is worse
     // than no banner: it advertises questions that no longer exist.
     key = await setupClash();
-    pendingConflicts.push({ p: 'c1', k: 'global_rows', mine: 5, theirs: 9, at: Date.now() });
+    pendingConflicts.push({ p: 'c1', k: 'cur', mine: 0, theirs: 5, at: Date.now() });
     saveConflicts();
     showConflictBanner();
     const bannerText = () => { const b = document.getElementById('conflict-banner');
                                return b ? b.textContent.replace('Review', '').trim() : null; };
     const two = bannerText();
-    resolveConflict('c1', 'global_rows', false);
+    resolveConflict('c1', 'cur', false);
     const one = bannerText();
     resolveConflict('c1', key, false);
     check('the banner counts down as questions are answered, then goes away',
@@ -596,6 +596,59 @@ async function syncPushPullTest() {
              v[key] = 23; writeLocalProgress('c1', v, l.clocks, readBase('c1')); })();
     check('a conflict the two devices have since agreed on is dropped',
       liveConflicts().length, 0);
+
+    // ── 25b. The progress-schema gate ──
+    //
+    // The entries model renamed every progress key, and splitFields() drops
+    // prefixes it does not recognise. Two live versions would therefore file
+    // each other's whole payload under "not mine" and write over the top, with
+    // no conflict raised. The gate makes that loud instead.
+    //
+    // The subtle half is the CURSOR: pull asks for server_rev > cursor, so if a
+    // later row carried the cursor past a skipped one, that project would never
+    // be looked at again — the exact silent loss the gate exists to prevent.
+    db = makeMockDb();
+    device(db);
+    cloudProject(db, 'v1proj', 'Written by the old app');
+    cloudProject(db, 'v2proj', 'Written by this app');
+    // The stale row lands FIRST (lower rev), the current one after it.
+    db.project_progress.push({ project_id: 'v1proj', owner_id: UID,
+      steps: { a: true }, counters: {}, cur: 0, chart_rows: {}, global_rows: 4,
+      entries: {}, schema_ver: 1, clocks: { 's:a': 700 }, server_rev: ++db.rev });
+    const staleRev = db.rev;
+    cloudProgress(db, 'v2proj', { 'r:a': true, cur: 1 }, { 'r:a': 700, cur: 700 });
+    await pull('test');
+
+    check('a row from another progress version is not merged',
+      { v1: readLocalProgress('v1proj').values, v2: readLocalProgress('v2proj').values },
+      { v1: { cur: 0 }, v2: { 'r:a': true, cur: 1 } });
+    check('and it says so, rather than losing the rows quietly',
+      !!document.getElementById('schema-banner'), true);
+    check('the cursor is held BELOW the skipped row, not carried past it',
+      syncCursor.rev < staleRev, true);
+
+    // The other device updates: same project, now written in this namespace.
+    db.project_progress[0] = { project_id: 'v1proj', owner_id: UID,
+      entries: { 'n:b': true }, cur: 3, chart_rows: {}, schema_ver: PROGRESS_SCHEMA,
+      clocks: { 'n:b': 900, cur: 900 }, server_rev: ++db.rev };
+    await pull('test');
+
+    check('once the other device catches up, the held-back row lands',
+      readLocalProgress('v1proj').values, { 'n:b': true, cur: 3 });
+    check('and the banner goes away on its own',
+      !!document.getElementById('schema-banner'), false);
+
+    // A push must refuse too, or it would merge against a row it cannot read
+    // and then overwrite it.
+    db.project_progress[0].schema_ver = 1;
+    seedProgress('v1proj', { 'n:b': true, cur: 3 }, { 'n:b': 1000 }, {});
+    enqueue('progress', 'v1proj');
+    const revBefore = db.project_progress[0].server_rev;
+    await flush('test');
+    check('push refuses a row it cannot read, leaving it untouched',
+      db.project_progress[0].server_rev, revBefore);
+
+    hideSchemaBanner(); schemaMismatches = {};
 
     // ── 26. Nothing may load after app.js ──
     //
@@ -626,31 +679,38 @@ async function syncPushPullTest() {
     const REF = PATTERNS[0];
     const refHash = structHash(REF);
     const variant = fn => { const c = JSON.parse(JSON.stringify(REF)); fn(c); return structHash(c); };
-    const steps = c => c.phases.reduce((a, ph) => a.concat(ph.steps), []);
+    const allEntries = c => c.phases.reduce((a, ph) => a.concat(ph.entries || []), []);
 
     check('prose edits do not move the hash',
       {
-        stepText:    variant(c => { c.phases[0].steps[0].text = 'rewritten entirely'; }) === refHash,
+        entryText:   variant(c => { c.phases[0].entries[0].text = 'rewritten entirely'; }) === refHash,
         phaseName:   variant(c => { c.phases[0].name = 'Renamed'; }) === refHash,
         patternName: variant(c => { c.name = 'New'; c.desc = 'New'; }) === refHash,
-        bulletText:  variant(c => { const s = steps(c).find(x => x.bullets); if (s) s.bullets[0] = 'reworded'; }) === refHash,
+        bulletText:  variant(c => { const e = allEntries(c).find(x => x.bullets); if (e) e.bullets[0] = 'reworded'; }) === refHash,
+        repeatRowText: variant(c => { const e = allEntries(c).find(x => x.kind === 'repeat'); e.rows[0].text = 'reworded'; }) === refHash,
         deepCopy:    structHash(JSON.parse(JSON.stringify(REF))) === refHash
       },
-      { stepText: true, phaseName: true, patternName: true, bulletText: true, deepCopy: true });
+      { entryText: true, phaseName: true, patternName: true, bulletText: true,
+        repeatRowText: true, deepCopy: true });
 
     check('structural edits always move the hash',
       {
-        addStep:    variant(c => c.phases[0].steps.push({ id: 'new', text: 'x' })) !== refHash,
-        removeStep: variant(c => c.phases[0].steps.pop()) !== refHash,
-        renameId:   variant(c => { c.phases[0].steps[0].id = 'renamed'; }) !== refHash,
-        reorder:    variant(c => { const a = c.phases[0].steps; a.unshift(a.pop()); }) !== refHash,
+        addEntry:   variant(c => c.phases[0].entries.push({ kind: 'note', id: 'new', text: 'x' })) !== refHash,
+        removeEntry:variant(c => c.phases[0].entries.pop()) !== refHash,
+        renameId:   variant(c => { c.phases[0].entries[0].id = 'renamed'; }) !== refHash,
+        reorder:    variant(c => { const a = c.phases[0].entries; a.unshift(a.pop()); }) !== refHash,
         movePhase:  variant(c => { c.phases.unshift(c.phases.pop()); }) !== refHash,
-        target:     variant(c => { const s = steps(c).find(x => x.rows); s.target += 2; }) !== refHash,
+        // A note and a row are DIFFERENT progress keys for the same id, so a
+        // kind change has to move the hash or ticks land in the wrong namespace.
+        changeKind: variant(c => { const e = allEntries(c).find(x => x.kind === 'note'); e.kind = 'row'; }) !== refHash,
+        times:      variant(c => { const e = allEntries(c).find(x => x.kind === 'repeat'); e.times += 2; }) !== refHash,
+        repeatRows: variant(c => { const e = allEntries(c).find(x => x.kind === 'repeat'); e.rows.push({ id: 'extra', text: 'x' }); }) !== refHash,
         chartLen:   variant(c => { c.chart.push(c.chart[0].slice()); }) !== refHash,
         hasChart:   variant(c => { c.phases[0].hasChart = true; }) !== refHash
       },
-      { addStep: true, removeStep: true, renameId: true, reorder: true,
-        movePhase: true, target: true, chartLen: true, hasChart: true });
+      { addEntry: true, removeEntry: true, renameId: true, reorder: true,
+        movePhase: true, changeKind: true, times: true, repeatRows: true,
+        chartLen: true, hasChart: true });
 
     check('the shipped patterns all hash differently',
       new Set(PATTERNS.map(structHash)).size, PATTERNS.length);
@@ -668,18 +728,19 @@ async function syncPushPullTest() {
     try {
       const proj = createProject(REF.id);
       activateProject(proj.id);
-      const doomed = PHASES[0].steps[2].id;
-      const keptA = PHASES[0].steps[0].id, keptB = PHASES[0].steps[1].id;
-      state[keptA] = state[keptB] = state[doomed] = true;
+      const doomed = PHASES[0].entries[2].id;
+      const keptA = PHASES[0].entries[0].id, keptB = PHASES[0].entries[1].id;
+      entryProg[noteKey(keptA)] = entryProg[noteKey(keptB)] = entryProg[noteKey(doomed)] = true;
       cur = 2;
       const sectionBefore = PHASES[2].id;
       save();
 
       const frozenHash = storedHash(proj.id);
       const live = PATTERNS[patIndex];
-      live.phases[0].steps = live.phases[0].steps.filter(s => s.id !== doomed);
-      live.phases[0].steps.push({ id: 'newly-added', text: 'did not exist before' });
-      live.phases.unshift({ id: 'inserted-phase', name: 'Inserted', steps: [{ id: 'ins-1', text: 'new' }] });
+      live.phases[0].entries = live.phases[0].entries.filter(e => e.id !== doomed);
+      live.phases[0].entries.push({ kind: 'note', id: 'newly-added', text: 'did not exist before' });
+      live.phases.unshift({ id: 'inserted-phase', name: 'Inserted', desc: '',
+                            entries: [{ kind: 'note', id: 'ins-1', text: 'new' }] });
 
       activateProject(proj.id);
       check('a structural change freezes the project on the version it started on',
@@ -697,7 +758,7 @@ async function syncPushPullTest() {
       outbox = {}; saveOutbox();
       adoptPattern(proj.id);
       activateProject(proj.id);
-      const st = lsGetJson(proj.id, 'state', {});
+      const st = lsGetJson(proj.id, 'entries', {});
       check('adopting takes the new structure and keeps the knitter in place',
         { changed: patternChanged, frozen: patternFrozen,
           firstPhase: PHASES[0].id, stillOnSection: PHASES[cur].id,
@@ -711,8 +772,8 @@ async function syncPushPullTest() {
       // Nothing is destroyed. The orphaned tick costs a few bytes and comes
       // back if the step ever does — and deleting it would fight sync, since
       // the other device has not adopted yet and would push it straight back.
-      check('a tick for a step that no longer exists is kept, not deleted',
-        { orphan: st[doomed], kept: [st[keptA], st[keptB]] },
+      check('a tick for an entry that no longer exists is kept, not deleted',
+        { orphan: st[noteKey(doomed)], kept: [st[noteKey(keptA)], st[noteKey(keptB)]] },
         { orphan: true, kept: [true, true] });
 
       // ── 29. The pattern columns that go up ──
@@ -727,7 +788,7 @@ async function syncPushPullTest() {
         { hash: true, doc: null });
 
       const frozenProj = createProject(REF.id);
-      PATTERNS[patIndex].phases[0].steps.push({ id: 'another-new', text: 'x' });
+      PATTERNS[patIndex].phases[0].entries.push({ kind: 'note', id: 'another-new', text: 'x' });
       check('a diverged project sends the doc, because nothing else has it',
         (() => { const c = patternColumns(frozenProj.id);
                  return { hash: !!c.pattern_struct_hash, docPhases: !!(c.pattern_doc && c.pattern_doc.phases.length) }; })(),

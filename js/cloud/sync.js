@@ -171,15 +171,16 @@ function legacyChartPhaseId(projectId) {
 // different project state than the one that would survive a reload.
 function readLocalProgress(projectId) {
   const values = {};
-  const st = lsGetJson(projectId, 'state', {});
-  Object.keys(st).forEach(id => { values['s:' + id] = !!st[id]; });
-  const ct = lsGetJson(projectId, 'ctrs', {});
-  Object.keys(ct).forEach(id => { values['c:' + id] = ct[id] | 0; });
+  // Entry progress. `state`/`ctrs`/`grows` are NOT read any more: they are
+  // pre-conversion relics that migrateToEntries() has already folded in here,
+  // and `global_rows` is derived, so it is not independently editable and must
+  // not be independently clocked — two devices can no longer disagree about a
+  // total, only about the positions it is computed from.
+  const en = lsGetJson(projectId, 'entries', {});
+  Object.keys(en).forEach(k => { values[k] = en[k]; });
 
   const cu = lsGet(projectId, 'cur');
   values.cur = cu === null ? 0 : (parseInt(cu) || 0);
-  const gr = lsGet(projectId, 'grows');
-  values.global_rows = gr === null ? 0 : (parseInt(gr) || 0);
 
   const rows = lsGetJson(projectId, 'chartRows', null);
   if (rows) {
@@ -202,30 +203,42 @@ function readLocalProgress(projectId) {
 // not understand belongs to a newer one, and inventing a bucket for it would
 // write nonsense that later versions then have to unpick.
 function splitFields(values) {
-  const steps = {}, counters = {}, chart_rows = {};
-  let cur = 0, global_rows = 0;
+  const entries = {}, chart_rows = {};
+  let cur = 0;
   Object.keys(values || {}).forEach(k => {
     const v = values[k];
-    if (k.indexOf('s:') === 0)       steps[k.slice(2)] = !!v;
-    else if (k.indexOf('c:') === 0)  counters[k.slice(2)] = v | 0;
+    // ORDER MATTERS: 'rp:' has to be tested before 'r:', or every repeat
+    // position is filed as a row done-flag called "p:<id>" and both the
+    // position and the row are lost.
+    if (k.indexOf('rp:') === 0)      entries[k] = normalizeRepeatValue(v);
     else if (k.indexOf('cr:') === 0) chart_rows[k.slice(3)] = v | 0;
+    else if (k.indexOf('n:') === 0)  entries[k] = !!v;
+    else if (k.indexOf('r:') === 0)  entries[k] = !!v;
     else if (k === 'cur')            cur = v | 0;
-    else if (k === 'global_rows')    global_rows = v | 0;
   });
-  return { steps, counters, cur, chart_rows, global_rows };
+  return { entries, cur, chart_rows };
+}
+
+// A repeat position always crosses the wire as {y, z} of plain ints. Coercing
+// here is what keeps === in diffProgress() meaningful after a JSON round trip
+// through Postgres — and what stops a malformed value being merged as one.
+function normalizeRepeatValue(v) {
+  // Both halves need the |0. localStorage and jsonb can both hand back "2",
+  // and a z of "2" is not === a z of 2 — which would report a conflict on
+  // every sync for a repeat the two devices agree about exactly.
+  return { y: (v && v.y) | 0, z: ((v && v.z) | 0) || 1 };
 }
 
 // The inverse, over a row as Postgres returns it.
 function joinFields(row) {
   const values = {};
-  const steps = (row && row.steps) || {};
-  Object.keys(steps).forEach(id => { values['s:' + id] = !!steps[id]; });
-  const counters = (row && row.counters) || {};
-  Object.keys(counters).forEach(id => { values['c:' + id] = counters[id] | 0; });
+  const entries = (row && row.entries) || {};
+  Object.keys(entries).forEach(k => {
+    values[k] = k.indexOf('rp:') === 0 ? normalizeRepeatValue(entries[k]) : !!entries[k];
+  });
   const rows = (row && row.chart_rows) || {};
   Object.keys(rows).forEach(pid => { values[chartRowKey(pid)] = rows[pid] | 0; });
   values.cur = (row && row.cur) | 0;
-  values.global_rows = (row && row.global_rows) | 0;
   return { values: values, clocks: (row && row.clocks) || {} };
 }
 
@@ -241,11 +254,13 @@ function joinFields(row) {
 function writeLocalProgress(projectId, values, clocks, base) {
   const f = splitFields(values);
   try {
-    localStorage.setItem(projKey(projectId, 'state'), JSON.stringify(f.steps));
-    localStorage.setItem(projKey(projectId, 'ctrs'), JSON.stringify(f.counters));
+    localStorage.setItem(projKey(projectId, 'entries'), JSON.stringify(f.entries));
     localStorage.setItem(projKey(projectId, 'cur'), f.cur);
     localStorage.setItem(projKey(projectId, 'chartRows'), JSON.stringify(f.chart_rows));
-    localStorage.setItem(projKey(projectId, 'grows'), f.global_rows);
+    // `state`/`ctrs`/`grows` are deliberately left untouched. They are the
+    // pre-conversion relics migrateToEntries() read from; blanking them here
+    // would destroy the only record of what a project looked like before,
+    // and nothing reads them any more anyway.
     localStorage.setItem(projKey(projectId, 'clk'), JSON.stringify(clocks || {}));
     if (base) localStorage.setItem(projKey(projectId, 'base'), JSON.stringify(base));
   } catch(e) {
@@ -573,7 +588,13 @@ function applyRemotePattern(row) {
   if (!row.pattern_struct_hash || storedHash(row.id)) return;
   try {
     localStorage.setItem('pt3_proj_' + row.id + '_phash', row.pattern_struct_hash);
-    if (row.pattern_doc && row.pattern_doc.phases) {
+    // A doc from a device still on the old code describes sections as `steps`,
+    // and this version has no renderer for those — taking it would produce a
+    // project that opens to blank sections. Fall through to the live pattern
+    // instead; the schema gate keeps that device's progress out anyway.
+    const remoteIsLegacy = row.pattern_doc && row.pattern_doc.phases &&
+      row.pattern_doc.phases.some(ph => ph && ph.steps && !ph.entries);
+    if (row.pattern_doc && row.pattern_doc.phases && !remoteIsLegacy) {
       localStorage.setItem('pt3_proj_' + row.id + '_pattern', JSON.stringify(row.pattern_doc));
     } else {
       // No doc means the sending device was still on the code's version, so
@@ -643,9 +664,14 @@ async function pushProgress(id, uid) {
   const base  = readBase(id);
 
   const { data: remote, error } = await sb.from('project_progress')
-    .select('project_id,steps,counters,cur,chart_rows,global_rows,clocks,server_rev')
+    .select('project_id,entries,cur,chart_rows,clocks,server_rev,schema_ver')
     .eq('project_id', id).maybeSingle();
   if (error) throw error;
+
+  // The row was last written by a client on a different progress namespace.
+  // Merging it would read its fields through the wrong prefixes and throw away
+  // whatever it does not recognise, silently. Stop and say so instead.
+  if (remote && !schemaMatches(remote)) { noteSchemaMismatch(id, remote.schema_ver | 0); return 'drop'; }
 
   let values = local.values, clocks = local.clocks;
 
@@ -669,9 +695,12 @@ async function pushProgress(id, uid) {
   }
 
   const f = splitFields(values);
-  const row = { project_id: id, owner_id: uid, steps: f.steps, counters: f.counters,
-                cur: f.cur, chart_rows: f.chart_rows, global_rows: f.global_rows,
-                clocks: clocks };
+  // `steps`/`counters`/`global_rows` are not written any more. The columns stay
+  // (they hold a v1 client's only copy), but this client has nothing to put in
+  // them — omitting them from the update leaves them exactly as they were.
+  const row = { project_id: id, owner_id: uid, entries: f.entries,
+                cur: f.cur, chart_rows: f.chart_rows,
+                clocks: clocks, schema_ver: PROGRESS_SCHEMA };
 
   if (remote) {
     // The guard. Zero rows means another device wrote between the select above
@@ -807,30 +836,105 @@ function conflictLabel(c) {
   // labelling only ever resolves s:/c: keys, which converted sections do not
   // produce, so there is nothing for it to find there — but it must not throw
   // while walking past one.
-  const steps = phases.reduce((a, ph) => a.concat(ph.steps || []), []);
+  const entries = phases.reduce((a, ph) => a.concat(ph.entries || []), []);
+  const findEntry = id => entries.find(x => x.id === id);
   const num = v => String(v);
 
   if (c.k === 'cur') {
     return { field: 'Section', fmt: v => (phases[v] && phases[v].name) || ('Section ' + ((v | 0) + 1)) };
   }
-  if (c.k === 'global_rows') return { field: 'Total rows', fmt: num };
   if (c.k.indexOf('cr:') === 0) {
     const ph = phases.find(x => x.id === c.k.slice(3));
     return { field: (ph ? plainText(ph.name, 28) : 'Chart') + ' — chart row', fmt: num };
   }
-  if (c.k.indexOf('c:') === 0) {
-    const s = steps.find(x => x.id === c.k.slice(2));
-    return { field: (s && plainText(s.lbl || s.text)) || 'Row counter', fmt: num };
+  // Order matters here too: 'rp:' before 'r:'.
+  if (c.k.indexOf('rp:') === 0) {
+    const e = findEntry(c.k.slice(3));
+    // A position needs saying in the terms the knitter sees on the dock —
+    // "pass 3 of 4, row 2" — not as a {y,z} pair nobody could choose between.
+    const R = e ? ((e.rows || []).length || 1) : 1;
+    const T = e ? (e.times | 0) : 0;
+    return {
+      field: (e && plainText(e.text)) || 'Repeat',
+      fmt: v => {
+        const y = (v && v.y) | 0, z = (v && v.z) || 1;
+        return y >= T && T ? 'Finished (' + (T * R) + ' rows)'
+                           : 'Pass ' + (y + 1) + ' of ' + T + ', row ' + z + ' of ' + R;
+      }
+    };
   }
-  if (c.k.indexOf('s:') === 0) {
-    const raw = c.k.slice(2);
-    const m = raw.match(/^(.*)__b(\d+)$/);
-    const s = steps.find(x => x.id === (m ? m[1] : raw));
-    let field = (s && plainText(s.text)) || 'Step';
-    if (m) field += ' · part ' + (parseInt(m[2]) + 1);
-    return { field: field, fmt: v => (v ? 'Done' : 'Not done') };
+  if (c.k.indexOf('n:') === 0 || c.k.indexOf('r:') === 0) {
+    const e = findEntry(c.k.slice(c.k.indexOf(':') + 1));
+    return { field: (e && plainText(e.text)) || (c.k.indexOf('n:') === 0 ? 'Note' : 'Row'),
+             fmt: v => (v ? 'Done' : 'Not done') };
   }
   return { field: c.k, fmt: num };
+}
+
+// ─────────────────────────────────────────────
+// PROGRESS SCHEMA GATE
+//
+// The entries model renamed every progress key. splitFields() drops prefixes
+// it does not recognise — sensible when the unknown key is from a NEWER
+// client, catastrophic when two live versions disagree about all of them at
+// once: each would file the other's whole payload under "not mine" and write
+// its own view over the top, with no conflict raised and nothing on screen to
+// say a row had been lost.
+//
+// So every row carries the namespace that wrote it, and a client refuses to
+// merge one it does not share. Refusing is the point: the failure becomes a
+// banner asking the user to update their other device, instead of progress
+// quietly going missing.
+// ─────────────────────────────────────────────
+const PROGRESS_SCHEMA = 2;
+
+function schemaMatches(row) { return ((row && row.schema_ver) | 0) === PROGRESS_SCHEMA; }
+
+let schemaMismatches = {};
+
+function noteSchemaMismatch(projectId, theirVer) {
+  const known = schemaMismatches[projectId];
+  schemaMismatches[projectId] = theirVer;
+  if (known !== theirVer) {
+    logSync('info', 'progress ' + projectId + ' is schema v' + theirVer +
+                    ', this device speaks v' + PROGRESS_SCHEMA + ' — not merging');
+  }
+  showSchemaBanner();
+}
+
+function clearSchemaMismatch(projectId) {
+  if (projectId in schemaMismatches) {
+    delete schemaMismatches[projectId];
+    if (!Object.keys(schemaMismatches).length) hideSchemaBanner();
+  }
+}
+
+function schemaBannerText() {
+  const vers = Object.keys(schemaMismatches).map(k => schemaMismatches[k]);
+  const n = vers.length;
+  const theirs = Math.max.apply(null, vers.concat(0));
+  const what = n === 1 ? 'A project is' : n + ' projects are';
+  return theirs > PROGRESS_SCHEMA
+    ? what + ' saved by a newer version of Stitch Ease. Reload this device to catch up.'
+    : what + ' still saved by an older version. Open Stitch Ease on your other device to update it.';
+}
+
+function showSchemaBanner() {
+  if (!Object.keys(schemaMismatches).length) return;
+  let b = document.getElementById('schema-banner');
+  if (!b) {
+    b = document.createElement('div');
+    b.id = 'schema-banner';
+    b.className = 'sync-banner warn';
+    bannerStack().appendChild(b);
+  }
+  b.textContent = schemaBannerText();
+}
+
+function hideSchemaBanner() {
+  const b = document.getElementById('schema-banner');
+  if (b) b.remove();
+  pruneBannerStack();
 }
 
 // ── The sheet ──
@@ -1101,18 +1205,32 @@ async function pull(reason) {
     });
 
     const { data: remoteProgress, error: gErr } = await sb.from('project_progress')
-      .select('project_id,steps,counters,cur,chart_rows,global_rows,clocks,server_rev')
+      .select('project_id,entries,cur,chart_rows,clocks,server_rev,schema_ver')
       .gt('server_rev', cursor.rev);
     if (gErr) throw gErr;
 
+    // A row from a different progress namespace is skipped, not merged. The
+    // cursor must then stay BELOW it: the pull asks for server_rev > cursor,
+    // so letting a later row carry the cursor past a skipped one would strand
+    // that project forever, which is exactly the silent loss the gate exists
+    // to prevent. Held one short of the lowest skipped rev instead, so it is
+    // re-examined on every pull and lands the moment the other device updates.
+    let minSkipped = Infinity;
     (remoteProgress || []).forEach(row => {
+      const rev = Number(row.server_rev) || 0;
+      if (!schemaMatches(row)) {
+        noteSchemaMismatch(row.project_id, row.schema_ver | 0);
+        if (rev < minSkipped) minSkipped = rev;
+        return;
+      }
+      clearSchemaMismatch(row.project_id);
       if (mergeRemoteProgress(row)) {
         changed = true;
         if (row.project_id === activeProjectId) touchedActive = true;
       }
-      const rev = Number(row.server_rev) || 0;
       if (rev > cursor.rev) cursor.rev = rev;
     });
+    if (minSkipped !== Infinity) cursor.rev = Math.min(cursor.rev, minSkipped - 1);
 
     saveCursor();
     noteSyncSuccess();
@@ -1164,6 +1282,18 @@ async function pull(reason) {
 // ignores `conflicts` still behaves sanely rather than silently adopting the
 // other device's value.
 // ─────────────────────────────────────────────
+// Field values used to be booleans and ints, so `===` was the whole story. A
+// repeat's position is an OBJECT, and two objects are never `===` — comparing
+// them that way would report a conflict on every single sync for every repeat
+// both devices had touched, even when they agreed exactly.
+function sameFieldValue(a, b) {
+  if (a === b) return true;
+  if (a && b && typeof a === 'object' && typeof b === 'object') {
+    return (a.y | 0) === (b.y | 0) && (a.z | 0) === (b.z | 0);
+  }
+  return false;
+}
+
 function diffProgress(local, remote, base) {
   const lv = (local && local.values) || {}, lc = (local && local.clocks) || {};
   const rv = (remote && remote.values) || {}, rc = (remote && remote.clocks) || {};
@@ -1192,7 +1322,7 @@ function diffProgress(local, remote, base) {
       mergedClocks[k] = rClock;
       return;
     }
-    if (lv[k] === rv[k]) {               // both moved, and agreed
+    if (sameFieldValue(lv[k], rv[k])) {  // both moved, and agreed
       mergedClocks[k] = Math.max(lClock, rClock);
       return;
     }

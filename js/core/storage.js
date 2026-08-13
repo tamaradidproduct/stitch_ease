@@ -6,15 +6,19 @@
 //   pt3_projects                  the registry: [{ id, patternId, name, created,
 //                                 updatedAt, deletedAt? }] — deletedAt marks a
 //                                 tombstone; the record is kept, not removed
-//   pt3_proj_<id>_state           {stepId: bool}   completed steps
-//   pt3_proj_<id>_ctrs            {stepId: int}    row counters
+//   pt3_proj_<id>_entries         {n:<id>|r:<id>: bool, rp:<id>: {y,z}} —
+//                                 progress, one key per entry
+//   pt3_proj_<id>_state           PRE-CONVERSION {stepId: bool}; read once by
+//   pt3_proj_<id>_ctrs            PRE-CONVERSION {stepId: int}. migrateToEntries()
+//                                 folded both into `entries`. Kept, never written.
 //   pt3_proj_<id>_cur             current phase index
 //   pt3_proj_<id>_chartRows       {phaseId: row} — per chart phase (see below)
 //   pt3_proj_<id>_chartRow        LEGACY single chart row; read once by
 //                                 loadProjectState() when chartRows is absent,
 //                                 then superseded. Kept readable forever so
 //                                 old saved progress isn't lost.
-//   pt3_proj_<id>_grows           project-wide row tally
+//   pt3_proj_<id>_grows           PRE-CONVERSION row tally; the tally is now
+//                                 derived, so this is dead. Kept for purging.
 //   pt3_proj_<id>_clk             {fieldKey: epoch_ms} last local change per field
 //   pt3_proj_<id>_base            {fieldKey: epoch_ms} clocks at last sync
 //   pt3_proj_<id>_phash           structure hash the project was started on
@@ -436,16 +440,16 @@ function migrateAddClocks() {
 // and returns early on any value, so this needs its own comparison rather than
 // its own key — one sentinel that counts is easier to extend than a new key per
 // migration.
-const SCHEMA_VERSION = 2;
+const PATTERN_HASH_SCHEMA = 2;
 function migrateAddPatternHash() {
   try {
-    if ((parseInt(localStorage.getItem('pt3_schema')) || 0) >= SCHEMA_VERSION) return;
+    if ((parseInt(localStorage.getItem('pt3_schema')) || 0) >= PATTERN_HASH_SCHEMA) return;
     JSON.parse(localStorage.getItem('pt3_projects') || '[]').forEach(proj => {
       if (localStorage.getItem('pt3_proj_' + proj.id + '_phash')) return;
       const pat = patternById(proj.patternId);
       if (pat) freezePattern(proj.id, pat);
     });
-    localStorage.setItem('pt3_schema', String(SCHEMA_VERSION));
+    localStorage.setItem('pt3_schema', String(PATTERN_HASH_SCHEMA));
   } catch(e) {
     // Not silent: without a hash a project can never be told that its pattern
     // changed, which is the whole point of this phase.
@@ -453,17 +457,106 @@ function migrateAddPatternHash() {
   }
 }
 
-// Done-steps / total for a project, read from its saved state (for home cards).
-// Counts only real step ids — a step's checkable bullets (stepId + '__b' +
-// index, see toggleSubStep()) live in the same state object but aren't steps
-// of their own, so they're excluded rather than inflating the tally.
+// ─────────────────────────────────────────────
+// MIGRATION #4 — onto the entries model
+//
+// Every pattern converted from `steps` to `entries`, which changed every
+// pattern's structure hash. Left alone, the freeze mechanism would do exactly
+// what it is built to do and strand every existing project on its old
+// snapshot — permanently, since the old renderer goes away in this same
+// commit. So this force-adopts: each project is moved onto the live pattern
+// and its progress rewritten into the new namespace.
+//
+// It is the one change in this codebase that cannot be taken back, so the
+// order matters. `cur` is translated through the OLD phase id BEFORE the
+// snapshot is replaced, because afterwards nothing remains to say what the old
+// index meant. Progress is converted from the old keys BEFORE they stop being
+// read, for the same reason.
+//
+// Nothing is deleted. `state`, `ctrs` and `grows` stay on disk untouched: they
+// cost a few KB, they are the only record of what a project looked like
+// before, and seedEntryProgress() reads them rather than writing them. A
+// project whose live pattern has vanished from the code is skipped entirely —
+// better a project this version cannot open than one silently remapped onto a
+// pattern that is not its own.
+// ─────────────────────────────────────────────
+const SCHEMA_VERSION = 3;
+function migrateToEntries() {
+  try {
+    if ((parseInt(localStorage.getItem('pt3_schema')) || 0) >= SCHEMA_VERSION) return;
+    const t0 = Date.now();
+    let moved = 0, skipped = 0;
+
+    JSON.parse(localStorage.getItem('pt3_projects') || '[]').forEach(proj => {
+      const p = 'pt3_proj_' + proj.id + '_';
+      const readObj = k => { try { return JSON.parse(localStorage.getItem(p + k) || 'null') || {}; } catch(e) { return {}; } };
+
+      const live = patternById(proj.patternId);
+      if (!live) { skipped++; return; }
+
+      // A tombstone's progress keys are already purged — there is nothing to
+      // convert, and re-freezing a deleted project would resurrect its doc.
+      if (proj.deletedAt) return;
+
+      // 1. `cur` first, through the phase id it used to point at. The old
+      //    snapshot is the only thing that knows.
+      const oldPat = frozenPattern(proj.id) || live;
+      const oldPhase = (oldPat.phases || [])[parseInt(localStorage.getItem(p + 'cur')) || 0];
+      let nextCur = live.phases.findIndex(ph => oldPhase && ph.id === oldPhase.id);
+      if (nextCur < 0) nextCur = Math.min(parseInt(localStorage.getItem(p + 'cur')) || 0, live.phases.length - 1);
+      nextCur = Math.max(0, nextCur);
+
+      // 2. Progress, read out of the old buckets into the new namespace. The
+      //    mapping and its passes-vs-rows trap live in seedEntryProgress(),
+      //    which has been reading these same keys since step 2 — so this is
+      //    the path that has already been exercised, not a fresh one.
+      const entries = seedEntryProgress(readObj('entries'), readObj('state'), readObj('ctrs'), live.phases);
+
+      // 3. Clocks, rebuilt in the new namespace at one shared t0. The old
+      //    timestamps describe fields that no longer exist; carrying them
+      //    across a rename would attach a real edit time to a key nobody ever
+      //    edited. base = clk says "nothing pending", so the first sync after
+      //    this sees a device with no local edits rather than one claiming to
+      //    have changed every field at once.
+      const clk = {};
+      Object.keys(entries).forEach(k => { clk[k] = t0; });
+      clk.cur = t0;
+      Object.keys(readObj('chartRows')).forEach(phaseId => { clk[chartRowKey(phaseId)] = t0; });
+
+      localStorage.setItem(p + 'entries', JSON.stringify(entries));
+      localStorage.setItem(p + 'cur', nextCur);
+      const json = JSON.stringify(clk);
+      localStorage.setItem(p + 'clk', json);
+      localStorage.setItem(p + 'base', json);
+
+      // 4. Adopt: the project now knits the live pattern, so its snapshot and
+      //    hash have to say so or patternForProject() keeps handing back the
+      //    old one.
+      freezePattern(proj.id, live);
+      moved++;
+    });
+
+    localStorage.setItem('pt3_schema', String(SCHEMA_VERSION));
+    console.info('[migrate] entries model: ' + moved + ' project(s) moved' +
+                 (skipped ? ', ' + skipped + ' skipped (pattern no longer in the code)' : ''));
+  } catch(e) {
+    // Loud: a half-done run leaves projects pointing at a pattern whose keys
+    // they do not have, and the sentinel is deliberately NOT written above on
+    // the failure path, so the next load tries again.
+    console.error('migrateToEntries failed', e);
+  }
+}
+
+// Done-entries / total for a project, read from its saved progress (for home
+// cards). Notes, rows and repeats all count as one thing to tick, which is
+// what the card's percentage means.
 function projectProgress(proj) {
   // The version this project actually knits — a frozen project's totals come
   // from its own snapshot, or the card would count steps it cannot see.
   const pat = patternForProject(proj).pattern;
   // A converted section counts its entries; an unconverted one its steps. Both
   // are "things you tick", which is what the card's percentage means.
-  const total = pat ? pat.phases.reduce((a, ph) => a + (ph.entries || ph.steps || []).length, 0) : 0;
+  const total = pat ? pat.phases.reduce((a, ph) => a + (ph.entries || []).length, 0) : 0;
   let done = 0;
   try {
     if (pat) {
@@ -473,23 +566,10 @@ function projectProgress(proj) {
       // must show the right number for a project that has not been opened
       // since its pattern was converted.
       seedEntryProgress(ep, st, JSON.parse(localStorage.getItem('pt3_proj_' + proj.id + '_ctrs') || '{}'), pat.phases);
-      const stepIds = new Set();
-      pat.phases.forEach(ph => {
-        if (ph.entries) ph.entries.forEach(e => { if (entryDone(e, ep)) done++; });
-        else (ph.steps || []).forEach(s => stepIds.add(s.id));
-      });
-      done += Object.keys(st).filter(k => stepIds.has(k) && st[k]).length;
+      pat.phases.forEach(ph => (ph.entries || []).forEach(e => { if (entryDone(e, ep)) done++; }));
     }
   } catch(e) {}
   return { done, total, pct: total ? Math.round(done / total * 100) : 0 };
-}
-
-// Clears a step's own done-flag/counter, plus any checkable-bullet sub-state.
-function resetStep(s) {
-  state[s.id] = false;
-  stampClock('s:' + s.id);
-  if (s.rows) { ctrs[s.id] = 0; stampClock('c:' + s.id); }
-  if (s.bullets) s.bullets.forEach((_, i) => { state[s.id + '__b' + i] = false; stampClock('s:' + s.id + '__b' + i); });
 }
 
 // Clears one entry. Writes an explicit false / {y:0,z:1} rather than deleting
@@ -497,14 +577,13 @@ function resetStep(s) {
 // seedEntryProgress() reads through — a reset that quietly undoes itself on
 // the next open.
 function resetEntry(e) {
-  if (e.kind === 'repeat') entryProg[repeatKey(e.id)] = { y: 0, z: 1 };
-  else entryProg[e.kind === 'note' ? noteKey(e.id) : rowKey(e.id)] = false;
+  const k = e.kind === 'repeat' ? repeatKey(e.id)
+          : e.kind === 'note'   ? noteKey(e.id) : rowKey(e.id);
+  entryProg[k] = e.kind === 'repeat' ? { y: 0, z: 1 } : false;
+  stampClock(k);
 }
 
-function resetSection(ph) {
-  if (ph.entries) ph.entries.forEach(resetEntry);
-  else (ph.steps || []).forEach(resetStep);
-}
+function resetSection(ph) { (ph.entries || []).forEach(resetEntry); }
 
 // Reset progress for the current phase only.
 function resetPhase() {
@@ -566,20 +645,23 @@ function patternChangeSummary(projectId) {
   // Entry ids and step ids share one namespace on purpose: a section converted
   // in place keeps its ids, so the summary correctly reports nothing added or
   // removed rather than claiming the whole section was replaced.
-  const idsOf = pat => new Set(pat.phases.reduce((a, ph) => a.concat((ph.entries || ph.steps || []).map(x => x.id)), []));
+  const idsOf = pat => new Set(pat.phases.reduce((a, ph) => a.concat((ph.entries || []).map(x => x.id)), []));
   const oldIds = idsOf(oldPat), newIds = idsOf(live);
 
   let added = 0, removed = 0;
   newIds.forEach(id => { if (!oldIds.has(id)) added++; });
   oldIds.forEach(id => { if (!newIds.has(id)) removed++; });
 
-  // Ticks counted the way the home card counts them: real step ids only, so a
-  // step's checkable bullets don't inflate the number the user is shown.
+  // Ticks counted the way the home card counts them — from the entries map,
+  // whose keys are prefixed, so the id has to come back out before it can be
+  // matched against the pattern.
   let ticks = 0, kept = 0;
   try {
-    const st = JSON.parse(localStorage.getItem('pt3_proj_' + projectId + '_state') || '{}');
-    Object.keys(st).forEach(k => {
-      if (!st[k] || !oldIds.has(k)) return;
+    const st = JSON.parse(localStorage.getItem('pt3_proj_' + projectId + '_entries') || '{}');
+    Object.keys(st).forEach(key => {
+      const k = key.slice(key.indexOf(':') + 1);
+      const on = key.indexOf('rp:') === 0 ? !!(st[key] && (st[key].y || st[key].z > 1)) : !!st[key];
+      if (!on || !oldIds.has(k)) return;
       ticks++;
       if (newIds.has(k)) kept++;
     });

@@ -1,17 +1,15 @@
 // ─────────────────────────────────────────────
-// SECTIONS / ROWS / REPEATS — the model, wired to nothing.
+// SECTIONS / ROWS / REPEATS — the model.
 //
-// Step 1 of docs/rows-sections-model.md. Every function here is pure: no DOM,
-// no globals except the `pattern` handed in, no writes. Nothing in the app
-// calls any of it yet. It ships anyway so step 2 can start using it without
-// another index.html / sw.js edit.
+// docs/rows-sections-model.md. Every function here is pure: no DOM, no globals
+// except the `pattern` handed in, no writes.
 //
-// The problem being modelled: today a repeat is a COUNT, not a POSITION.
-// `{rows:true, target:12}` records how many times you did the thing, so
-// "work rows 5–12 four times" has nowhere to put which of the eight rows you
-// are on. Put the app down mid-repeat and it cannot tell you where to resume.
+// The problem it solves: a repeat used to be a COUNT, not a POSITION.
+// `{rows:true, target:12}` recorded how many times you did the thing, so
+// "work rows 5–12 four times" had nowhere to put which of the eight rows you
+// were on. Put the app down mid-repeat and it could not say where to resume.
 //
-// Three entry kinds replace the one `step` shape:
+// Three entry kinds replaced the one `step` shape:
 //
 //   {kind:'note',   id, text, bullets?}           not a row at all
 //   {kind:'row',    id, text}                     exactly one row
@@ -20,15 +18,14 @@
 // A note keeps `bullets` because plenty of them are genuinely informational
 // (Peacock's marker-placement list) rather than a repeat in disguise.
 //
-// `cadence` and `countable` do NOT appear here, on purpose. "Increase every
-// 2nd round × 8" is a 2-row repeat worked 4 times, and a countable phase is a
-// section whose entries all happen to be rows. Both collapse into this model
-// rather than surviving beside it.
+// `cadence` and `countable` are gone, on purpose. "Increase every 2nd round ×
+// 8" is a 2-row repeat worked 4 times, and a countable phase is a section
+// whose entries all happen to be rows. Both collapsed into this model rather
+// than surviving beside it.
 // ─────────────────────────────────────────────
 
-// Progress keys. Deliberately the same namespace the sync clock will use, so
-// that step 5 is a lift rather than a translation. A repeat's position is ONE
-// key holding both numbers — taking y from one device and z from another
+// Progress keys — the same namespace the sync clocks use. A repeat's position
+// is ONE key holding both numbers: taking y from one device and z from another
 // yields a position neither device was ever at.
 function noteKey(id)   { return 'n:'  + id; }
 function rowKey(id)    { return 'r:'  + id; }
@@ -127,11 +124,7 @@ function entryDone(entry, progress) {
 
 // ── Sections ──
 
-// Total rows in a section. Sections not yet converted fall back to today's
-// rules — this mirrors patternTotalRows() in js/core/app.js exactly, and
-// exists so the whole-pattern total can be compared against the current one
-// while the conversion is half done. That comparison is the only real proof
-// the new model loses no rows.
+// Total rows in a section.
 function sectionRowCount(section, pattern) {
   if (!section) return 0;
   // A chart section's rows are the CHART's, and they are not entries — chart.js
@@ -140,21 +133,16 @@ function sectionRowCount(section, pattern) {
   // `entries` first and returning would silently drop all 44 yoke rows, since
   // the only entry there is a note worth zero.
   const chartRows = section.hasChart ? chartForPhaseOf(pattern, section).length : 0;
-  if (section.entries) return chartRows + section.entries.reduce((n, e) => n + entryRowCount(e), 0);
-  if (section.hasChart)  return chartRows;
-  if (section.countable) return (section.steps || []).length;
-  return (section.steps || []).reduce((n, st) => n + (st.rows ? st.target : 0), 0);
+  return chartRows + (section.entries || []).reduce((n, e) => n + entryRowCount(e), 0);
 }
 
 // Rows finished in a section.
 //
 // Takes a CONTEXT rather than one map, because a project's progress does not
-// all live in one place: converted entries are in `entries`, a chart's
-// position is in `chartRows`, and a project still frozen on the old shape has
-// its progress in `state`/`ctrs`. All three have to be readable or the derived
-// total is wrong for somebody.
+// all live in one place: entry progress is in `entries`, and a chart's
+// position is in `chartRows` — chart.js still owns those.
 //
-//   ctx = { entries, chartRows, state, ctrs }   — all optional
+//   ctx = { entries, chartRows }   — both optional
 //
 // The chart contributes `row - 1`: standing on row 1 means nothing is
 // finished, which is the same arithmetic changeChartRow() used when it was
@@ -165,16 +153,7 @@ function sectionRowsDone(section, ctx) {
   const chartDone = section.hasChart
     ? Math.max(0, ((c.chartRows || {})[section.id] || 1) - 1)
     : 0;
-  if (section.entries) {
-    return chartDone + section.entries.reduce((n, e) => n + entryRowsDone(e, c.entries), 0);
-  }
-  if (section.hasChart)  return chartDone;
-  // Legacy shapes, for projects frozen before the conversion. These mirror
-  // what the old per-mutator nudging produced, so a frozen project's header
-  // reads exactly what it read before.
-  if (section.countable) return (section.steps || []).filter(s => (c.state || {})[s.id]).length;
-  return (section.steps || []).reduce((n, st) =>
-    n + (st.rows ? Math.max(0, Math.min(st.target | 0, (c.ctrs || {})[st.id] | 0)) : 0), 0);
+  return chartDone + (section.entries || []).reduce((n, e) => n + entryRowsDone(e, c.entries), 0);
 }
 
 // Σ over the pattern. This is what the header's Rows tally IS, rather than a

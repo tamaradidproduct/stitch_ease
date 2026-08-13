@@ -43,23 +43,6 @@ function rowsSelfTest() {
   const REP_R2 = RAG.entries.find(e => e.id === 'r2');    // R=2, times 4 — was the cadence step
   const REP_QR = ROW1.entries.find(e => e.id === 'r1-qr');// R=2, times 11, legacyCount 'passes'
 
-  // The pre-conversion shapes. Not history for its own sake: every project
-  // frozen before step 3 still renders through the legacy branch of
-  // sectionRowCount(), so it has to keep working.
-  const LEGACY_COL = { id: 'col', steps: [
-    { id: 'c1', text: 'Cast on 88 sts' },
-    { id: 'c2', text: 'Work 7 rounds k1, p1 rib', rows: true, target: 7, lbl: 'rib rounds' },
-    { id: 'c3', text: 'Increase round → 99 sts' },
-    { id: 'c4', text: 'Switch to 4 mm circular needle' },
-  ] };
-  const LEGACY_GSR = { id: 'gsr', steps: [
-    { id: 'g1' }, { id: 'g2' }, { id: 'g3' }, { id: 'g4' }, { id: 'g5' }, { id: 'g6' }, { id: 'g7' },
-  ] };
-  const LEGACY_CHART = { id: 'chart', hasChart: true, steps: [{ id: 'ch2', postChart: true }] };
-  const LEGACY_TAT1  = { id: 'tat-t1', countable: true, steps: TAT1.entries.map(e => ({ id: e.id })) };
-  const LEGACY_PEACOCK = { id: 'legacy-peacock', chart: PEACOCK.chart,
-                           phases: [LEGACY_COL, LEGACY_GSR, LEGACY_CHART] };
-
   // ── A. Row counts, per section ──
 
   check('collar: 7 rib rounds + 1 increase round = 8 rows',
@@ -87,35 +70,24 @@ function rowsSelfTest() {
   check('pattern totals after conversion',
     PATTERNS.map(p => p.id + '=' + patternRowTotal(p)),
     ['peacock-tee=184', 'tatted-triangle=50', 'lenore=132', 'frost-flower-cardigan=50']);
-  check('the shipped patternTotalRows() agrees with the derived total',
+  check('the shipped patternTotalRows() delegates to the derived total',
     PATTERNS.map(p => legacyTotalFor(p)), PATTERNS.map(p => patternRowTotal(p)));
 
-  // ── C. The legacy branch still serves frozen snapshots ──
-
-  check('legacy sections still count the old way',
-    [sectionRowCount(LEGACY_COL, LEGACY_PEACOCK),
-     sectionRowCount(LEGACY_GSR, LEGACY_PEACOCK),
-     sectionRowCount(LEGACY_CHART, LEGACY_PEACOCK),
-     sectionRowCount(LEGACY_TAT1, LEGACY_PEACOCK)],
-    [7, 0, 44, 25]);
-  check('a frozen snapshot totals what it always did',
-    patternRowTotal(LEGACY_PEACOCK), 51);
-
-  // ── D. Where the conversion DELIBERATELY changed the count ──
+  // ── C. What the conversion changed, pinned ──
   //
-  // The old tally only counted row-counter targets, chart rows and countable
-  // steps. A plain step that was genuinely one round counted nothing, and a
-  // repeat-unit step counted one per motif rather than one per ring. Both are
-  // corrections, but they mean the header total legitimately moved.
+  // The old tally counted only row-counter targets, chart rows and countable
+  // steps: a plain step that was genuinely one round counted nothing, and a
+  // repeat-unit step counted one per motif rather than one per ring. These are
+  // the corrections, kept as constants now that the old code is gone.
 
-  check('collar: old 7 (counter only) → new 8 (+ the increase round)',
-    [sectionRowCount(LEGACY_COL, LEGACY_PEACOCK), sectionRowCount(COL, PEACOCK)], [7, 8]);
-  check('short rows: old 0 (no counters at all) → new 7',
-    [sectionRowCount(LEGACY_GSR, LEGACY_PEACOCK), sectionRowCount(GSR, PEACOCK)], [0, 7]);
-  check('tat-t1 unchanged: countable already counted one per step',
-    [sectionRowCount(LEGACY_TAT1, LEGACY_PEACOCK), sectionRowCount(TAT1, TAT)], [25, 25]);
-  check('lenore Ring Q–Chain R: old 11 (motifs) → new 22 (rings and chains)',
-    [11, repeatRowCount(REP_QR)], [11, 22]);
+  check('collar: was 7 (counter only), now 8 — the increase round is a round',
+    sectionRowCount(COL, PEACOCK), 8);
+  check('short rows: was 0 (no counters at all), now 7',
+    sectionRowCount(GSR, PEACOCK), 7);
+  check('tat-t1 unchanged at 25: countable already counted one per step',
+    sectionRowCount(TAT1, TAT), 25);
+  check('lenore Ring Q–Chain R: was 11 motifs, now 22 rings and chains',
+    repeatRowCount(REP_QR), 22);
 
   // ── E. The full walk, forward then back ──
   //
@@ -269,12 +241,6 @@ function rowsSelfTest() {
      sectionRowsDone(CHART_SEC, { chartRows: { chart: 1 } }),
      sectionRowsDone(CHART_SEC, { chartRows: { chart: 44 } })],
     [0, 0, 43]);
-  check('legacy countable section: one done step is one row',
-    sectionRowsDone(LEGACY_TAT1, { state: { t1r1: true, t1c1: true, t1r2: false } }), 2);
-  check('legacy counter section: the counter IS the rows, clamped to target',
-    [sectionRowsDone(LEGACY_COL, { ctrs: { c2: 3 } }),
-     sectionRowsDone(LEGACY_COL, { ctrs: { c2: 99 } })],
-    [3, 7]);
   check('a whole project mid-progress: collar + chart + raglan add up',
     patternRowsDone(PEACOCK, {
       entries: { 'n:c1': true, 'rp:c2': { y: 7, z: 1 }, 'r:c3': true, 'rp:r2': { y: 1, z: 1 } },

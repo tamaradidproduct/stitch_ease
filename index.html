@@ -552,7 +552,7 @@
 
   /* Repeat-unit steps (a bulleted ring/chain group paired with a counter) —
      the header isn't a checkbox: the counter (or the checkable bullets
-     below it) is what drives progress, see repeatStepHtml() in render.js. */
+     below it) is what drives progress, see repeatEntryHtml() in render.js. */
   .repeat-step { cursor: default; }
   .repeat-step:active { background: transparent; }
   /* Emphasized like a section header, not a plain checkbox row — bold,
@@ -574,7 +574,9 @@
   .step-bullets.spaced li { padding: 14px 0; border-bottom: 1px dashed var(--border); }
   .step-bullets.spaced li:last-child { border-bottom: none; }
 
-  /* Per-round cadence reminder (e.g. increase vs plain round) */
+  /* Position line on a repeat block: which row of which pass, and the
+     pattern row it works out to. Was the cadence reminder before repeats
+     replaced cadence. */
   .round-hint {
     margin-top: 10px; padding: 9px 12px; border-radius: var(--radius-sm);
     background: var(--bg); border-left: 3px solid var(--border);

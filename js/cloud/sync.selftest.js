@@ -237,53 +237,113 @@ function syncSelfTest() {
   // against the string "3" and call it a conflict the user never made.
 
   check('splitFields → bucketed shape, types preserved',
-    splitFields({ 's:a': true, 's:b': false, 'c:a': 12, 'cr:yoke': 31, 'cr:swatch': 4,
-                  cur: 2, global_rows: 97 }),
-    { steps: { a: true, b: false }, counters: { a: 12 },
-      cur: 2, chart_rows: { yoke: 31, swatch: 4 }, global_rows: 97 });
+    splitFields({ 'n:a': true, 'r:b': false, 'rp:a': { y: 12, z: 2 },
+                  'cr:yoke': 31, 'cr:swatch': 4, cur: 2 }),
+    { entries: { 'n:a': true, 'r:b': false, 'rp:a': { y: 12, z: 2 } },
+      cur: 2, chart_rows: { yoke: 31, swatch: 4 } });
 
   // A key from a newer version of the app: dropped, not guessed at. Inventing
   // a bucket for it would write nonsense that a later version has to unpick.
   check('splitFields drops unknown prefixes',
-    splitFields({ 's:a': true, 'zz:mystery': 9 }),
-    { steps: { a: true }, counters: {}, cur: 0, chart_rows: {}, global_rows: 0 });
+    splitFields({ 'n:a': true, 'zz:mystery': 9 }),
+    { entries: { 'n:a': true }, cur: 0, chart_rows: {} });
 
   check('joinFields → flat field keys',
-    joinFields({ steps: { a: true, b: false }, counters: { a: 12 },
-                 cur: 2, chart_rows: { yoke: 31 }, global_rows: 97,
-                 clocks: { 's:a': t1 } }),
-    { values: { 's:a': true, 's:b': false, 'c:a': 12, 'cr:yoke': 31, cur: 2, global_rows: 97 },
-      clocks: { 's:a': t1 } });
+    joinFields({ entries: { 'n:a': true, 'r:b': false, 'rp:a': { y: 12, z: 2 } },
+                 cur: 2, chart_rows: { yoke: 31 },
+                 clocks: { 'n:a': t1 } }),
+    { values: { 'n:a': true, 'r:b': false, 'rp:a': { y: 12, z: 2 }, 'cr:yoke': 31, cur: 2 },
+      clocks: { 'n:a': t1 } });
 
   // Postgres column defaults mean a freshly-inserted row arrives with empty
   // objects and no clocks at all; that must read as "nothing set", not throw.
   check('joinFields on a defaulted/empty row',
-    joinFields({ steps: {}, counters: {}, cur: 0, chart_rows: {}, global_rows: 0, clocks: {} }),
-    { values: { cur: 0, global_rows: 0 }, clocks: {} });
+    joinFields({ entries: {}, cur: 0, chart_rows: {}, clocks: {} }),
+    { values: { cur: 0 }, clocks: {} });
 
   check('joinFields on a missing row → no throw',
     joinFields(null),
-    { values: { cur: 0, global_rows: 0 }, clocks: {} });
+    { values: { cur: 0 }, clocks: {} });
 
   // The round trip is what actually has to hold: a merged result written to
   // the server and pulled back by the other device must be the same values.
   check('splitFields → joinFields round trip',
     (() => {
-      const values = { 's:a': true, 's:b': false, 'c:a': 12, 'c:b': 0,
-                       'cr:yoke': 31, cur: 2, global_rows: 97 };
+      const values = { 'n:a': true, 'r:b': false, 'rp:a': { y: 12, z: 1 },
+                       'cr:yoke': 31, cur: 2 };
       return joinFields(splitFields(values)).values;
     })(),
-    { 's:a': true, 's:b': false, 'c:a': 12, 'c:b': 0, 'cr:yoke': 31, cur: 2, global_rows: 97 });
+    { 'n:a': true, 'r:b': false, 'rp:a': { y: 12, z: 1 }, 'cr:yoke': 31, cur: 2 });
 
   // The failure this guards against: localStorage hands back strings, so a
   // counter that went through the buckets and came back as "12" would compare
   // unequal to the remote 12 and be reported as a conflict on every sync.
   check('round trip keeps ints as ints, not strings',
     (() => {
-      const v = joinFields(splitFields({ 'c:a': 12, cur: 2, global_rows: 97 })).values;
-      return [typeof v['c:a'], typeof v.cur, typeof v.global_rows];
+      const v = joinFields(splitFields({ 'cr:yoke': 31, cur: 2 })).values;
+      return [typeof v['cr:yoke'], typeof v.cur];
     })(),
-    ['number', 'number', 'number']);
+    ['number', 'number']);
+
+  // ── Repeat positions are OBJECTS ──
+  //
+  // Every other field value is a boolean or an int, so `===` was the whole
+  // story. A repeat's {y,z} is an object, and two objects are never `===` —
+  // comparing them that way would report a conflict on every sync, for every
+  // repeat both devices had touched, even when they agreed exactly.
+
+  check('identical positions from two devices are NOT a conflict',
+    (() => {
+      const r = diffProgress(
+        { values: { 'rp:c2': { y: 3, z: 1 } }, clocks: { 'rp:c2': t1 } },
+        { values: { 'rp:c2': { y: 3, z: 1 } }, clocks: { 'rp:c2': t2 } },
+        { 'rp:c2': t0 });
+      return { conflicts: r.conflicts.length, clock: r.mergedClocks['rp:c2'] };
+    })(),
+    { conflicts: 0, clock: t2 });
+
+  check('genuinely different positions DO conflict, whole and unsplit',
+    (() => {
+      const r = diffProgress(
+        { values: { 'rp:c2': { y: 3, z: 2 } }, clocks: { 'rp:c2': t1 } },
+        { values: { 'rp:c2': { y: 1, z: 1 } }, clocks: { 'rp:c2': t2 } },
+        { 'rp:c2': t0 });
+      return { merged: r.merged, conflicts: r.conflicts.length, key: r.conflicts[0].key };
+    })(),
+    { merged: { 'rp:c2': { y: 3, z: 2 } }, conflicts: 1, key: 'rp:c2' });
+
+  // y and z are one value. If they were clocked separately, taking y from one
+  // device and z from the other would produce "pass 3, row 7" when one device
+  // was at pass 3 row 2 and the other at pass 1 row 7 — a position neither
+  // device was ever at. One key is what makes that unrepresentable.
+  check('a position is taken whole from one side, never half from each',
+    (() => {
+      const r = diffProgress(
+        { values: { 'rp:c2': { y: 3, z: 2 } }, clocks: { 'rp:c2': t0 } },
+        { values: { 'rp:c2': { y: 1, z: 7 } }, clocks: { 'rp:c2': t1 } },
+        { 'rp:c2': t0 });
+      return r.merged['rp:c2'];
+    })(),
+    { y: 1, z: 7 });
+
+  check('rp: is split before r: — order matters or positions become rows',
+    splitFields({ 'rp:a': { y: 2, z: 1 }, 'r:a': true, 'n:b': true, 'cr:chart': 9, cur: 3 }),
+    { entries: { 'rp:a': { y: 2, z: 1 }, 'r:a': true, 'n:b': true },
+      cur: 3, chart_rows: { chart: 9 } });
+
+  check('entries round trip through the server shape unchanged',
+    (() => {
+      const values = { 'n:a': true, 'r:b': false, 'rp:c': { y: 4, z: 2 }, 'cr:chart': 31, cur: 2 };
+      return joinFields(splitFields(values)).values;
+    })(),
+    { 'n:a': true, 'r:b': false, 'rp:c': { y: 4, z: 2 }, 'cr:chart': 31, cur: 2 });
+
+  check('a position survives the round trip as ints, not strings',
+    (() => {
+      const v = joinFields(splitFields({ 'rp:c': { y: '4', z: '2' } })).values['rp:c'];
+      return [typeof v.y, typeof v.z, v.y, v.z];
+    })(),
+    ['number', 'number', 4, 2]);
 
   const failed = results.filter(r => !r.ok);
   console.table(results.map(r => ({ case: r.case, ok: r.ok })));
