@@ -229,6 +229,62 @@ function syncSelfTest() {
     })(),
     { merged: {}, conflicts: 0 });
 
+  // ── Field-key adapters ──
+  //
+  // These convert between the three shapes the same progress lives in
+  // (localStorage buckets / flat field keys / Postgres columns). A wrong answer
+  // here is as silent as a wrong merge: the merge would compare a counter of 3
+  // against the string "3" and call it a conflict the user never made.
+
+  check('splitFields → bucketed shape, types preserved',
+    splitFields({ 's:a': true, 's:b': false, 'c:a': 12, 'cr:yoke': 31, 'cr:swatch': 4,
+                  cur: 2, global_rows: 97 }),
+    { steps: { a: true, b: false }, counters: { a: 12 },
+      cur: 2, chart_rows: { yoke: 31, swatch: 4 }, global_rows: 97 });
+
+  // A key from a newer version of the app: dropped, not guessed at. Inventing
+  // a bucket for it would write nonsense that a later version has to unpick.
+  check('splitFields drops unknown prefixes',
+    splitFields({ 's:a': true, 'zz:mystery': 9 }),
+    { steps: { a: true }, counters: {}, cur: 0, chart_rows: {}, global_rows: 0 });
+
+  check('joinFields → flat field keys',
+    joinFields({ steps: { a: true, b: false }, counters: { a: 12 },
+                 cur: 2, chart_rows: { yoke: 31 }, global_rows: 97,
+                 clocks: { 's:a': t1 } }),
+    { values: { 's:a': true, 's:b': false, 'c:a': 12, 'cr:yoke': 31, cur: 2, global_rows: 97 },
+      clocks: { 's:a': t1 } });
+
+  // Postgres column defaults mean a freshly-inserted row arrives with empty
+  // objects and no clocks at all; that must read as "nothing set", not throw.
+  check('joinFields on a defaulted/empty row',
+    joinFields({ steps: {}, counters: {}, cur: 0, chart_rows: {}, global_rows: 0, clocks: {} }),
+    { values: { cur: 0, global_rows: 0 }, clocks: {} });
+
+  check('joinFields on a missing row → no throw',
+    joinFields(null),
+    { values: { cur: 0, global_rows: 0 }, clocks: {} });
+
+  // The round trip is what actually has to hold: a merged result written to
+  // the server and pulled back by the other device must be the same values.
+  check('splitFields → joinFields round trip',
+    (() => {
+      const values = { 's:a': true, 's:b': false, 'c:a': 12, 'c:b': 0,
+                       'cr:yoke': 31, cur: 2, global_rows: 97 };
+      return joinFields(splitFields(values)).values;
+    })(),
+    { 's:a': true, 's:b': false, 'c:a': 12, 'c:b': 0, 'cr:yoke': 31, cur: 2, global_rows: 97 });
+
+  // The failure this guards against: localStorage hands back strings, so a
+  // counter that went through the buckets and came back as "12" would compare
+  // unequal to the remote 12 and be reported as a conflict on every sync.
+  check('round trip keeps ints as ints, not strings',
+    (() => {
+      const v = joinFields(splitFields({ 'c:a': 12, cur: 2, global_rows: 97 })).values;
+      return [typeof v['c:a'], typeof v.cur, typeof v.global_rows];
+    })(),
+    ['number', 'number', 'number']);
+
   const failed = results.filter(r => !r.ok);
   console.table(results.map(r => ({ case: r.case, ok: r.ok })));
   failed.forEach(f => console.error('FAIL ' + f.case + '\n  got  ' + f.got + '\n  want ' + f.want));

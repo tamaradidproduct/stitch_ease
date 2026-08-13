@@ -150,6 +150,18 @@
     font-size: 12px; color: var(--muted); line-height: 1.5;
     margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--border);
   }
+  /* "Backed up 4 minutes ago", with the manual trigger beside it. Shown on
+     every visit, not only on failure — a status nobody has seen working is one
+     nobody can read when it breaks. */
+  .acct-sync {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);
+  }
+  .acct-sync-when { font-size: 13px; color: var(--text); }
+  /* .sheet-btn is flex:1 for the paired full-width rows; here it sits beside a
+     line of text and has to be content-width instead. */
+  .sheet-btn.slim { flex: 0 0 auto; margin: 0; padding: 9px 16px; font-size: 13px; }
+
   .acct-err {
     font-size: 13px; line-height: 1.45; color: #8e4634;
     background: #f7ece8; border: 1px solid #e4c7bd; border-radius: var(--radius);
