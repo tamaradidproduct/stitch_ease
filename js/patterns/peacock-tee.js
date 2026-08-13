@@ -103,12 +103,14 @@ const PEACOCK_CHART = [
 
 const PEACOCK_PHASES = [
   {
+    // Nothing here is a round of the garment — a gauge swatch is knitting, but
+    // it is not this sweater's rows.
     id:'mat', name:'Materials', desc:'Before you start',
-    steps:[
-      {id:'m1', text:'Get 300g Sandnes Garn Line, Dark blue grey 6061 (53% cotton, 33% viscose, 14% linen)'},
-      {id:'m2', text:'Circular needles: 3 mm (40 cm + 80 cm) and 4 mm (40 cm + 80 cm)'},
-      {id:'m3', text:'DPNs: 3 mm and 4 mm — or set up magic loop'},
-      {id:'m4', text:'Knit gauge swatch on 4 mm: 20 sts × 27 rows = 10×10 cm in stockinette'},
+    entries:[
+      {kind:'note', id:'m1', text:'Get 300g Sandnes Garn Line, Dark blue grey 6061 (53% cotton, 33% viscose, 14% linen)'},
+      {kind:'note', id:'m2', text:'Circular needles: 3 mm (40 cm + 80 cm) and 4 mm (40 cm + 80 cm)'},
+      {kind:'note', id:'m3', text:'DPNs: 3 mm and 4 mm — or set up magic loop'},
+      {kind:'note', id:'m4', text:'Knit gauge swatch on 4 mm: 20 sts × 27 rows = 10×10 cm in stockinette'},
     ]
   },
   {
@@ -133,60 +135,89 @@ const PEACOCK_PHASES = [
     ]
   },
   {
+    // Seven steps that each say "Row N" — seven rows. Under the old model
+    // these counted for nothing at all, since only counter steps did.
     id:'gsr', name:'Short rows', desc:'German short rows · neckline shaping',
-    steps:[
-      {id:'g1', text:'Row 1 (RS): K 27 sts. Turn.'},
-      {id:'g2', text:'Row 2 (WS): GSR, p 53 sts. Turn.'},
-      {id:'g3', text:'Row 3 (RS): GSR, k 57 sts. Turn.'},
-      {id:'g4', text:'Row 4 (WS): GSR, p 61 sts. Turn.'},
-      {id:'g5', text:'Row 5 (RS): GSR, K3, *k2tog, k2, yo, k1, yo, k2, SSK* × 6 times, k8. Turn.'},
-      {id:'g6', text:'Row 6 (WS): GSR, p 69 sts. Turn.'},
-      {id:'g7', text:'Row 7 (RS): GSR, k to mid-back (34 sts). Now working in the round.'},
+    entries:[
+      {kind:'row', id:'g1', text:'Row 1 (RS): K 27 sts. Turn.'},
+      {kind:'row', id:'g2', text:'Row 2 (WS): GSR, p 53 sts. Turn.'},
+      {kind:'row', id:'g3', text:'Row 3 (RS): GSR, k 57 sts. Turn.'},
+      {kind:'row', id:'g4', text:'Row 4 (WS): GSR, p 61 sts. Turn.'},
+      {kind:'row', id:'g5', text:'Row 5 (RS): GSR, K3, *k2tog, k2, yo, k1, yo, k2, SSK* × 6 times, k8. Turn.'},
+      {kind:'row', id:'g6', text:'Row 6 (WS): GSR, p 69 sts. Turn.'},
+      {kind:'row', id:'g7', text:'Row 7 (RS): GSR, k to mid-back (34 sts). Now working in the round.'},
     ]
   },
   {
+    // The chart's own 44 rows are the section's rows (chart.js still owns
+    // them), so the confirm step is a note — counting stitches is not a round.
     id:'chart', name:'Yoke chart', desc:'Chart B · 4 mm needle · 44 rows',
     hasChart: true,
-    steps:[
-      {id:'ch2', text:'Count to confirm 253 sts', postChart: true},
+    entries:[
+      {kind:'note', id:'ch2', text:'Count to confirm 253 sts', postChart: true},
     ]
   },
   {
+    // r2 was the codebase's ONLY cadence step, written out longhand. The old
+    // cadenceHintHtml() computed `round % 2 === 0`, so round 1 was the PLAIN
+    // round and round 2 the increase — which is why `rows` reads [plain,
+    // increase] and not the other way about. Reversed, every increase round
+    // lands one round early and nothing would throw.
+    //
+    // r1's bullets stay on a note: they place markers, they are not rows.
     id:'rag', name:'Raglan', desc:'Divide & increase · 4 mm needle',
-    steps:[
-      {id:'r1', text:'Mark 4 sections (in the round, BOR = mid-back):', bullets:[
+    entries:[
+      {kind:'note', id:'r1', text:'Mark 4 sections (in the round, BOR = mid-back):', bullets:[
         '38 back / M / 1 marker-st / M',
         '48 sleeve / M / 1 marker-st / M',
         '77 front / M / 1 marker-st / M',
         '48 sleeve / M / 1 marker-st / M',
         '38 back',
       ]},
-      {id:'r2', text:'Increase every 2nd round at all 4 markers.', rows:true, target:8, lbl:'round',
-        cadence:2,
-        cadenceOn:'Increase round — m1-R before marker-st, k1 marker-st, m1-L after (all 4 markers = 8 inc)',
-        cadenceOff:'Plain round — knit all stitches'},
-      {id:'r3', text:'After 8 rounds (4 increase rounds): 285 sts total. Check mid-front measures ≈ 22 cm'},
+      {kind:'repeat', id:'r2', text:'Increase every 2nd round at all 4 markers.', times:4, rows:[
+        {id:'r2-1', text:'Plain round — knit all stitches'},
+        {id:'r2-2', text:'Increase round — m1-R before marker-st, k1 marker-st, m1-L after (all 4 markers = 8 inc)'},
+      ]},
+      {kind:'note', id:'r3', text:'After 8 rounds (4 increase rounds): 285 sts total. Check mid-front measures ≈ 22 cm'},
     ]
   },
   {
+    // b3 modifies b2's LAST round rather than adding one, so it stays a note —
+    // making it a row would claim a round that is never separately worked.
+    // b5 is a note for the same reason cast-on is: binding off is an edge
+    // treatment, not a row of fabric, and the two want to agree.
     id:'body', name:'Body', desc:'4 mm circular · stockinette',
-    steps:[
-      {id:'b1', text:'Knit 43 (back), place 56 on hold (sleeve), CO 10, knit 87 (front), place 56 on hold (sleeve), CO 10, knit 43 (back) → 193 sts'},
-      {id:'b2', text:'Stockinette in the round until side seam (from underarm) = 26 cm, or 5 cm shorter than desired length', rows:true, target:70, lbl:'rounds (≈70 for 26 cm)'},
-      {id:'b3', text:'Size S only: M1 at end of last round → 194 sts'},
-      {id:'b4', text:'Switch to 3 mm circular. Work k1, p1 rib for 5 cm', rows:true, target:14, lbl:'rib rounds (≈14 for 5 cm)'},
-      {id:'b5', text:'Bind off in rib'},
+    entries:[
+      {kind:'row', id:'b1', text:'Knit 43 (back), place 56 on hold (sleeve), CO 10, knit 87 (front), place 56 on hold (sleeve), CO 10, knit 43 (back) → 193 sts'},
+      {kind:'repeat', id:'b2', text:'Stockinette in the round until side seam (from underarm) = 26 cm, or 5 cm shorter than desired length', times:70, rows:[
+        {id:'b2-1', text:'Knit round — stockinette, ≈70 rounds for 26 cm'},
+      ]},
+      {kind:'note', id:'b3', text:'Size S only: M1 at end of last round → 194 sts'},
+      {kind:'repeat', id:'b4', text:'Switch to 3 mm circular. Work k1, p1 rib for 5 cm', times:14, rows:[
+        {id:'b4-1', text:'Rib round — k1, p1, ≈14 rounds for 5 cm'},
+      ]},
+      {kind:'note', id:'b5', text:'Bind off in rib'},
     ]
   },
   {
+    // s2 and s3 are notes, not rows: "at 5 cm" describes a decrease worked
+    // INSIDE one of s4's 27 rounds, not a 28th round. Counting them would
+    // inflate the sleeve by two rounds it is never asked to knit.
+    //
+    // s6 is the model's one honest gap — "repeat all sleeve steps" is a repeat
+    // over a whole section, which entries cannot nest. It stays a note.
     id:'slv', name:'Sleeves', desc:'4 mm DPNs · make 2',
-    steps:[
-      {id:'s1', text:'Sleeve 1: place 56 held sts on 4 mm DPNs. Pick up 12 sts at underarm → 68 sts. BOR = middle of picked-up sts.'},
-      {id:'s2', text:'At 5 cm: k1, k2tog, k to last 2 sts, SSK (−2 sts)'},
-      {id:'s3', text:'At 9 cm: decrease again → 64 sts total'},
-      {id:'s4', text:'Work until sleeve = 10 cm', rows:true, target:27, lbl:'rounds (≈27 for 10 cm)'},
-      {id:'s5', text:'Switch to 3 mm DPNs. Work 2 cm k1, p1 rib. Bind off in rib.', rows:true, target:5, lbl:'rib rounds'},
-      {id:'s6', text:'Sleeve 2: repeat all sleeve steps'},
+    entries:[
+      {kind:'note', id:'s1', text:'Sleeve 1: place 56 held sts on 4 mm DPNs. Pick up 12 sts at underarm → 68 sts. BOR = middle of picked-up sts.'},
+      {kind:'note', id:'s2', text:'At 5 cm: k1, k2tog, k to last 2 sts, SSK (−2 sts)'},
+      {kind:'note', id:'s3', text:'At 9 cm: decrease again → 64 sts total'},
+      {kind:'repeat', id:'s4', text:'Work until sleeve = 10 cm', times:27, rows:[
+        {id:'s4-1', text:'Knit round — stockinette, ≈27 rounds for 10 cm'},
+      ]},
+      {kind:'repeat', id:'s5', text:'Switch to 3 mm DPNs. Work 2 cm k1, p1 rib. Bind off in rib.', times:5, rows:[
+        {id:'s5-1', text:'Rib round — k1, p1'},
+      ]},
+      {kind:'note', id:'s6', text:'Sleeve 2: repeat all sleeve steps'},
     ]
   },
 ];

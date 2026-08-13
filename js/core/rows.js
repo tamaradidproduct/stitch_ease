@@ -134,8 +134,14 @@ function entryDone(entry, progress) {
 // the new model loses no rows.
 function sectionRowCount(section, pattern) {
   if (!section) return 0;
-  if (section.entries) return section.entries.reduce((n, e) => n + entryRowCount(e), 0);
-  if (section.hasChart)  return chartForPhaseOf(pattern, section).length;
+  // A chart section's rows are the CHART's, and they are not entries — chart.js
+  // still owns them. It can carry entries as well (the post-chart confirm
+  // note), so the two are added rather than one branch winning: checking
+  // `entries` first and returning would silently drop all 44 yoke rows, since
+  // the only entry there is a note worth zero.
+  const chartRows = section.hasChart ? chartForPhaseOf(pattern, section).length : 0;
+  if (section.entries) return chartRows + section.entries.reduce((n, e) => n + entryRowCount(e), 0);
+  if (section.hasChart)  return chartRows;
   if (section.countable) return (section.steps || []).length;
   return (section.steps || []).reduce((n, st) => n + (st.rows ? st.target : 0), 0);
 }
@@ -143,6 +149,11 @@ function sectionRowCount(section, pattern) {
 // Rows finished in a section. Only meaningful for a converted section — an
 // unconverted one has no progress in this shape, so it contributes nothing
 // rather than a guess.
+//
+// A chart section under-reports here: its position lives in `chartRows`, not
+// in this progress map. That is deliberate for now — the chart stays its own
+// code path until the model is settled — and it is why globalRows is not yet
+// derived from this function.
 function sectionRowsDone(section, progress) {
   if (!section || !section.entries) return 0;
   return section.entries.reduce((n, e) => n + entryRowsDone(e, progress), 0);

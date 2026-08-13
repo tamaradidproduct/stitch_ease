@@ -156,24 +156,24 @@ const FF_RAGLAN_CHART = [
 const FF_PHASES = [
   {
     id:'ff-mat', name:'Materials', desc:'Before you start',
-    steps:[
-      {id:'ffm1', text:'This pattern is graded by needle size rather than a fixed stitch count — pick a needle, swatch the motif below, and size up/down until the gauge fits'},
-      {id:'ffm2', text:'2 sets of circular needles (sizes TBD from your swatch): one smaller for ribbing, one larger for the body'},
-      {id:'ffm3', text:'Stitch markers, scrap yarn for holds'},
+    entries:[
+      {kind:'note', id:'ffm1', text:'This pattern is graded by needle size rather than a fixed stitch count — pick a needle, swatch the motif below, and size up/down until the gauge fits'},
+      {kind:'note', id:'ffm2', text:'2 sets of circular needles (sizes TBD from your swatch): one smaller for ribbing, one larger for the body'},
+      {kind:'note', id:'ffm3', text:'Stitch markers, scrap yarn for holds'},
     ]
   },
   {
     id:'ff-gauge', name:'Gauge swatch', desc:'Cast on 36 sts · Frost Flower motif · 36 rows, worked flat',
     hasChart: true, flatChart: true, chart: FF_MOTIF_CHART,
-    steps:[
-      {id:'ffg1', text:'Block the swatch, measure its finished width, then multiply ×8 for finished chest circumference (plus however much positive ease you want — this pattern runs 4–15 cm of ease over bust measurement)', postChart:true},
+    entries:[
+      {kind:'note', id:'ffg1', text:'Block the swatch, measure its finished width, then multiply ×8 for finished chest circumference (plus however much positive ease you want — this pattern runs 4–15 cm of ease over bust measurement)', postChart:true},
     ]
   },
   {
     id:'ff-raglan', name:'Cast on & raglan', desc:'Section 1 · rows 1–14 · 88 sts → 170 sts, worked flat',
     hasChart: true, flatChart: true, chart: FF_RAGLAN_CHART,
-    steps:[
-      {id:'ffr1', text:'Count 170 sts after row 14, then continue from row 15 (not yet in the app — follow the printed pattern from here)', postChart:true},
+    entries:[
+      {kind:'note', id:'ffr1', text:'Count 170 sts after row 14, then continue from row 15 (not yet in the app — follow the printed pattern from here)', postChart:true},
     ]
   },
 ];

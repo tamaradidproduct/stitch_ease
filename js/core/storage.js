@@ -278,15 +278,38 @@ function loadProjectState() {
 // section's progress, since the renderer would be asking for 'rp:c2' while the
 // tick still lives in ctrs.c2.
 //
-// The counter → position mapping is floor(count/R) and count%R + 1, which is
-// exact whenever the old counter counted whole passes — true for every repeat
-// converted so far, since they are all single-row.
+// The old counter did not mean the same thing on every step it appeared on,
+// which is the trap here:
+//
+//   plain counter step ("work 7 rounds rib")   counted ROWS
+//   cadence step       ("every 2nd round × 8") counted ROWS
+//   repeat-unit step   (counter + bullets)     counted PASSES of the motif
+//
+// On a single-row repeat those coincide, so it went unnoticed until Lenore,
+// whose motifs are six rings long: reading its counter as rows would put a
+// tatter a third of the way back through their cuff. Converted blocks that
+// came from a repeat-unit step carry `legacyCount:'passes'` to say so.
+//
+// The bullets of such a step were the one place the old model DID record a
+// position inside a pass, so they are read too — a half-worked motif keeps
+// its half.
 function seedEntryProgress(target, legacyState, legacyCtrs, phases) {
   (phases || []).forEach(ph => (ph.entries || []).forEach(e => {
     if (e.kind === 'repeat') {
       const k = repeatKey(e.id);
       const n = (legacyCtrs || {})[e.id];
-      if (!(k in target) && n) target[k] = repeatPosFromRowsDone(e, n);
+      if (!(k in target) && n) {
+        if (e.legacyCount === 'passes') {
+          // A pass count is y directly. z comes from however many of the old
+          // <id>__b<i> bullets are still ticked for the pass in progress.
+          const st = legacyState || {};
+          let ticked = 0;
+          for (let i = 0; i < repeatLength(e); i++) if (st[e.id + '__b' + i]) ticked++;
+          target[k] = clampRepeatPos(e, { y: n, z: ticked + 1 });
+        } else {
+          target[k] = repeatPosFromRowsDone(e, n);
+        }
+      }
     } else {
       const k = e.kind === 'note' ? noteKey(e.id) : rowKey(e.id);
       if (!(k in target) && (legacyState || {})[e.id]) target[k] = true;

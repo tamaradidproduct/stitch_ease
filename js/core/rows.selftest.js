@@ -10,12 +10,12 @@
 //
 // then call rowsSelfTest(). It logs a table and returns {passed, failed}.
 //
-// The fixtures below are REAL sections converted by hand — Peacock's Collar,
-// Short rows and Raglan, and one tatted-triangle phase. The pattern files
-// themselves are untouched; these live here only, and are the reference
-// conversions for step 3. Converting real sections rather than synthetic ones
-// is the point: it is where the model gets to be wrong about something that
-// actually exists.
+// As of step 3 every pattern is converted, so the fixtures are the REAL shipped
+// sections rather than copies — a copy would quietly stop testing what ships
+// the moment the two drifted. The only hand-written fixtures left are the
+// pre-conversion shapes, kept so the fallback that frozen snapshots still rely
+// on stays covered, and so the row-count changes the conversion introduced stay
+// pinned rather than merely happening.
 // ─────────────────────────────────────────────
 function rowsSelfTest() {
   const results = [];
@@ -24,121 +24,103 @@ function rowsSelfTest() {
     const a = JSON.stringify(actual), e = JSON.stringify(expected);
     results.push({ case: name, ok: a === e, got: a, want: e });
   }
+  const sec = (pat, id) => pat.phases.find(p => p.id === id);
 
-  // ── Fixtures: Peacock Tee, sections converted in place ──
-  //
-  // Ordering matches the real pattern so the absolute-row arithmetic is real:
-  // Materials → Collar → Short rows → Yoke chart → Raglan.
+  const PEACOCK = patternById('peacock-tee');
+  const TAT     = patternById('tatted-triangle');
+  const LENORE  = patternById('lenore');
+  const FROST   = patternById('frost-flower-cardigan');
 
-  // Materials: four notes. Buying yarn is not knitting a row.
-  const FX_MAT = {
-    id: 'mat', name: 'Materials', entries: [
-      { kind: 'note', id: 'm1', text: 'Yarn: 400 g fingering' },
-      { kind: 'note', id: 'm2', text: '3 mm and 4 mm circulars' },
-      { kind: 'note', id: 'm3', text: 'DPNs: 3 mm and 4 mm' },
-      { kind: 'note', id: 'm4', text: 'Knit gauge swatch on 4 mm' },
-    ]
-  };
+  const COL   = sec(PEACOCK, 'col');
+  const GSR   = sec(PEACOCK, 'gsr');
+  const RAG   = sec(PEACOCK, 'rag');
+  const BODY  = sec(PEACOCK, 'body');
+  const SLV   = sec(PEACOCK, 'slv');
+  const TAT1  = sec(TAT, 'tat-t1');
+  const ROW1  = sec(LENORE, 'len-row1');
 
-  // Collar is CONVERTED IN THE SHIPPED PATTERN as of step 2, so the fixture is
-  // the real section rather than a copy — a copy would silently stop testing
-  // the thing that ships the moment the two drifted.
-  const realPeacockEarly = patternById('peacock-tee');
-  const FX_COL = realPeacockEarly.phases.find(p => p.id === 'col');
+  const REP_C2 = COL.entries.find(e => e.id === 'c2');    // R=1, times 7
+  const REP_R2 = RAG.entries.find(e => e.id === 'r2');    // R=2, times 4 — was the cadence step
+  const REP_QR = ROW1.entries.find(e => e.id === 'r1-qr');// R=2, times 11, legacyCount 'passes'
 
-  // The pre-conversion shape of the same section, kept only so the divergence
-  // it introduced stays asserted after the real one moved on.
-  const LEGACY_COL = {
-    id: 'col', name: 'Collar', steps: [
-      { id: 'c1', text: 'Cast on 88 sts on 3 mm circular. Join to round.' },
-      { id: 'c2', text: 'Work 7 rounds k1, p1 rib', rows: true, target: 7, lbl: 'rib rounds' },
-      { id: 'c3', text: 'Increase round: rib 4, *M1, rib 8*, rep to last 4, M1, rib 4 → 99 sts' },
-      { id: 'c4', text: 'Switch to 4 mm circular needle' },
-    ]
-  };
+  // The pre-conversion shapes. Not history for its own sake: every project
+  // frozen before step 3 still renders through the legacy branch of
+  // sectionRowCount(), so it has to keep working.
+  const LEGACY_COL = { id: 'col', steps: [
+    { id: 'c1', text: 'Cast on 88 sts' },
+    { id: 'c2', text: 'Work 7 rounds k1, p1 rib', rows: true, target: 7, lbl: 'rib rounds' },
+    { id: 'c3', text: 'Increase round → 99 sts' },
+    { id: 'c4', text: 'Switch to 4 mm circular needle' },
+  ] };
+  const LEGACY_GSR = { id: 'gsr', steps: [
+    { id: 'g1' }, { id: 'g2' }, { id: 'g3' }, { id: 'g4' }, { id: 'g5' }, { id: 'g6' }, { id: 'g7' },
+  ] };
+  const LEGACY_CHART = { id: 'chart', hasChart: true, steps: [{ id: 'ch2', postChart: true }] };
+  const LEGACY_TAT1  = { id: 'tat-t1', countable: true, steps: TAT1.entries.map(e => ({ id: e.id })) };
+  const LEGACY_PEACOCK = { id: 'legacy-peacock', chart: PEACOCK.chart,
+                           phases: [LEGACY_COL, LEGACY_GSR, LEGACY_CHART] };
 
-  // Short rows: seven steps that each say "Row N" — seven rows, no counters.
-  // Today these contribute 0 to the tally, because only counter steps count.
-  const FX_GSR = {
-    id: 'gsr', name: 'Short rows', entries: [
-      { kind: 'row', id: 'g1', text: 'Row 1 (RS): K 27 sts. Turn.' },
-      { kind: 'row', id: 'g2', text: 'Row 2 (WS): GSR, p 53 sts. Turn.' },
-      { kind: 'row', id: 'g3', text: 'Row 3 (RS): GSR, k 57 sts. Turn.' },
-      { kind: 'row', id: 'g4', text: 'Row 4 (WS): GSR, p 61 sts. Turn.' },
-      { kind: 'row', id: 'g5', text: 'Row 5 (RS): GSR, K3, *k2tog…* × 6, k8. Turn.' },
-      { kind: 'row', id: 'g6', text: 'Row 6 (WS): GSR, p 69 sts. Turn.' },
-      { kind: 'row', id: 'g7', text: 'Row 7 (RS): GSR, k to mid-back. Now in the round.' },
-    ]
-  };
-
-  // Yoke chart: left UNCONVERTED on purpose, so the mixed pattern exercises
-  // the legacy fallback inside sectionRowCount. It borrows the real chart.
-  const FX_CHART = { id: 'chart', name: 'Yoke chart', hasChart: true,
-                     steps: [{ id: 'ch2', text: 'Count to confirm 253 sts', postChart: true }] };
-
-  // Raglan. r2 is the codebase's only `cadence` step, written out longhand.
-  //
-  // THE ORDERING TRAP: cadenceHintHtml computes `round % 2 === 0`, so round 1
-  // is the PLAIN round and round 2 is the increase. rows: must therefore be
-  // [plain, increase]. Reversed, every increase round lands one round early
-  // and the sweater is wrong — silently, since nothing would throw.
-  const FX_RAG = {
-    id: 'rag', name: 'Raglan', entries: [
-      { kind: 'note', id: 'r1', text: 'Mark 4 sections (in the round, BOR = mid-back):', bullets: [
-        '38 back / M / 1 marker-st / M',
-        '48 sleeve / M / 1 marker-st / M',
-        '77 front / M / 1 marker-st / M',
-        '48 sleeve / M / 1 marker-st / M',
-        '38 back',
-      ] },
-      { kind: 'repeat', id: 'r2', times: 4, rows: [
-        { id: 'r2-1', text: 'Plain round — knit all stitches' },
-        { id: 'r2-2', text: 'Increase round — m1-R before marker-st, k1 marker-st, m1-L after (8 inc)' },
-      ] },
-      { kind: 'note', id: 'r3', text: 'After 8 rounds (4 increase rounds): 285 sts total.' },
-    ]
-  };
-
-  const realPeacock = patternById('peacock-tee');
-  const FX_PEACOCK = {
-    id: 'fx-peacock', name: 'Peacock (fixture)',
-    chart: (realPeacock && realPeacock.chart) || [],
-    phases: [FX_MAT, FX_COL, FX_GSR, FX_CHART, FX_RAG],
-  };
-
-  // tatted-triangle's countable phase. The conversion is purely mechanical —
-  // on a countable phase every step already IS one row — so this map is the
-  // conversion rule itself rather than 25 lines of hand-copied text.
-  const realTat = patternById('tatted-triangle');
-  const realTatT1 = realTat && realTat.phases.find(p => p.id === 'tat-t1');
-  const FX_TAT_T1 = {
-    id: 'tat-t1', name: 'Triangle 1',
-    entries: (realTatT1 ? realTatT1.steps : []).map(s => ({ kind: 'row', id: s.id, text: s.text })),
-  };
-
-  const REP_C2 = FX_COL.entries[1];   // R=1, times 7
-  const REP_R2 = FX_RAG.entries[1];   // R=2, times 4
-
-  // ── A. Row counts ──
+  // ── A. Row counts, per section ──
 
   check('collar: 7 rib rounds + 1 increase round = 8 rows',
-    sectionRowCount(FX_COL, FX_PEACOCK), 8);
+    sectionRowCount(COL, PEACOCK), 8);
   check('short rows: seven rows',
-    sectionRowCount(FX_GSR, FX_PEACOCK), 7);
+    sectionRowCount(GSR, PEACOCK), 7);
   check('raglan: notes contribute nothing, 4 passes × 2 rows = 8',
-    sectionRowCount(FX_RAG, FX_PEACOCK), 8);
-  check('legacy chart section still counts its chart (44)',
-    sectionRowCount(FX_CHART, FX_PEACOCK), 44);
-  check('tat-t1 converted: 25 rows',
-    sectionRowCount(FX_TAT_T1, null), 25);
-  check('tat-t1 conversion preserves the countable count',
-    sectionRowCount(FX_TAT_T1, null), sectionRowCount(realTatT1, realTat));
+    sectionRowCount(RAG, PEACOCK), 8);
+  check('chart section: its rows are the chart\'s 44, the confirm note adds none',
+    sectionRowCount(sec(PEACOCK, 'chart'), PEACOCK), 44);
+  check('body: 1 divide round + 70 stockinette + 14 rib (b3/b5 are notes)',
+    sectionRowCount(BODY, PEACOCK), 85);
+  check('sleeves: 27 + 5, the "at 5 cm" decreases are notes inside them',
+    sectionRowCount(SLV, PEACOCK), 32);
+  check('tat-t1: 25 rings and chains, one row each',
+    sectionRowCount(TAT1, TAT), 25);
+  check('lenore row 1: 16 singles + (3×6) + (2×6) + (11×2)',
+    sectionRowCount(ROW1, LENORE), 68);
 
-  // ── B. The full walk, forward then back ──
+  // ── B. Whole-pattern totals ──
+  //
+  // Pinned so a stray edit to a `times` shows up here rather than as a header
+  // that quietly reads differently.
+
+  check('pattern totals after conversion',
+    PATTERNS.map(p => p.id + '=' + patternRowTotal(p)),
+    ['peacock-tee=184', 'tatted-triangle=50', 'lenore=132', 'frost-flower-cardigan=50']);
+  check('the shipped patternTotalRows() agrees with the derived total',
+    PATTERNS.map(p => legacyTotalFor(p)), PATTERNS.map(p => patternRowTotal(p)));
+
+  // ── C. The legacy branch still serves frozen snapshots ──
+
+  check('legacy sections still count the old way',
+    [sectionRowCount(LEGACY_COL, LEGACY_PEACOCK),
+     sectionRowCount(LEGACY_GSR, LEGACY_PEACOCK),
+     sectionRowCount(LEGACY_CHART, LEGACY_PEACOCK),
+     sectionRowCount(LEGACY_TAT1, LEGACY_PEACOCK)],
+    [7, 0, 44, 25]);
+  check('a frozen snapshot totals what it always did',
+    patternRowTotal(LEGACY_PEACOCK), 51);
+
+  // ── D. Where the conversion DELIBERATELY changed the count ──
+  //
+  // The old tally only counted row-counter targets, chart rows and countable
+  // steps. A plain step that was genuinely one round counted nothing, and a
+  // repeat-unit step counted one per motif rather than one per ring. Both are
+  // corrections, but they mean the header total legitimately moved.
+
+  check('collar: old 7 (counter only) → new 8 (+ the increase round)',
+    [sectionRowCount(LEGACY_COL, LEGACY_PEACOCK), sectionRowCount(COL, PEACOCK)], [7, 8]);
+  check('short rows: old 0 (no counters at all) → new 7',
+    [sectionRowCount(LEGACY_GSR, LEGACY_PEACOCK), sectionRowCount(GSR, PEACOCK)], [0, 7]);
+  check('tat-t1 unchanged: countable already counted one per step',
+    [sectionRowCount(LEGACY_TAT1, LEGACY_PEACOCK), sectionRowCount(TAT1, TAT)], [25, 25]);
+  check('lenore Ring Q–Chain R: old 11 (motifs) → new 22 (rings and chains)',
+    [11, repeatRowCount(REP_QR)], [11, 22]);
+
+  // ── E. The full walk, forward then back ──
   //
   // The doc's requirement: a knitter who taps + once too often must be able to
-  // tap − once and land exactly where they were. So walk the whole raglan
-  // repeat, overshoot at both ends, and assert the sequences are mirror images.
+  // tap − once and land exactly where they were.
 
   const forward = (() => {
     const seen = [];
@@ -168,8 +150,7 @@ function rowsSelfTest() {
 
   // Mirror the nine REAL positions only. The over-taps are excluded on both
   // sides because clamping is not symmetric under reversal — it pins the end
-  // of whichever direction you walked, so a naive reverse() of the padded
-  // forward walk compares two-taps-past-the-top against two-past-the-bottom.
+  // of whichever direction you walked.
   check('raglan walk back visits the same nine positions in reverse',
     (() => {
       const seen = [];
@@ -185,13 +166,13 @@ function rowsSelfTest() {
 
   check('+1 then −1 returns to the identical position, across a pass boundary',
     (() => {
-      const at = { y: 0, z: 2 };                       // last row of pass 1
-      const fwd = advanceRepeat(REP_R2, at, 1);        // rolls to {1,1}
+      const at = { y: 0, z: 2 };
+      const fwd = advanceRepeat(REP_R2, at, 1);
       return [fwd, advanceRepeat(REP_R2, fwd, -1)];
     })(),
     [{ y: 1, z: 1 }, { y: 0, z: 2 }]);
 
-  // ── C. Boundaries and clamping ──
+  // ── F. Boundaries and clamping ──
 
   check('off the front of pass 0 clamps, no y:-1',
     advanceRepeat(REP_R2, { y: 0, z: 1 }, -1), { y: 0, z: 1 });
@@ -212,10 +193,7 @@ function rowsSelfTest() {
     advanceRepeat(REP_R2, { y: 0, z: 1 }, 5),
     (() => { let p = { y: 0, z: 1 }; for (let i = 0; i < 5; i++) p = advanceRepeat(REP_R2, p, 1); return p; })());
 
-  // ── D. R = 1, via the collar's rib repeat ──
-  //
-  // The degenerate repeat: one row, seven passes. z can never leave 1, so
-  // every advance has to move y or the counter freezes.
+  // ── G. R = 1, via the collar's rib repeat ──
 
   check('R=1: seven advances walk y 0→7 with z pinned at 1',
     (() => {
@@ -230,102 +208,103 @@ function rowsSelfTest() {
      repeatRowsDone(REP_C2, { y: 7, z: 1 })],
     [0, 4, 7]);
 
-  // ── E. Absolute row ──
+  // ── H. Absolute row ──
   //
   // Rows before the raglan repeat: materials 0 + collar 8 + short rows 7 +
   // chart 44 = 59, plus the r1 note (0). So pass 1 row 1 is pattern row 60.
 
   check('rows before the raglan repeat = 0 + 8 + 7 + 44',
-    rowsBeforeEntry(FX_PEACOCK, 'rag', 'r2'), 59);
+    rowsBeforeEntry(PEACOCK, 'rag', 'r2'), 59);
   check('pass 1 row 1 is pattern row 60',
-    absoluteRow(FX_PEACOCK, 'rag', 'r2', { 'rp:r2': { y: 0, z: 1 } }), 60);
+    absoluteRow(PEACOCK, 'rag', 'r2', { 'rp:r2': { y: 0, z: 1 } }), 60);
   check('pass 2 row 1 is pass 1 row 1 + R — the doc arithmetic',
-    absoluteRow(FX_PEACOCK, 'rag', 'r2', { 'rp:r2': { y: 1, z: 1 } }),
-    absoluteRow(FX_PEACOCK, 'rag', 'r2', { 'rp:r2': { y: 0, z: 1 } }) + repeatLength(REP_R2));
+    absoluteRow(PEACOCK, 'rag', 'r2', { 'rp:r2': { y: 1, z: 1 } }),
+    absoluteRow(PEACOCK, 'rag', 'r2', { 'rp:r2': { y: 0, z: 1 } }) + repeatLength(REP_R2));
   check('the collar increase round is pattern row 8',
-    absoluteRow(FX_PEACOCK, 'col', 'c3', {}), 8);
+    absoluteRow(PEACOCK, 'col', 'c3', {}), 8);
   check('absolute row is rows-done + 1 for the same position',
     (() => {
       const pr = { 'rp:r2': { y: 2, z: 2 } };
-      return absoluteRow(FX_PEACOCK, 'rag', 'r2', pr)
-           - (59 + repeatRowsDone(REP_R2, pr['rp:r2']));
+      return absoluteRow(PEACOCK, 'rag', 'r2', pr) - (59 + repeatRowsDone(REP_R2, pr['rp:r2']));
     })(), 1);
   check('a note has no absolute row, and unknown ids are null not 0',
-    [absoluteRow(FX_PEACOCK, 'rag', 'r1', {}),
-     absoluteRow(FX_PEACOCK, 'rag', 'nope', {}),
-     rowsBeforeEntry(FX_PEACOCK, 'nope', 'r2')],
+    [absoluteRow(PEACOCK, 'rag', 'r1', {}),
+     absoluteRow(PEACOCK, 'rag', 'nope', {}),
+     rowsBeforeEntry(PEACOCK, 'nope', 'r2')],
     [null, null, null]);
 
-  // ── F. Done-counts meet the totals ──
+  // ── I. Done-counts meet the totals ──
 
   check('empty progress: nothing done anywhere',
-    [sectionRowsDone(FX_COL, {}), sectionRowsDone(FX_RAG, {}), sectionRowsDone(FX_GSR, {})],
+    [sectionRowsDone(COL, {}), sectionRowsDone(RAG, {}), sectionRowsDone(GSR, {})],
     [0, 0, 0]);
   check('fully worked collar: rows done equals row count, section complete',
     (() => {
       const pr = { 'n:c1': true, 'rp:c2': { y: 7, z: 1 }, 'r:c3': true, 'n:c4': true };
-      return [sectionRowsDone(FX_COL, pr), sectionRowCount(FX_COL, FX_PEACOCK),
-              sectionComplete(FX_COL, pr)];
+      return [sectionRowsDone(COL, pr), sectionRowCount(COL, PEACOCK), sectionComplete(COL, pr)];
     })(),
     [8, 8, true]);
   check('a finished repeat with an unticked note: rows done, section not complete',
     (() => {
       const pr = { 'n:r1': true, 'rp:r2': { y: 4, z: 1 } };   // r3 note left unticked
-      return [sectionRowsDone(FX_RAG, pr), sectionComplete(FX_RAG, pr)];
+      return [sectionRowsDone(RAG, pr), sectionComplete(RAG, pr)];
     })(),
     [8, false]);
   check('notes never add rows, however many are ticked',
-    sectionRowsDone(FX_RAG, { 'n:r1': true, 'n:r3': true }), 0);
+    sectionRowsDone(RAG, { 'n:r1': true, 'n:r3': true }), 0);
   check('mid-repeat: standing on row 1 of pass 3 = 4 rows done',
-    sectionRowsDone(FX_RAG, { 'rp:r2': { y: 2, z: 1 } }), 4);
+    sectionRowsDone(RAG, { 'rp:r2': { y: 2, z: 1 } }), 4);
 
-  // ── G. The legacy fallback is a faithful copy ──
+  // ── J. The legacy read-through ──
   //
-  // While the real patterns are unconverted, patternRowTotal() must agree with
-  // the shipped patternTotalRows() for all four. This is not proof the new
-  // model is right — it is proof the fallback transcription is, which is what
-  // lets steps 2–3 convert one section at a time without the header jumping.
-  PATTERNS.forEach(p => {
-    check('legacy fallback matches patternTotalRows() — ' + p.id,
-      patternRowTotal(p), legacyTotalFor(p));
-  });
-
-  // ── H. Where the new model DIVERGES from today, on purpose ──
-  //
-  // Today's tally only counts row-counter targets, chart rows and countable
-  // steps. A plain step that is genuinely one round — Collar's increase round,
-  // every one of the seven short rows — counts for nothing. Under the new
-  // model those are rows, so converted sections report MORE rows than the old
-  // tally did. This is the intended correction, not a regression, but it means
-  // step 4 cannot verify by asserting the header total is unchanged.
-  const realGsr = realPeacock.phases.find(p => p.id === 'gsr');
-  check('collar: old tally 7 (counter only) → new 8 (+ the increase round)',
-    [sectionRowCount(LEGACY_COL, FX_PEACOCK), sectionRowCount(FX_COL, FX_PEACOCK)], [7, 8]);
-  check('short rows: old tally 0 (no counters) → new 7 — still to convert',
-    [sectionRowCount(realGsr, realPeacock), sectionRowCount(FX_GSR, FX_PEACOCK)], [0, 7]);
-
-  // ── I. The legacy read-through (step 2) ──
-  //
-  // Converted sections keep their ids, so a project mid-Collar must not appear
-  // to lose it. seedEntryProgress() reads the old keys through; the failure it
-  // guards against is silent, since nothing throws when a tick simply is not
-  // rendered.
-  const REAL_C2 = FX_COL.entries.find(e => e.id === 'c2');
+  // Converted sections keep their ids, so a project mid-section must not appear
+  // to lose it. The failure this guards against is silent: nothing throws when
+  // a tick simply is not rendered.
 
   check('a pre-conversion collar reads through: ticks and counter both land',
-    seedEntryProgress({}, { c1: true, c3: true }, { c2: 4 }, [FX_COL]),
+    seedEntryProgress({}, { c1: true, c3: true }, { c2: 4 }, [COL]),
     { 'n:c1': true, 'rp:c2': { y: 4, z: 1 }, 'r:c3': true });
   check('R=1 makes the counter → position mapping exact, not lossy',
-    repeatRowsDone(REAL_C2, seedEntryProgress({}, {}, { c2: 5 }, [FX_COL])['rp:c2']), 5);
+    repeatRowsDone(REP_C2, seedEntryProgress({}, {}, { c2: 5 }, [COL])['rp:c2']), 5);
   check('an entry that already has a value is left alone',
-    seedEntryProgress({ 'rp:c2': { y: 1, z: 1 } }, {}, { c2: 6 }, [FX_COL])['rp:c2'],
+    seedEntryProgress({ 'rp:c2': { y: 1, z: 1 } }, {}, { c2: 6 }, [COL])['rp:c2'],
     { y: 1, z: 1 });
   check('an explicit reset survives the read-through — the key exists, so it wins',
-    seedEntryProgress({ 'n:c1': false, 'rp:c2': { y: 0, z: 1 } },
-                      { c1: true }, { c2: 4 }, [FX_COL]),
+    seedEntryProgress({ 'n:c1': false, 'rp:c2': { y: 0, z: 1 } }, { c1: true }, { c2: 4 }, [COL]),
     { 'n:c1': false, 'rp:c2': { y: 0, z: 1 } });
   check('nothing to read through leaves an untouched project empty',
-    seedEntryProgress({}, {}, {}, [FX_COL]), {});
+    seedEntryProgress({}, {}, {}, [COL]), {});
+
+  // ── K. Passes vs rows: the trap Lenore exposed ──
+  //
+  // The old counter meant ROWS on a plain counter step and on the cadence
+  // step, but PASSES on a repeat-unit step (counter + bullets). On a
+  // single-row repeat those coincide, which is why it went unnoticed until a
+  // motif six rings long turned up.
+
+  check('a passes-counter seeds y directly: 5 motifs of 2 = 10 rows, not 5',
+    (() => {
+      const pos = seedEntryProgress({}, {}, { 'r1-qr': 5 }, [ROW1])['rp:r1-qr'];
+      return [pos, repeatRowsDone(REP_QR, pos)];
+    })(),
+    [{ y: 5, z: 1 }, 10]);
+  check('reading that same counter as rows would land less than half as far',
+    repeatRowsDone(REP_QR, repeatPosFromRowsDone(REP_QR, 5)), 5);
+  check('half-worked motif: the old bullets restore the position inside the pass',
+    (() => {
+      const legacyState = { 'r1-qr__b0': true };            // Ring Q done, Chain R not
+      const pos = seedEntryProgress({}, legacyState, { 'r1-qr': 5 }, [ROW1])['rp:r1-qr'];
+      return [pos, repeatRowsDone(REP_QR, pos)];
+    })(),
+    [{ y: 5, z: 2 }, 11]);
+  check('a rows-counter (the old cadence step) is NOT read as passes',
+    (() => {
+      const pos = seedEntryProgress({}, {}, { r2: 5 }, [RAG])['rp:r2'];
+      return [pos, repeatRowsDone(REP_R2, pos)];
+    })(),
+    [{ y: 2, z: 2 }, 5]);
+  check('a passes-counter at its target clamps to complete, not past it',
+    seedEntryProgress({}, {}, { 'r1-qr': 99 }, [ROW1])['rp:r1-qr'], { y: 11, z: 1 });
 
   const failed = results.filter(r => !r.ok);
   console.table(results.map(r => ({ case: r.case, ok: r.ok })));
@@ -335,17 +314,19 @@ function rowsSelfTest() {
 }
 
 // Run the SHIPPED patternTotalRows() against an arbitrary pattern. It reads
-// the PHASES / activePatternId globals, so they are swapped and restored —
-// in a finally, because a throw here would otherwise leave the running app
-// pointed at the wrong pattern.
+// the PHASES / activeDoc globals, so they are swapped and restored — in a
+// finally, because a throw here would otherwise leave the running app pointed
+// at the wrong pattern.
 function legacyTotalFor(pattern) {
-  const savedPhases = PHASES, savedId = activePatternId;
+  const savedPhases = PHASES, savedId = activePatternId, savedDoc = activeDoc;
   try {
     PHASES = pattern.phases;
     activePatternId = pattern.id;
+    activeDoc = pattern;
     return patternTotalRows();
   } finally {
     PHASES = savedPhases;
     activePatternId = savedId;
+    activeDoc = savedDoc;
   }
 }

@@ -184,10 +184,17 @@ function recapHtml(row) {
   // alongside the row instructions (same "what do I do now" panel) rather
   // than as a separate block further down. Only relevant once the last row
   // is reached — it's the count you take after finishing the chart.
-  const confirmStep = (PHASES[cur].steps || []).find(s => s.postChart);
+  //
+  // A converted section holds it as a note entry; a frozen snapshot from
+  // before the conversion still holds it as a step. Both are read, and each
+  // gets the toggle that owns its progress key.
+  const ph = PHASES[cur];
+  const confirmEntry = (ph.entries || []).find(e => e.postChart);
+  const confirmStep  = confirmEntry || (ph.steps || []).find(s => s.postChart);
   if (confirmStep && row === CHART_TOTAL) {
-    const done = state[confirmStep.id];
-    html += `<div class="chart-confirm-step ${done ? 'done' : ''}" onclick="toggleStep('${confirmStep.id}')">
+    const done = confirmEntry ? entryDone(confirmEntry, entryProg) : state[confirmStep.id];
+    const handler = confirmEntry ? 'toggleEntry' : 'toggleStep';
+    html += `<div class="chart-confirm-step ${done ? 'done' : ''}" onclick="${handler}('${confirmStep.id}')">
       <div class="step-circle">${CHECK_SVG}</div>
       <div class="step-text">${confirmStep.text}</div>
     </div>`;
