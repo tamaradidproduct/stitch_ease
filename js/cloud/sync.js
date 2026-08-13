@@ -28,9 +28,7 @@
 function chartRowKey(phaseId) { return 'cr:' + phaseId; }
 
 // Difference between this device's clock and the server's, learned once per
-// session in a later phase. Zero until then — but every stamp goes through
-// syncNow() from the start, so switching it on is a one-line change rather
-// than an audit of every call site.
+// session (see learnServerSkew).
 let serverSkew = 0;
 
 // A phone whose clock is three days fast would otherwise win every merge
@@ -38,9 +36,70 @@ let serverSkew = 0;
 // caps the damage at an hour.
 const MAX_SKEW_MS = 60 * 60 * 1000;
 
+// Below this, the "skew" is round-trip latency and the one-second resolution
+// of the Date header, not a wrong clock.
+const SKEW_MIN_MS = 5000;
+
+// Never hand out a stamp at or below one this device has already written.
+//
+// Correcting a fast clock moves time BACKWARDS, and a new edit stamped earlier
+// than an older one is invisible to the merge: clocks[k] never exceeds
+// base[k], so the field reads as unchanged and is never pushed. The knitter
+// counts rows all evening and none of them leave the phone, with nothing on
+// screen to say so. The floor makes the correction safe to apply.
+//
+// It is seeded from clocks already on disk, which can include ones merged in
+// from another device — so this device's stamps can end up slightly ahead of
+// its own wall clock. That is what a logical clock is, and it is bounded by
+// the same ±1h clamp on every device.
+let stampFloor = 0;
+function noteExistingClocks(map) {
+  Object.keys(map || {}).forEach(k => { if (map[k] > stampFloor) stampFloor = map[k]; });
+}
+
 function syncNow() {
   const skew = Math.max(-MAX_SKEW_MS, Math.min(MAX_SKEW_MS, serverSkew));
-  return Date.now() + skew;
+  const t = Math.max(Date.now() + skew, stampFloor + 1);
+  stampFloor = t;
+  return t;
+}
+
+// The server's clock, read once per session from the Date header. This exists
+// to catch a device that is days out, not to keep time.
+//
+// It has to be a plain fetch — the supabase client gives no access to response
+// headers — and it has to be the REST endpoint specifically. Cross-origin,
+// only CORS-safelisted response headers are readable unless the server opts in
+// with Access-Control-Expose-Headers, and `date` is NOT on that safelist:
+// /rest/v1 exposes it (Cloudflare does the opt-in), /auth/v1/health does not,
+// and /auth/v1/health rejects HEAD with a 405 into the bargain. Verified by
+// reading the exposed header list off both.
+//
+// A GET with limit=0 returns an empty array under RLS whether or not anyone is
+// signed in, so this costs two bytes of body and needs no session.
+async function learnServerSkew() {
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/projects?select=id&limit=0',
+      { cache: 'no-store', headers: { apikey: SUPABASE_KEY } });
+    const raw = res.headers.get('date');
+    const serverMs = Date.parse(raw || '');
+    if (!serverMs) {
+      // Logged rather than swallowed: silence here is indistinguishable from
+      // "the clocks agree", and this whole guard would be dead code.
+      logSync('warn', 'server Date header unreadable — using local time');
+      return;
+    }
+    const skew = serverMs - Date.now();
+    // The header has one-second resolution and the round trip adds more, so
+    // anything small is noise, not a wrong clock.
+    serverSkew = Math.abs(skew) < SKEW_MIN_MS ? 0 : skew;
+    if (serverSkew) logSync('info', 'device clock is ' + Math.round(-skew / 1000) +
+      's ahead of the server — correcting new timestamps');
+  } catch (e) {
+    // No correction means local time is used, which is exactly what every
+    // version before this one did.
+    logSync('warn', 'could not read server time — using local time', e);
+  }
 }
 
 // Record that this device just changed `key`.
@@ -716,6 +775,7 @@ async function pull(reason) {
   if (!canSync()) return;
 
   pulling = true;
+  lastPullAt = Date.now();
   // NOT named `cur` — that is the global current-phase index, and shadowing it
   // inside the one function that also triggers a render is a trap.
   const cursor = cursorFor(currentUserId());
@@ -840,6 +900,59 @@ function diffProgress(local, remote, base) {
   return { merged, mergedClocks, conflicts };
 }
 
+// ─────────────────────────────────────────────
+// WHEN TO SYNC
+//
+// Polling, not Realtime. The two-device case here is "phone in hand, iPad on
+// the table" — one of them is always backgrounded, so pulling on focus covers
+// it without a standing websocket that has to be nursed through every network
+// transition a phone goes through in a day.
+//
+// The interval runs ONLY while the page is visible. This is a PWA that sits
+// open for weeks; a timer that keeps firing while it is buried would be a
+// request a minute, forever, for a knitter who isn't knitting.
+// ─────────────────────────────────────────────
+const PULL_INTERVAL_MS = 60000;
+const PULL_STALE_MS    = 30000;   // on refocus, don't re-pull if we just did
+let pullTimer = null;
+let lastPullAt = 0;
+let syncedForUid = null;
+
+function startSyncPolling() {
+  stopSyncPolling();
+  if (document.visibilityState !== 'visible') return;
+  pullTimer = setInterval(() => pull('interval'), PULL_INTERVAL_MS);
+}
+function stopSyncPolling() { clearInterval(pullTimer); pullTimer = null; }
+
+// Pull, and send anything already queued. Used wherever sync should catch up
+// right now: signing in, claiming this device's projects, coming back online.
+function kickSync(reason) {
+  pull(reason);
+  flushNow(reason);   // no-op when the outbox is empty
+}
+
+// Called from the auth state listener. That fires on token refreshes too, so
+// the expensive half only runs when the account actually changed.
+function syncOnSignedIn() {
+  const uid = currentUserId();
+  if (!uid) return;
+  startSyncPolling();
+  if (syncedForUid === uid) return;
+  syncedForUid = uid;
+  learnServerSkew();
+  kickSync('signed-in');
+}
+
+function syncOnSignedOut() {
+  syncedForUid = null;
+  stopSyncPolling();
+  // The outbox is deliberately left alone. Signing out is not a decision to
+  // discard work that hasn't reached the cloud yet.
+}
+
+window.addEventListener('online', () => kickSync('online'));
+
 // Backgrounding is the last reliable moment on mobile — a phone may freeze or
 // kill the tab without ever firing anything else.
 //
@@ -848,7 +961,15 @@ function diffProgress(local, remote, base) {
 // persisted — the next open pushes it. What these listeners buy is the common
 // case where the tab is merely backgrounded and does survive.
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden') flushNow('hidden');
+  if (document.visibilityState === 'hidden') {
+    flushNow('hidden');
+    stopSyncPolling();
+    return;
+  }
+  startSyncPolling();
+  // Coming back to a tab that was hidden for a minute is the moment the other
+  // device's work should appear. Coming back to one hidden for three seconds
+  // is not worth a request.
+  if (Date.now() - lastPullAt > PULL_STALE_MS) pull('visible');
 });
 window.addEventListener('pagehide', () => flushNow('pagehide'));
-window.addEventListener('online', () => flushNow('online'));

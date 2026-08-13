@@ -218,6 +218,9 @@ function loadProjectState() {
     const gr = localStorage.getItem(pkey('grows')); if (gr !== null) globalRows = Math.max(0, parseInt(gr) || 0);
     const ck = localStorage.getItem(pkey('clk'));  if (ck) clocks = JSON.parse(ck) || {};
     const bs = localStorage.getItem(pkey('base')); if (bs) baseClocks = JSON.parse(bs) || {};
+    // Stops a later clock correction from handing out stamps that sit below
+    // ones this project already has on disk — see syncNow() in js/cloud/sync.js.
+    noteExistingClocks(clocks);
   } catch(e) {}
   // `cur` and `chartRows` are both restored above, so the active chart and
   // its row have to be recomputed from them.

@@ -449,6 +449,49 @@ async function syncPushPullTest() {
       { names: projects.map(p => p.name), uid: syncCursor.uid },
       { names: ['Cursor'], uid: 'user-2' });
 
+    // ─────────────────────────────────────────
+    // CLOCK CORRECTION
+    // ─────────────────────────────────────────
+
+    // ── 16. Correcting a fast clock must not move stamps backwards ──
+    //
+    // The failure it prevents is the worst kind here: a new edit stamped
+    // earlier than an older one never exceeds its base, so it reads as
+    // unchanged and is never pushed. The knitter counts rows all evening and
+    // none of them leave the phone, with nothing on screen to say so.
+    const savedSkew = serverSkew, savedFloor = stampFloor;
+    serverSkew = 0; stampFloor = 0;
+    const ahead = Date.now() + 3600000;
+    noteExistingClocks({ x: ahead });          // a clock already on disk, an hour ahead
+    serverSkew = -86400000;                    // "this device is a day fast"
+    const s1 = syncNow(), s2 = syncNow();
+    check('clock correction never stamps at or below what is already on disk',
+      { aboveExisting: s1 > ahead, strictlyIncreasing: s2 > s1 },
+      { aboveExisting: true, strictlyIncreasing: true });
+
+    // ── 17. And an absurd skew is capped rather than trusted ──
+    stampFloor = 0; serverSkew = 10 * 3600000;
+    const capped = syncNow() - Date.now();
+    check('skew clamped to ±1h', capped <= 3600000 + 1000, true);
+    serverSkew = savedSkew; stampFloor = savedFloor;
+
+    // ── 18. The interval never runs while the page is hidden ──
+    // This app sits open for weeks. A timer that kept firing while buried
+    // would be a request a minute, forever, for someone who isn't knitting.
+    const realVis = Object.getOwnPropertyDescriptor(Document.prototype, 'visibilityState');
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+    startSyncPolling();
+    const hiddenTimer = pullTimer;
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+    startSyncPolling();
+    const visibleTimer = pullTimer;
+    stopSyncPolling();
+    delete document.visibilityState;
+    if (realVis) Object.defineProperty(Document.prototype, 'visibilityState', realVis);
+    check('polling starts only while visible',
+      { hidden: hiddenTimer, visible: !!visibleTimer, stopped: pullTimer },
+      { hidden: null, visible: true, stopped: null });
+
   } finally {
     // Put the device back exactly as it was found — disk first, then memory
     // from disk, so the two cannot disagree.

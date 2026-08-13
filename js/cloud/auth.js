@@ -83,7 +83,8 @@ function initCloud() {
       resetHeaderKey();
       render();
     }
-    if (session) handleSignedIn(currentUserId());
+    if (session) { handleSignedIn(currentUserId()); syncOnSignedIn(); }
+    else syncOnSignedOut();
   });
 
   // Coming back online doesn't fire an auth event, but it does change what the
@@ -159,6 +160,9 @@ function claimLocalProjects(uid) {
   });
   closeSheet();
   refreshAccountButton();
+  // canSync() was false until this moment — the projects were unclaimed, so
+  // nothing would have been sent. Now they can go.
+  kickSync('claimed');
 }
 
 function openClaimSheet(n, kind, uid) {
