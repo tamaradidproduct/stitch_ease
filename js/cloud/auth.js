@@ -158,6 +158,10 @@ function claimLocalProjects(uid) {
     enqueue('project', p.id);
     enqueue('progress', p.id);
   });
+  // Attached PDFs are keyed by PATTERN, so they are not reachable by walking
+  // the projects above — and one may have been attached long before anyone
+  // signed in, when there was no account to send it to.
+  if (typeof enqueueUnsyncedPdfs === 'function') enqueueUnsyncedPdfs();
   closeSheet();
   refreshAccountButton();
   // canSync() was false until this moment — the projects were unclaimed, so

@@ -14,6 +14,7 @@ peacock-tee-deploy/
   js/core/chart.js              ← chart tracker, zoom, scroll, changeChartRow
   js/core/render.js             ← render*/stepHtml/openSheet/escapeHtml
   js/core/pdf.js                ← the original pattern PDF (IndexedDB + the sheet)
+  js/cloud/pdfsync.js           ← PDF sync: metadata always, bytes on demand
   js/cloud/auth.js              ← Supabase client, session, account sheet, claim flow
   js/cloud/sync.js              ← clocks, outbox, push, pull, three-way merge
   js/core/app.js                ← nav, SW registration, bootstrap  ← MUST BE LAST
@@ -111,8 +112,20 @@ The tracker is a transcription — no schematics, no photos, no sizing table. Th
   - **attached** — the user picks a file on this device; stored in IndexedDB, never uploaded.
 - An **attached file wins** over a bundled one — attaching is a deliberate act on this device, a bundle is a default. Removing it falls back.
 - **IndexedDB, not localStorage.** localStorage is the progress store and its ~5MB quota already carries a 10-40KB frozen pattern doc per project. A multi-MB PDF (plus a third for base64) wouldn't merely fail — it would spend the quota `save()` needs, so the first casualty would be the row the user just counted.
-- **Not synced.** An attached PDF stays on the device that attached it. Syncing means Supabase Storage, a bucket policy, upload/download states and multi-MB mobile transfers — a separate feature. Bundled PDFs already cover "everyone gets it".
 - The **Open** control is a real `<a target="_blank">`, and deliberately has **no `download` attribute** — `download` makes the browser save the file instead of displaying it, and the point is to read it.
+- `pdfGet` returns **null** for a miss. `pdfTx` distinguishes a failed transaction (`PDF_FAIL`) from "succeeded, and the answer is nothing" — collapsing the two made a missing record read as a present one.
+
+#### PDF sync — metadata travels, bytes don't
+`js/cloud/pdfsync.js` + the `pattern-pdfs` bucket. **This split is the whole design:** attaching on the phone tells the iPad a copy exists (a few hundred bytes, on the normal pull); the megabytes come down only when someone taps **Download** there. This app sits open for weeks — it must never pull 8MB in the background per device, on mobile data.
+
+- Four states, and the sheet says which: `none` / `local` (queued to push) / `synced` / `remote-newer` (one tap to download).
+- **Last-write-wins, no merge.** A PDF is one opaque blob — no fields, so nothing for the three-way merge to do and no conflict worth raising. `localMs`/`remoteMs` are `syncNow()` clocks, so already skew-corrected. A **remove is a tombstone**, same reasoning as a deleted project.
+- `pt3_pdfs` (global) is the index: `{patternId: {name, size, localMs, deletedMs, remoteMs, remoteName, remoteSize}}`. localStorage, not IndexedDB, because every caller is synchronous — it's the few hundred bytes describing the blob, which is also exactly what syncs.
+- PDFs push **after** progress in `pendingOps()` — a multi-MB upload blocks everything behind it, and progress is the data someone would actually miss.
+- `pullPdfs` runs in **its own try** inside `pull()`, so a storage hiccup can't cost the pull its cursor save and look like sync failing.
+- `fetchRemotePdf` sets `localMs` to the **remote** clock, not `now()` — claiming a fresh local edit for a file that was only copied down would push the same bytes straight back up. `pushPdf` also drops when `remoteMs === localMs`.
+- `claimLocalProjects` calls `enqueueUnsyncedPdfs()`: PDFs are keyed by pattern, so walking the projects list doesn't reach them, and one may have been attached long before anyone signed in.
+- **The bucket is private.** Bought patterns; a public bucket is the same redistribution problem as committing them. Owner-only policies, `<uid>/<patternId>.pdf`, where the first path segment *is* the authorisation check.
 
 > ⚠️ **The GitHub Pages repo is public.** Anything in `pdf/` is world-readable at a guessable URL. Only bundle patterns this repo has the right to publish — a bought pattern (Lenore, Peacock Tee) must be attached on-device, never committed.
 
@@ -173,6 +186,10 @@ HTML is fetched **network-first** (fresh page on each load when online; cache fa
 - `resolvePatternPdf(pattern)` — attached (IndexedDB) first, then bundled, else null
 - `choosePatternPdf` / `storePatternPdf` / `confirmRemovePatternPdf` — attach, validate, remove
 - `pdfGet` / `pdfPut` / `pdfDeleteRec` — the IndexedDB store, keyed by patternId; every one resolves rather than rejects when the database is unavailable (private browsing)
+- `pdfSyncState(patternId)` — `none` / `local` / `synced` / `remote-newer`; what the sheet renders
+- `notePdfAttached` / `notePdfRemoved` — record + enqueue, called by pdf.js after the blob write
+- `pushPdf` / `pullPdfs` / `applyRemotePdfRow` / `fetchRemotePdf` — the push, the metadata pull, and the on-demand byte fetch
+- `enqueueUnsyncedPdfs()` — the sign-in backlog, called from `claimLocalProjects`
 
 **Cloud (`js/cloud/`)**
 - `initCloud()` / `cloudState()` / `openAccountSheet()` — client, status, the only sign-in surface
@@ -207,6 +224,7 @@ Within a pattern, phase nav is at the bottom. On non-chart phases it's the fixed
 - Don't put a pattern PDF in localStorage — it spends the quota `save()` needs, so the first thing to break is saved progress
 - Don't commit a bought pattern's PDF to `pdf/` — the Pages repo is public, so publishing it is redistribution
 - Don't purge a pattern's PDF in `deleteProject` — it belongs to the pattern, and another project may still refer to it
+- Don't make the `pattern-pdfs` bucket public, and don't auto-download PDF bytes on pull — metadata syncs, bytes wait for a tap
 - Don't deploy or push unless the user asks
 
 ## Figma design reference

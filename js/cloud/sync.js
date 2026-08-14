@@ -306,7 +306,9 @@ function saveOutbox() {
   try { localStorage.setItem(OUTBOX_KEY, JSON.stringify(outbox)); } catch(e) {}
 }
 
-// kind is 'project' (the registry record) or 'progress' (that project's rows).
+// kind is 'project' (the registry record), 'progress' (that project's rows), or
+// 'pdf' (a pattern's original PDF — id is the PATTERN id, not a project id,
+// since the document belongs to the pattern).
 function enqueue(kind, id) {
   if (!id) return;
   const key = kind + ':' + id;
@@ -331,15 +333,21 @@ function dequeue(kind, id) {
   saveOutbox();
 }
 
-// Pending ops in send order: project upserts, then progress, then deletes.
+// Pending ops in send order: project upserts, then progress, then PDFs, then
+// deletes.
 //
 // Upserts first because a progress row references its project, so pushing
 // progress for a project the server has never seen would fail. Deletes last so
 // a queued upsert cannot resurrect a row the same flush is about to tombstone.
+//
+// PDFs sit after progress deliberately. A PDF push is megabytes over a phone
+// connection and everything behind it in the queue waits; progress is the data
+// someone would actually miss, so it goes first every time.
 function pendingOps() {
   const ops = Object.keys(outbox).map(k => outbox[k]);
   const rank = op => {
-    if (op.k === 'project') return isDeleted(op.id) ? 2 : 0;
+    if (op.k === 'project') return isDeleted(op.id) ? 3 : 0;
+    if (op.k === 'pdf') return 2;
     return 1; // progress
   };
   return ops.sort((a, b) => rank(a) - rank(b) || a.at - b.at);
@@ -1053,6 +1061,7 @@ async function flush(reason) {
         let outcome = 'retry';
         for (let attempt = 0; attempt < MAX_PUSH_ATTEMPTS && outcome === 'retry'; attempt++) {
           outcome = op.k === 'project' ? await pushProject(op.id, uid)
+                  : op.k === 'pdf'     ? await pushPdf(op.id, uid)
                                        : await pushProgress(op.id, uid);
         }
         if (outcome === 'retry') {
@@ -1231,6 +1240,15 @@ async function pull(reason) {
       if (rev > cursor.rev) cursor.rev = rev;
     });
     if (minSkipped !== Infinity) cursor.rev = Math.min(cursor.rev, minSkipped - 1);
+
+    // PDF metadata, in its own try. It is the least important thing in this
+    // function and must never be able to cost the pull its cursor save or its
+    // success stamp — a storage hiccup would otherwise look like sync failing.
+    try {
+      if (await pullPdfs(currentUserId())) changed = true;
+    } catch (e) {
+      logSync('warn', 'pdf metadata pull failed — progress sync unaffected', e);
+    }
 
     saveCursor();
     noteSyncSuccess();

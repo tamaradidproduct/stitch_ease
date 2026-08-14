@@ -35,11 +35,12 @@
 // counted. IndexedDB stores the Blob itself, in its own much larger quota, and a
 // failure in here can never reach the progress keys.
 //
-// NOT SYNCED. An attached PDF stays on the device that attached it; the iPad
-// gets its own copy, or the bundled one. Sync would mean Supabase Storage, a
-// bucket policy, upload/download states and multi-MB transfers on mobile data —
-// a different feature. Bundled PDFs already cover "everyone gets it" for the
-// patterns we ship.
+// SYNC lives next door in js/cloud/pdfsync.js, and only the METADATA travels
+// automatically — attaching on the phone tells the iPad a copy exists, and the
+// megabytes come down when someone taps Download there. This file owns the
+// local blob and the sheet; it calls into pdfsync through `typeof` guards, so
+// with the cloud files absent or signed out everything here still works exactly
+// as it did before any of it existed.
 // ─────────────────────────────────────────────
 
 const PDF_DB      = 'stitch-ease';
@@ -76,24 +77,37 @@ function pdfDb() {
   return pdfDbPromise;
 }
 
+// Failure has to be distinguishable from "succeeded, and the answer is
+// nothing". A get() that misses resolves `undefined`, which is a perfectly good
+// result — collapsing it into the same value as a failed transaction is how a
+// missing record starts reading as a present one.
+const PDF_FAIL = Symbol('pdf-fail');
+
 function pdfTx(mode, fn) {
   return pdfDb().then(db => {
-    if (!db) return null;
+    if (!db) return PDF_FAIL;
     return new Promise(resolve => {
       let tx;
       try { tx = db.transaction(PDF_STORE, mode); }
-      catch (e) { console.warn('PDF transaction failed', e); return resolve(null); }
+      catch (e) { console.warn('PDF transaction failed', e); return resolve(PDF_FAIL); }
       const req = fn(tx.objectStore(PDF_STORE));
-      tx.onabort = tx.onerror = () => { console.warn('PDF transaction failed', tx.error); resolve(null); };
-      req.onsuccess = () => resolve(req.result === undefined ? true : req.result);
-      req.onerror   = () => { console.warn('PDF request failed', req.error); resolve(null); };
+      tx.onabort = tx.onerror = () => { console.warn('PDF transaction failed', tx.error); resolve(PDF_FAIL); };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror   = () => { console.warn('PDF request failed', req.error); resolve(PDF_FAIL); };
     });
   });
 }
 
-function pdfGet(patternId)    { return pdfTx('readonly',  s => s.get(patternId)); }
-function pdfPut(rec)          { return pdfTx('readwrite', s => s.put(rec)); }
-function pdfDeleteRec(id)     { return pdfTx('readwrite', s => s.delete(id)); }
+// null for "no record", whether that is a miss or a failure — every caller
+// treats both the same way, by falling back to the bundled copy or the empty
+// state.
+function pdfGet(patternId) {
+  return pdfTx('readonly', s => s.get(patternId)).then(r => (r === PDF_FAIL || !r) ? null : r);
+}
+// true only if the write actually happened; storePatternPdf() surfaces false as
+// "couldn't save on this device", so it must never be optimistic.
+function pdfPut(rec)      { return pdfTx('readwrite', s => s.put(rec)).then(r => r !== PDF_FAIL); }
+function pdfDeleteRec(id) { return pdfTx('readwrite', s => s.delete(id)).then(r => r !== PDF_FAIL); }
 
 // ── Object URLs ──
 //
@@ -165,14 +179,54 @@ function openPatternPdf() {
       resolvePatternPdf(pat).then(src => {
         const body = el.querySelector('.sheet-body');
         if (!body || !document.getElementById('pdf-loading')) return; // sheet closed meanwhile
-        body.innerHTML = src ? pdfViewHtml(pat, src) : pdfEmptyHtml(pat);
-        wirePdfSheet(body, pat);
+        renderPdfSheet(body, pat, src);
       });
     }
   });
 }
 
-function pdfViewHtml(pat, src) {
+// The account state is checked here rather than baked into resolvePatternPdf()
+// so the "there's a newer copy in your account" case can be shown ALONGSIDE a
+// local file — the two are not alternatives, and offering only one of them is
+// how someone ends up unable to get the copy they just attached elsewhere.
+function renderPdfSheet(body, pat, src) {
+  const state = typeof pdfSyncState === 'function' ? pdfSyncState(pat.id) : 'none';
+  if (state === 'remote-newer') body.innerHTML = pdfRemoteHtml(pat, src);
+  else body.innerHTML = src ? pdfViewHtml(pat, src, state) : pdfEmptyHtml(pat);
+  wirePdfSheet(body, pat);
+}
+
+// A copy exists in the account that this device hasn't got. Downloading is a
+// tap, never automatic — see the note at the top of js/cloud/pdfsync.js.
+function pdfRemoteHtml(pat, src) {
+  const e = pdfEntry(pat.id);
+  const size = e.remoteSize ? formatBytes(e.remoteSize) : '';
+  return `
+    <div class="pdf-file">
+      <div class="pdf-file-name">${escapeHtml(e.remoteName || 'Pattern PDF')}</div>
+      <div class="pdf-file-meta">${escapeHtml([size, 'in your account'].filter(Boolean).join(' · '))}</div>
+    </div>
+    <div class="sheet-actions">
+      <button class="sheet-btn primary" id="pdf-download">Download to this device</button>
+    </div>
+    ${src ? `<p class="sheet-sub">This device has an older copy (${escapeHtml(src.name || '')}). Downloading replaces it.</p>` : ''}
+    <div class="sheet-actions">
+      <button class="sheet-btn" id="pdf-replace">Use a different file</button>
+    </div>
+    <p class="acct-note">Downloaded once and kept on this device, so it opens offline afterwards.</p>`;
+}
+
+// Where a local file stands relative to the account, in one line. Silent when
+// signed out — "not backed up" is not a warning to someone who never asked for
+// an account, it is just noise on every open.
+function pdfCloudLine(patternId, state) {
+  if (typeof cloudState !== 'function' || cloudState() !== 'signed-in') return '';
+  if (state === 'synced') return '<div class="pdf-file-cloud">Backed up to your account</div>';
+  if (state === 'local')  return '<div class="pdf-file-cloud pending">Not backed up yet — it uploads on the next sync</div>';
+  return '';
+}
+
+function pdfViewHtml(pat, src, state) {
   // A real anchor, not a button calling window.open(). A user-gesture anchor
   // click is the one path no popup blocker interferes with, and on Android
   // Chrome it is also what hands a blob: URL to the system PDF viewer instead
@@ -191,6 +245,7 @@ function pdfViewHtml(pat, src) {
     <div class="pdf-file">
       <div class="pdf-file-name">${escapeHtml(src.name || 'Pattern PDF')}</div>
       <div class="pdf-file-meta">${escapeHtml(meta)}</div>
+      ${src.kind === 'attached' ? pdfCloudLine(pat.id, state) : ''}
     </div>
     <div class="sheet-actions">
       <a class="sheet-btn primary" href="${escapeHtml(src.url)}" target="_blank" rel="noopener"
@@ -200,19 +255,27 @@ function pdfViewHtml(pat, src) {
       <button class="sheet-btn" id="pdf-replace">${src.kind === 'attached' ? 'Replace' : 'Use my own file'}</button>
       ${src.kind === 'attached' ? '<button class="sheet-btn" id="pdf-remove">Remove</button>' : ''}
     </div>
-    <p class="acct-note">${src.kind === 'attached'
-      ? 'Saved on this device only — it isn’t uploaded, and other devices won’t see it.'
-      : 'Shipped with the app. Attach your own file to use that instead.'}</p>`;
+    <p class="acct-note">${src.kind === 'bundled'
+      ? 'Shipped with the app. Attach your own file to use that instead.'
+      : (typeof cloudState === 'function' && cloudState() === 'signed-in')
+        ? 'Kept on this device and in your account, so it opens offline and reaches your other devices.'
+        : 'Stored on this device. Sign in and it’ll back up to your account.'}</p>`;
 }
 
 function pdfEmptyHtml(pat) {
+  // The closing note is the honest description of where the file goes, and
+  // that differs entirely by account state. Promising it will reach the iPad
+  // when nobody is signed in would be a promise the app cannot keep.
+  const signedIn = typeof cloudState === 'function' && cloudState() === 'signed-in';
   return `
     <p class="sheet-msg">No original pattern saved for ${escapeHtml(pat.name)}.</p>
     <p class="sheet-sub">Add the PDF you bought it in, and it’ll be one tap away from any section — including offline.</p>
     <div class="sheet-actions">
       <button class="sheet-btn primary" id="pdf-replace">Choose a PDF</button>
     </div>
-    <p class="acct-note">The file is stored on this device only. It isn’t uploaded anywhere, and other devices won’t see it.</p>`;
+    <p class="acct-note">${signedIn
+      ? 'Saved to your account, so your other devices can download it too.'
+      : 'Stored on this device. Sign in and it’ll back up to your account and reach your other devices.'}</p>`;
 }
 
 function wirePdfSheet(body, pat) {
@@ -220,6 +283,24 @@ function wirePdfSheet(body, pat) {
   if (replace) replace.onclick = () => choosePatternPdf(pat);
   const remove = body.querySelector('#pdf-remove');
   if (remove) remove.onclick = () => confirmRemovePatternPdf(pat);
+
+  const dl = body.querySelector('#pdf-download');
+  if (dl) dl.onclick = () => {
+    // Disabled in place rather than swapped for a spinner: a multi-MB download
+    // on a phone is slow enough that a button which still looks tappable gets
+    // tapped again, and the second tap starts a second download.
+    dl.disabled = true;
+    dl.textContent = 'Downloading…';
+    fetchRemotePdf(pat.id).then(ok => {
+      if (ok) return openPatternPdf();   // reopen on the copy that just landed
+      dl.disabled = false;
+      dl.textContent = 'Download to this device';
+      const note = document.createElement('p');
+      note.className = 'acct-err';
+      note.textContent = 'Couldn’t download it just now. Check your connection and try again — nothing was lost.';
+      body.appendChild(note);
+    });
+  };
   // Opening is the whole point of the sheet, so it closes behind you rather
   // than leaving a dialog over the tracker to dismiss on the way back.
   const open = body.querySelector('#pdf-open');
@@ -265,19 +346,33 @@ function storePatternPdf(pat, file) {
     }
     // The stored blob replaces whatever the old URL pointed at.
     releasePdfUrl(pat.id);
+    // Only after the blob is safely down. Recording an attach that failed to
+    // store would queue an upload with nothing behind it.
+    if (typeof notePdfAttached === 'function') notePdfAttached(pat.id, rec.name, rec.size);
     openPatternPdf();   // reopen on the saved file, so the result is visible
   });
 }
 
 function confirmRemovePatternPdf(pat) {
+  // The wording changes with reach, because the consequence does. Signed in,
+  // this removes the account's copy on every device — saying "only this device"
+  // there would be a lie the user finds out about on the iPad.
+  const synced = typeof pdfSyncState === 'function' && pdfSyncState(pat.id) !== 'local' &&
+                 typeof canSync === 'function' && canSync();
   sheetConfirm({
     title: 'Remove PDF',
     message: 'Remove the saved PDF for ' + pat.name + '?',
-    detail: 'Only the copy on this device is removed. Your progress and the original file wherever you got it are untouched.',
+    detail: synced
+      ? 'This removes it from your account, so it goes from your other devices too. Your progress and the original file wherever you got it are untouched.'
+      : 'Only the copy on this device is removed. Your progress and the original file wherever you got it are untouched.',
     confirmLabel: 'Remove',
     danger: true,
     onConfirm: () => {
-      pdfDeleteRec(pat.id).then(() => { releasePdfUrl(pat.id); openPatternPdf(); });
+      pdfDeleteRec(pat.id).then(() => {
+        releasePdfUrl(pat.id);
+        if (typeof notePdfRemoved === 'function') notePdfRemoved(pat.id);
+        openPatternPdf();
+      });
     }
   });
 }
