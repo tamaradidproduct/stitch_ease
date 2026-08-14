@@ -97,7 +97,7 @@ const LENORE_PHASES = [
       {kind:'row', id:'r2-k', text:'Ring K: 2 + 4 - 1 --- 1 - 4 - 2 (join to Ring J)'},
       {kind:'row', id:'r2-l', text:'Ring L: 2 + 2 - 2 - 4 (join to Ring K)'},
       {kind:'row', id:'r2-m', text:'Chain M: 6'},
-      {kind:'repeat', id:'r2-nopqrs', text:'Ring N – Chain S (repeat unit):', times:4, legacyCount:'passes', rows:[
+      {kind:'repeat', id:'r2-nopqrs', text:'Ring N – Chain S (repeat unit):', times:5, legacyCount:'passes', rows:[
         {id:'r2-nopqrs-1', text:'Ring N: 2 + 2 - 2 - 2 (join to Ring L, or to the previous repeat)'},
         {id:'r2-nopqrs-2', text:'Chain O: 2 - 2 + 2 - 4 (join to the center picot of Chain E)'},
         {id:'r2-nopqrs-3', text:'Ring P: 2 - 2 + 2 - 2 - 2 (join to Ring N)'},
