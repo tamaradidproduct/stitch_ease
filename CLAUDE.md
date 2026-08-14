@@ -13,6 +13,7 @@ peacock-tee-deploy/
   js/core/storage.js            ← pkey/save/load*/migrations/projects registry
   js/core/chart.js              ← chart tracker, zoom, scroll, changeChartRow
   js/core/render.js             ← render*/stepHtml/openSheet/escapeHtml
+  js/core/pdf.js                ← the original pattern PDF (IndexedDB + the sheet)
   js/cloud/auth.js              ← Supabase client, session, account sheet, claim flow
   js/cloud/sync.js              ← clocks, outbox, push, pull, three-way merge
   js/core/app.js                ← nav, SW registration, bootstrap  ← MUST BE LAST
@@ -101,6 +102,20 @@ Patterns ship with the deploy, so **text edits reach everyone immediately** — 
 - A non-blocking **"Pattern updated · Review"** chip appears while a changed project is open. Adopting (`adoptPattern`) is an explicit tap, shows a kept/dropped summary first, and **destroys nothing**: orphaned progress keys are left in place, so a step that comes back brings its tick with it — and deleting them would fight sync, since a device that hasn't adopted would push them straight back. The one thing that must move is `cur`, a phase *index*, which is translated through the phase id it pointed at.
 - Sync: `pattern_struct_hash` always; `pattern_doc` **only once the project has diverged** from the code, since otherwise the receiving device can rebuild the snapshot from its own bundle. `applyRemotePattern` never overwrites a snapshot this device already has.
 
+### The original pattern PDF
+The tracker is a transcription — no schematics, no photos, no sizing table. The **document icon** in the section header (beside the notes book, on every section including the chart) opens the original PDF, so the answer to "what did the designer actually say" isn't "go and find the email you bought it in".
+
+- **Attached to the PATTERN, not the project.** Every project knitted from a pattern refers to the same document. `deleteProject` therefore does **not** purge it — another project may still point at it, and the pattern outlives them all.
+- **Two sources, one resolution path** (`resolvePatternPdf`):
+  - **bundled** — the pattern declares `pdf: 'pdf/x.pdf'` (or `{ file, title }`) and the file ships with the deploy. Reaches every device automatically, nothing for the user to do. **Add the file to `sw.js` ASSETS too**, or it's only readable online.
+  - **attached** — the user picks a file on this device; stored in IndexedDB, never uploaded.
+- An **attached file wins** over a bundled one — attaching is a deliberate act on this device, a bundle is a default. Removing it falls back.
+- **IndexedDB, not localStorage.** localStorage is the progress store and its ~5MB quota already carries a 10-40KB frozen pattern doc per project. A multi-MB PDF (plus a third for base64) wouldn't merely fail — it would spend the quota `save()` needs, so the first casualty would be the row the user just counted.
+- **Not synced.** An attached PDF stays on the device that attached it. Syncing means Supabase Storage, a bucket policy, upload/download states and multi-MB mobile transfers — a separate feature. Bundled PDFs already cover "everyone gets it".
+- The **Open** control is a real `<a target="_blank">`, and deliberately has **no `download` attribute** — `download` makes the browser save the file instead of displaying it, and the point is to read it.
+
+> ⚠️ **The GitHub Pages repo is public.** Anything in `pdf/` is world-readable at a guessable URL. Only bundle patterns this repo has the right to publish — a bought pattern (Lenore, Peacock Tee) must be attached on-device, never committed.
+
 ### Global row tally
 A read-only **Rows** display in the header. `globalRows` auto-advances by the real change whenever a section row counter (`changeCount`) or the yoke-chart row (`changeChartRow`) moves; clamped taps (counter already at min/max) don't move it. It's a project-wide total (persisted as `pt3_proj_<id>_grows`), updated in place by `renderGlobalRows()`.
 
@@ -153,6 +168,12 @@ HTML is fetched **network-first** (fresh page on each load when online; cache fa
 - `showUpdateBanner(worker)` / `applyUpdate()` — PWA update prompt
 - `openSheet(title, html, opts)` / `sheetConfirm` / `sheetPrompt` — the bottom-sheet primitive; **use these, never `prompt()`/`confirm()`** (unreliable in Chrome Custom Tabs, which is where magic links open)
 
+**Original PDF (`js/core/pdf.js`)**
+- `openPatternPdf()` — the sheet; the document icon in the section header calls it
+- `resolvePatternPdf(pattern)` — attached (IndexedDB) first, then bundled, else null
+- `choosePatternPdf` / `storePatternPdf` / `confirmRemovePatternPdf` — attach, validate, remove
+- `pdfGet` / `pdfPut` / `pdfDeleteRec` — the IndexedDB store, keyed by patternId; every one resolves rather than rejects when the database is unavailable (private browsing)
+
 **Cloud (`js/cloud/`)**
 - `initCloud()` / `cloudState()` / `openAccountSheet()` — client, status, the only sign-in surface
 - `handleSignedIn(uid)` / `claimLocalProjects(uid)` — whose data on this device is
@@ -183,6 +204,9 @@ Within a pattern, phase nav is at the bottom. On non-chart phases it's the fixed
 - Don't strip "orphaned" progress keys when adopting a pattern update — they're inert, they come back if the step does, and a device that hasn't adopted would push them back anyway
 - Don't load a script after `js/core/app.js` — it ends with the bootstrap, so anything it calls must already be defined
 - Don't run the panel auto-hide/collapse animation off the chart screen — keep it scoped to `body.chart-page`
+- Don't put a pattern PDF in localStorage — it spends the quota `save()` needs, so the first thing to break is saved progress
+- Don't commit a bought pattern's PDF to `pdf/` — the Pages repo is public, so publishing it is redistribution
+- Don't purge a pattern's PDF in `deleteProject` — it belongs to the pattern, and another project may still refer to it
 - Don't deploy or push unless the user asks
 
 ## Figma design reference

@@ -10,6 +10,7 @@ const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './ic
   './js/core/rows.js',
   './js/core/chart.js',
   './js/core/render.js',
+  './js/core/pdf.js',
   './js/core/app.js',
   './js/cloud/auth.js',
   './js/cloud/sync.js',
@@ -17,6 +18,11 @@ const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './ic
   './js/patterns/tatted-triangle.js',
   './js/patterns/lenore.js',
   './js/patterns/frost-flower.js'];
+// A pattern that declares `pdf: 'pdf/x.pdf'` (see js/core/pdf.js) must add that
+// file here too, or it is only readable online — the whole point is reaching it
+// mid-row on a bus. It falls through to the cache-first branch below, which is
+// right: a bundled PDF changes only when the deploy does. PDFs a user attaches
+// themselves live in IndexedDB and never come through the service worker.
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));

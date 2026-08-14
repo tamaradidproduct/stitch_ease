@@ -44,6 +44,14 @@ const NOTES_SVG = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" a
         <path d="M12 6.5v13" stroke="currentColor" stroke-width="1.6"/>
       </svg>`;
 
+// Original-pattern PDF — a document with a folded corner. Sits beside the
+// notes book in the phase header; see js/core/pdf.js for what it opens.
+const PDF_SVG = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M14 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+        <path d="M13.8 3.6V8.2h4.6" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+        <path d="M8.8 13h6.4M8.8 16.2h4.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>`;
+
 // App logo — a ball of yarn with a knitting needle.
 const LOGO_SVG = `<svg class="lib-logo" viewBox="0 0 40 40" width="34" height="34" fill="none" aria-hidden="true">
   <circle cx="18" cy="22" r="13" fill="var(--accent-light)" stroke="var(--accent)" stroke-width="1.7"/>
@@ -170,7 +178,10 @@ function renderPhase() {
         </div>
         <div class="phase-desc">${p.desc}</div>
       </div>
-      ${(activePattern() && activePattern().notes) ? `<button class="phase-folder" onclick="openNotes()" aria-label="Pattern notes" title="Pattern notes">${NOTES_SVG}</button>` : ''}
+      <div class="phase-head-tools">
+        ${(activePattern() && activePattern().notes) ? `<button class="phase-folder" onclick="openNotes()" aria-label="Pattern notes" title="Pattern notes">${NOTES_SVG}</button>` : ''}
+        <button class="phase-folder" onclick="openPatternPdf()" aria-label="Original pattern PDF" title="Original pattern PDF">${PDF_SVG}</button>
+      </div>
     </div>
     <div class="phase-scroll collapsed" id="phase-tabs"></div>
   </div>`;
