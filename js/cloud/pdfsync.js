@@ -105,6 +105,45 @@ function notePdfRemoved(patternId) {
 
 function pdfStoragePath(uid, patternId) { return uid + '/' + patternId + '.pdf'; }
 
+// ─────────────────────────────────────────────
+// IN-FLIGHT ACTIVITY
+//
+// Deliberately NOT persisted. "Uploading" is a fact about this page, this
+// second — a device that crashes mid-upload has not got an upload in flight
+// when it comes back, it has a queued op, which the outbox already records.
+// Writing this to localStorage would leave a sheet stuck on "Uploading…"
+// forever after a reload.
+//
+// An `error` here is a display fact too, not a control fact: the outbox is
+// what decides whether the push is retried. This only says the last attempt
+// failed, so the sheet can offer Retry instead of claiming "not backed up yet"
+// indefinitely — which is what it did before, and reads identically to a push
+// that simply has not happened yet.
+// ─────────────────────────────────────────────
+let pdfActivity = {};   // patternId -> { busy: 'upload'|'download'|null, failed: 'upload'|'download'|null }
+
+function pdfActivityFor(patternId) {
+  const a = pdfActivity[patternId] || {};
+  return { busy: a.busy || null, failed: a.failed || null };
+}
+
+// Every mutation goes through here so the open sheet repaints exactly once per
+// change, and so nothing can update the state without telling the UI — the
+// failure mode being a sheet that says "Uploading…" after the upload finished.
+function setPdfActivity(patternId, next) {
+  pdfActivity[patternId] = Object.assign(pdfActivityFor(patternId), next);
+  if (typeof refreshPdfSheet === 'function') refreshPdfSheet(patternId);
+}
+
+// Re-queue a failed upload and send it now, rather than waiting for the next
+// edit to nudge the outbox. The op is usually still queued (a push that threw
+// is never dequeued), so this is mostly about the flush, not the enqueue.
+function retryPdfUpload(patternId) {
+  setPdfActivity(patternId, { failed: null });
+  enqueue('pdf', patternId);
+  flushNow('pdf-retry');
+}
+
 // Queue every PDF this device has that the account hasn't got.
 //
 // Needed because a PDF can be attached long before anyone signs in, and
@@ -183,16 +222,30 @@ async function pushPdf(patternId, uid) {
     return 'drop';
   }
 
-  const { error: putErr } = await sb.storage.from(PDF_BUCKET)
-    .upload(path, rec.blob, { upsert: true, contentType: rec.type || 'application/pdf' });
-  if (putErr) throw putErr;
+  // Marked around the bytes only. The metadata upsert below is a few hundred
+  // bytes and finishes instantly; flagging it as "uploading" too would leave
+  // the label flickering on for no reason a knitter could perceive.
+  setPdfActivity(patternId, { busy: 'upload', failed: null });
+  try {
+    const { error: putErr } = await sb.storage.from(PDF_BUCKET)
+      .upload(path, rec.blob, { upsert: true, contentType: rec.type || 'application/pdf' });
+    if (putErr) throw putErr;
 
-  const { error: upErr } = await sb.from('pattern_pdfs').upsert({
-    owner_id: uid, pattern_id: patternId, file_name: e.name || rec.name,
-    byte_size: e.size || rec.size, content_type: rec.type || 'application/pdf',
-    updated_ms: e.localMs, deleted_ms: null, storage_path: path
-  }, { onConflict: 'owner_id,pattern_id' });
-  if (upErr) throw upErr;
+    const { error: upErr } = await sb.from('pattern_pdfs').upsert({
+      owner_id: uid, pattern_id: patternId, file_name: e.name || rec.name,
+      byte_size: e.size || rec.size, content_type: rec.type || 'application/pdf',
+      updated_ms: e.localMs, deleted_ms: null, storage_path: path
+    }, { onConflict: 'owner_id,pattern_id' });
+    if (upErr) throw upErr;
+  } catch (err) {
+    // Recorded, then rethrown — flush() still owns the retry decision and must
+    // see the failure. Swallowing it here would dequeue the op and lose the
+    // upload silently, which is the exact failure this whole flag exists to
+    // stop the UI from hiding.
+    setPdfActivity(patternId, { busy: null, failed: 'upload' });
+    throw err;
+  }
+  setPdfActivity(patternId, { busy: null, failed: null });
 
   // Server and device now hold the same copy, which is what makes the state
   // 'synced' rather than 'local'.
@@ -262,15 +315,23 @@ async function fetchRemotePdf(patternId) {
   const uid = currentUserId();
   const e = pdfEntry(patternId);
   const path = pdfStoragePath(uid, patternId);
+  setPdfActivity(patternId, { busy: 'download', failed: null });
+  // Every exit runs through here. Two of the failure paths below are plain
+  // `return false`, not throws — a `finally` that only cleared on the happy
+  // path would leave the sheet saying "Downloading…" with nothing downloading.
+  const finish = ok => {
+    setPdfActivity(patternId, { busy: null, failed: ok ? null : 'download' });
+    return ok;
+  };
   try {
     const { data, error } = await sb.storage.from(PDF_BUCKET).download(path);
     if (error) throw error;
-    if (!data) return false;
+    if (!data) return finish(false);
 
     const name = e.remoteName || (patternId + '.pdf');
     const ok = await pdfPut({ id: patternId, name: name, size: data.size,
                               type: 'application/pdf', blob: data, addedAt: e.remoteMs });
-    if (!ok) return false;
+    if (!ok) return finish(false);
 
     // localMs is set to the REMOTE clock, not now(). Claiming a fresh local
     // edit for a file that was only copied down would make this device look
@@ -280,9 +341,32 @@ async function fetchRemotePdf(patternId) {
     });
     savePdfIndex();
     releasePdfUrl(patternId);
-    return true;
+    return finish(true);
   } catch (err) {
     logSync('error', 'pdf download failed for ' + patternId, err);
-    return false;
+    return finish(false);
   }
+}
+
+// ─────────────────────────────────────────────
+// WHAT PDFs COST — for the account sheet
+// ─────────────────────────────────────────────
+
+// Every pattern with a file on this device, largest first, with the pattern's
+// display name resolved. Sizes come from the index rather than IndexedDB so
+// this stays synchronous — the account sheet is built in one pass, and a list
+// that arrives a frame later would jump the layout under a thumb.
+function pdfStorageList() {
+  return Object.keys(pdfIndex)
+    .filter(id => pdfEntry(id).localMs && pdfEntry(id).size)
+    .map(id => {
+      const pat = patternById(id);
+      return { patternId: id, name: (pat && pat.name) || id,
+               fileName: pdfEntry(id).name, size: pdfEntry(id).size };
+    })
+    .sort((a, b) => b.size - a.size);
+}
+
+function pdfStorageTotal() {
+  return pdfStorageList().reduce((a, f) => a + f.size, 0);
 }

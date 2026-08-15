@@ -171,10 +171,17 @@ function formatBytes(n) {
 // body fills in when IndexedDB answers, because a sheet that waits on a disk
 // read before appearing reads as a dead button.
 
+// Which pattern the open sheet is showing, so a background upload finishing can
+// repaint it — and so it does NOT repaint some other sheet that happens to be
+// open by then.
+let openPdfSheetFor = null;
+
 function openPatternPdf() {
   const pat = activePattern();
   if (!pat) return;
-  openSheet('Original pattern', '<p class="sheet-sub" id="pdf-loading">Looking for a saved copy…</p>', {
+  openPdfSheetFor = pat.id;
+  openSheet('Original pattern', '<div class="sheet-sub" id="pdf-loading">Looking for a saved copy…</div>', {
+    onDismiss: () => { openPdfSheetFor = null; },
     onOpen: el => {
       resolvePatternPdf(pat).then(src => {
         const body = el.querySelector('.sheet-body');
@@ -182,6 +189,26 @@ function openPatternPdf() {
         renderPdfSheet(body, pat, src);
       });
     }
+  });
+}
+
+// Repaint the open sheet in place. Called by the sync engine whenever a
+// pattern's upload or download state changes, which is what makes "Uploading…
+// → Backed up" happen without anyone reopening anything.
+//
+// Guarded three ways: the sheet must still be open, it must still be OUR sheet
+// (openSheet replaces rather than stacks, so a confirm dialog would otherwise
+// be repainted into a PDF sheet), and it must be for this pattern.
+function refreshPdfSheet(patternId) {
+  if (openPdfSheetFor !== patternId) return;
+  const body = document.querySelector('#sheet-scrim .sheet-body');
+  if (!body || !body.querySelector('.pdf-file, #pdf-empty')) return;
+  const pat = patternById(patternId);
+  if (!pat) return;
+  resolvePatternPdf(pat).then(src => {
+    const live = document.querySelector('#sheet-scrim .sheet-body');
+    if (!live || openPdfSheetFor !== patternId) return;
+    renderPdfSheet(live, pat, src);
   });
 }
 
@@ -196,20 +223,37 @@ function renderPdfSheet(body, pat, src) {
   wirePdfSheet(body, pat);
 }
 
-// A copy exists in the account that this device hasn't got. Downloading is a
-// tap, never automatic — see the note at the top of js/cloud/pdfsync.js.
+// A copy exists in the account that this device hasn't got.
+//
+// If this device ALSO holds an older copy, Open comes first and Download is the
+// secondary action. The newer file is not worth much to someone standing in a
+// yarn shop on a bad connection who simply wants to read the pattern they
+// already have — and offering only Download meant that, offline, they could not
+// read it at all.
 function pdfRemoteHtml(pat, src) {
   const e = pdfEntry(pat.id);
+  const busy = typeof pdfActivityFor === 'function' ? pdfActivityFor(pat.id) : {};
   const size = e.remoteSize ? formatBytes(e.remoteSize) : '';
+  const downloading = busy.busy === 'download';
+  const hasLocal = !!(src && src.kind === 'attached');
+
   return `
     <div class="pdf-file">
-      <div class="pdf-file-name">${escapeHtml(e.remoteName || 'Pattern PDF')}</div>
-      <div class="pdf-file-meta">${escapeHtml([size, 'in your account'].filter(Boolean).join(' · '))}</div>
+      <div class="pdf-file-name">${escapeHtml(hasLocal ? src.name : (e.remoteName || 'Pattern PDF'))}</div>
+      <div class="pdf-file-meta">${escapeHtml(hasLocal
+        ? [formatBytes(src.size), 'on this device'].filter(Boolean).join(' · ')
+        : [size, 'in your account'].filter(Boolean).join(' · '))}</div>
+      ${hasLocal ? `<div class="pdf-file-cloud pending">A newer copy is in your account${
+        e.remoteName ? ' (' + escapeHtml(e.remoteName) + (size ? ', ' + size : '') + ')' : ''}</div>` : ''}
     </div>
+    ${src ? `<div class="sheet-actions">
+      <a class="sheet-btn primary" href="${escapeHtml(src.url)}" target="_blank" rel="noopener" id="pdf-open">Open${hasLocal ? ' this copy' : ''}</a>
+    </div>` : ''}
     <div class="sheet-actions">
-      <button class="sheet-btn primary" id="pdf-download">Download to this device</button>
+      <button class="sheet-btn ${src ? '' : 'primary'}" id="pdf-download" ${downloading ? 'disabled' : ''}>${
+        downloading ? 'Downloading…' : (hasLocal ? 'Get the newer copy' : 'Download to this device')}</button>
     </div>
-    ${src ? `<p class="sheet-sub">This device has an older copy (${escapeHtml(src.name || '')}). Downloading replaces it.</p>` : ''}
+    ${busy.failed === 'download' ? `<p class="acct-err">Couldn’t download it just now. Check your connection and try again — nothing was lost.</p>` : ''}
     <div class="sheet-actions">
       <button class="sheet-btn" id="pdf-replace">Use a different file</button>
     </div>
@@ -219,11 +263,32 @@ function pdfRemoteHtml(pat, src) {
 // Where a local file stands relative to the account, in one line. Silent when
 // signed out — "not backed up" is not a warning to someone who never asked for
 // an account, it is just noise on every open.
+//
+// The in-flight state comes first because it is the one that is changing: this
+// line is repainted by refreshPdfSheet() as the upload starts and finishes, so
+// what someone sees after picking a file is "Uploading… → Backed up to your
+// account" rather than a static "not backed up yet" that never resolves.
 function pdfCloudLine(patternId, state) {
   if (typeof cloudState !== 'function' || cloudState() !== 'signed-in') return '';
+  const busy = typeof pdfActivityFor === 'function' ? pdfActivityFor(patternId) : {};
+  if (busy.busy === 'upload') return '<div class="pdf-file-cloud pending">Uploading…</div>';
+  if (busy.failed === 'upload') return '';   // the error block below says it instead
   if (state === 'synced') return '<div class="pdf-file-cloud">Backed up to your account</div>';
   if (state === 'local')  return '<div class="pdf-file-cloud pending">Not backed up yet — it uploads on the next sync</div>';
   return '';
+}
+
+// A failed upload, with the way out. Distinguishing this from "not backed up
+// yet" is the whole point: before, a push that threw looked exactly like one
+// that had not been attempted, so a file that would never upload sat there
+// claiming it was about to.
+function pdfUploadErrorHtml(patternId) {
+  if (typeof pdfActivityFor !== 'function') return '';
+  if (pdfActivityFor(patternId).failed !== 'upload') return '';
+  return `<div class="pdf-retry">
+      <p class="acct-err">Couldn’t back this up to your account. It’s still safe on this device.</p>
+      <div class="sheet-actions"><button class="sheet-btn slim" id="pdf-retry-upload">Try again</button></div>
+    </div>`;
 }
 
 function pdfViewHtml(pat, src, state) {
@@ -251,15 +316,28 @@ function pdfViewHtml(pat, src, state) {
       <a class="sheet-btn primary" href="${escapeHtml(src.url)}" target="_blank" rel="noopener"
          id="pdf-open">Open</a>
     </div>
+    ${src.kind === 'attached' ? pdfUploadErrorHtml(pat.id) : ''}
     <div class="sheet-actions">
       <button class="sheet-btn" id="pdf-replace">${src.kind === 'attached' ? 'Replace' : 'Use my own file'}</button>
       ${src.kind === 'attached' ? '<button class="sheet-btn" id="pdf-remove">Remove</button>' : ''}
     </div>
-    <p class="acct-note">${src.kind === 'bundled'
-      ? 'Shipped with the app. Attach your own file to use that instead.'
-      : (typeof cloudState === 'function' && cloudState() === 'signed-in')
-        ? 'Kept on this device and in your account, so it opens offline and reaches your other devices.'
-        : 'Stored on this device. Sign in and it’ll back up to your account.'}</p>`;
+    <p class="acct-note">${pdfFooterNote(pat.id, src)}</p>`;
+}
+
+// The closing line has to agree with whatever is above it. It previously said
+// "kept on this device and in your account" unconditionally when signed in —
+// including directly under an error saying the backup had failed, which is the
+// one place it was certainly wrong.
+function pdfFooterNote(patternId, src) {
+  if (src.kind === 'bundled') return 'Shipped with the app. Attach your own file to use that instead.';
+  if (typeof cloudState !== 'function' || cloudState() !== 'signed-in') {
+    return 'Stored on this device. Sign in and it’ll back up to your account.';
+  }
+  const busy = typeof pdfActivityFor === 'function' ? pdfActivityFor(patternId) : {};
+  if (busy.failed === 'upload') return 'It stays on this device whether or not the backup succeeds.';
+  const state = typeof pdfSyncState === 'function' ? pdfSyncState(patternId) : '';
+  if (state === 'synced') return 'Kept on this device and in your account, so it opens offline and reaches your other devices.';
+  return 'Kept on this device. It reaches your other devices once it’s uploaded.';
 }
 
 function pdfEmptyHtml(pat) {
@@ -267,8 +345,10 @@ function pdfEmptyHtml(pat) {
   // that differs entirely by account state. Promising it will reach the iPad
   // when nobody is signed in would be a promise the app cannot keep.
   const signedIn = typeof cloudState === 'function' && cloudState() === 'signed-in';
+  // The id is refreshPdfSheet()'s marker for "this body is still a PDF sheet" —
+  // the file states are recognised by .pdf-file, and the empty state has none.
   return `
-    <p class="sheet-msg">No original pattern saved for ${escapeHtml(pat.name)}.</p>
+    <p class="sheet-msg" id="pdf-empty">No original pattern saved for ${escapeHtml(pat.name)}.</p>
     <p class="sheet-sub">Add the PDF you bought it in, and it’ll be one tap away from any section — including offline.</p>
     <div class="sheet-actions">
       <button class="sheet-btn primary" id="pdf-replace">Choose a PDF</button>
@@ -284,23 +364,15 @@ function wirePdfSheet(body, pat) {
   const remove = body.querySelector('#pdf-remove');
   if (remove) remove.onclick = () => confirmRemovePatternPdf(pat);
 
+  // The button's disabled/label state is rendered from pdfActivityFor(), not
+  // set by hand here — fetchRemotePdf() flips the flag and the sheet repaints
+  // itself. Two code paths deciding what this button says is how one of them
+  // ends up stuck on "Downloading…".
   const dl = body.querySelector('#pdf-download');
-  if (dl) dl.onclick = () => {
-    // Disabled in place rather than swapped for a spinner: a multi-MB download
-    // on a phone is slow enough that a button which still looks tappable gets
-    // tapped again, and the second tap starts a second download.
-    dl.disabled = true;
-    dl.textContent = 'Downloading…';
-    fetchRemotePdf(pat.id).then(ok => {
-      if (ok) return openPatternPdf();   // reopen on the copy that just landed
-      dl.disabled = false;
-      dl.textContent = 'Download to this device';
-      const note = document.createElement('p');
-      note.className = 'acct-err';
-      note.textContent = 'Couldn’t download it just now. Check your connection and try again — nothing was lost.';
-      body.appendChild(note);
-    });
-  };
+  if (dl) dl.onclick = () => { if (!dl.disabled) fetchRemotePdf(pat.id); };
+
+  const retry = body.querySelector('#pdf-retry-upload');
+  if (retry) retry.onclick = () => retryPdfUpload(pat.id);
   // Opening is the whole point of the sheet, so it closes behind you rather
   // than leaving a dialog over the tracker to dismiss on the way back.
   const open = body.querySelector('#pdf-open');
@@ -353,7 +425,14 @@ function storePatternPdf(pat, file) {
   });
 }
 
-function confirmRemovePatternPdf(pat) {
+function confirmRemovePatternPdf(pat) { confirmRemovePatternPdfFrom(pat, () => openPatternPdf()); }
+
+// The remove flow, with where to go afterwards left to the caller — the PDF
+// sheet reopens on itself, the account sheet reopens on itself so its total is
+// not stale by exactly the file just removed. Same confirmation either way:
+// removing a synced file takes it off the other devices too, and that has to be
+// said wherever the button is.
+function confirmRemovePatternPdfFrom(pat, after) {
   // The wording changes with reach, because the consequence does. Signed in,
   // this removes the account's copy on every device — saying "only this device"
   // there would be a lie the user finds out about on the iPad.
@@ -371,7 +450,7 @@ function confirmRemovePatternPdf(pat) {
       pdfDeleteRec(pat.id).then(() => {
         releasePdfUrl(pat.id);
         if (typeof notePdfRemoved === 'function') notePdfRemoved(pat.id);
-        openPatternPdf();
+        if (after) after();
       });
     }
   });

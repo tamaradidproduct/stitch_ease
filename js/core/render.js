@@ -66,6 +66,19 @@ const LOGO_SVG = `<svg class="lib-logo" viewBox="0 0 40 40" width="34" height="3
   <circle cx="35.5" cy="4.5" r="1.7" fill="var(--accent)"/>
 </svg>`;
 
+// Does the PDF icon need a dot? Only for 'remote-newer' — a copy sitting in the
+// account that this device hasn't got, which is the one state with something to
+// do that nothing else on screen would ever reveal.
+//
+// Deliberately not shown for 'local' (not backed up yet). That resolves itself
+// on the next flush, so a badge for it would be up briefly after every attach
+// and mean nothing by the time anyone looked. A dot that appears for two
+// different reasons is a dot nobody reads.
+function pdfWaiting() {
+  const pat = activePattern();
+  return !!pat && typeof pdfSyncState === 'function' && pdfSyncState(pat.id) === 'remote-newer';
+}
+
 // A note's bullets are an informational list — no counter, no checkbox of
 // their own. A bulleted list that IS repeated work is a repeat block instead.
 function bulletsHtml(e) {
@@ -180,7 +193,9 @@ function renderPhase() {
       </div>
       <div class="phase-head-tools">
         ${(activePattern() && activePattern().notes) ? `<button class="phase-folder" onclick="openNotes()" aria-label="Pattern notes" title="Pattern notes">${NOTES_SVG}</button>` : ''}
-        <button class="phase-folder" onclick="openPatternPdf()" aria-label="Original pattern PDF" title="Original pattern PDF">${PDF_SVG}</button>
+        <button class="phase-folder${pdfWaiting() ? ' has-dot' : ''}" onclick="openPatternPdf()"
+                aria-label="Original pattern PDF${pdfWaiting() ? ' — a copy is waiting to download' : ''}"
+                title="Original pattern PDF">${PDF_SVG}</button>
       </div>
     </div>
     <div class="phase-scroll collapsed" id="phase-tabs"></div>

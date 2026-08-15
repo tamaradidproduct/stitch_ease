@@ -42,7 +42,45 @@ Four states, and the sheet says which:
 | `none` | nothing anywhere | Choose a PDF |
 | `local` | here, not in the account yet | Open · Replace · Remove, "not backed up yet" |
 | `synced` | same copy both places | Open · Replace · Remove, "backed up" |
-| `remote-newer` | the account has one this device hasn't | **Download to this device** |
+| `remote-newer`, no local copy | the account has one this device hasn't | **Download to this device** |
+| `remote-newer`, older copy here | both, and they differ | **Open this copy** · Get the newer copy · Use a different file |
+
+## Feedback while it happens
+
+`pdfActivity` in `js/cloud/pdfsync.js` tracks `{busy, failed}` per pattern. Every mutation
+goes through `setPdfActivity`, which calls `refreshPdfSheet` — so an open sheet repaints
+itself as an upload starts and finishes, and nobody has to close and reopen it to find out
+whether the file made it.
+
+It is **in-memory and never persisted**. "Uploading" is a fact about this page, this second;
+a device that crashes mid-upload comes back with a queued op, not an upload in flight, and
+the outbox already records that. Writing it to localStorage would strand a sheet on
+"Uploading…" forever after a reload.
+
+A **failed** upload shows an error and a **Try again** button. Before, it was
+indistinguishable from "not backed up yet" — so a push that would never succeed sat there
+claiming it was about to. The flag is a display fact only: the outbox still owns the retry
+decision, and `pushPdf` records the failure and rethrows so `flush()` behaves as it always did.
+
+There is **no percentage**. `supabase-js`'s storage client exposes no upload progress
+events, so a real bar would mean replacing that call with a raw signed XHR — deliberately
+not done.
+
+## Where PDFs are visible
+
+- **Section header** — the document icon, beside the notes book, on every section including
+  the chart. It takes a **blue dot for `remote-newer` only**: the one state with something
+  to do and no other trace on screen. Not for `local`, which resolves on the next flush; a
+  dot that appears for two different reasons is a dot nobody reads.
+- **Account sheet** — a collapsed "Pattern PDFs · N files · X MB" row, expanding to a
+  per-pattern list, largest first, each with Remove. This is where someone clearing space
+  goes, and it saves opening four projects to find the big one. Absent entirely when there
+  are no attached files. Bundled PDFs are excluded — they ship with the app and are not the
+  user's to delete, so listing them beside a Remove button would offer an action that
+  cannot exist.
+
+Both Remove buttons call `confirmRemovePatternPdfFrom(pat, after)`, so the "this takes it
+off your other devices too" warning cannot drift between the two entry points.
 
 ## Schema
 
@@ -125,8 +163,11 @@ Two bugs this caught, both fixed:
 
 ## Not done
 
-- **No progress UI on the upload itself.** A large attach uploads on the normal flush with
-  no percentage; the sheet says "not backed up yet" until it lands. Fine at a few MB, worth
-  revisiting if patterns get big.
+- **No upload percentage** — see above; it needs a raw signed XHR instead of `supabase-js`.
 - **No quota handling for the Supabase free tier** (1GB storage). A family with a dozen
-  patterns is nowhere near it; there is no banner if it is ever reached.
+  patterns is nowhere near it; there is no banner if it is ever reached. The account
+  sheet's total is the only number anyone can see.
+- **No end-to-end run against live Supabase.** Sign-in is a magic link to the owner's
+  email, which cannot be driven from a test. The client logic is covered by the mock above
+  and the server by the SQL RLS proof; the untested seam is the real `supabase-js` storage
+  calls against the live bucket. Worth one manual attach-on-phone / download-on-iPad pass.

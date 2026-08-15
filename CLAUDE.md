@@ -119,6 +119,12 @@ The tracker is a transcription — no schematics, no photos, no sizing table. Th
 `js/cloud/pdfsync.js` + the `pattern-pdfs` bucket. **This split is the whole design:** attaching on the phone tells the iPad a copy exists (a few hundred bytes, on the normal pull); the megabytes come down only when someone taps **Download** there. This app sits open for weeks — it must never pull 8MB in the background per device, on mobile data.
 
 - Four states, and the sheet says which: `none` / `local` (queued to push) / `synced` / `remote-newer` (one tap to download).
+- **The sheet repaints itself.** `pdfActivity` (in-memory, never persisted) tracks `busy`/`failed` per pattern; `setPdfActivity` calls `refreshPdfSheet`, so "Uploading… → Backed up" happens without reopening. Persisting it would strand a sheet on "Uploading…" forever after a reload.
+- A failed upload shows an error **and a Try again button** — it used to be indistinguishable from "not backed up yet", so a push that would never succeed sat there claiming it was about to.
+- `remote-newer` **still offers Open** when this device holds an older copy. Offering only Download meant that, offline, you couldn't read the copy already on the device.
+- **The header PDF icon takes a blue dot for `remote-newer` only** (`pdfWaiting()`). Not for `local` — that resolves on the next flush, and a dot that appears for two reasons is one nobody reads.
+- **Account sheet lists attached PDFs** (`pdfStorageBlockHtml`), collapsed, largest first, with Remove — the place to clear space without opening four projects. Absent entirely when there are none. Bundled files are excluded: they aren't the user's to delete.
+- Both Remove buttons go through `confirmRemovePatternPdfFrom(pat, after)`, so the "this takes it off your other devices too" warning can't drift between the two entry points.
 - **Last-write-wins, no merge.** A PDF is one opaque blob — no fields, so nothing for the three-way merge to do and no conflict worth raising. `localMs`/`remoteMs` are `syncNow()` clocks, so already skew-corrected. A **remove is a tombstone**, same reasoning as a deleted project.
 - `pt3_pdfs` (global) is the index: `{patternId: {name, size, localMs, deletedMs, remoteMs, remoteName, remoteSize}}`. localStorage, not IndexedDB, because every caller is synchronous — it's the few hundred bytes describing the blob, which is also exactly what syncs.
 - PDFs push **after** progress in `pendingOps()` — a multi-MB upload blocks everything behind it, and progress is the data someone would actually miss.
