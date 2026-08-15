@@ -1,4 +1,4 @@
-const CACHE = 'stitch-ease-v20';
+const CACHE = 'stitch-ease-v22';
 // Precached so a fresh install works offline. /js/** is also network-first at
 // runtime (see fetch below), so a missing entry here degrades to a cache miss
 // on first offline load, never to stale code. Paths are relative to the app's
@@ -10,13 +10,20 @@ const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './ic
   './js/core/rows.js',
   './js/core/chart.js',
   './js/core/render.js',
+  './js/core/pdf.js',
   './js/core/app.js',
   './js/cloud/auth.js',
   './js/cloud/sync.js',
+  './js/cloud/pdfsync.js',
   './js/patterns/peacock-tee.js',
   './js/patterns/tatted-triangle.js',
   './js/patterns/lenore.js',
   './js/patterns/frost-flower.js'];
+// A pattern that declares `pdf: 'pdf/x.pdf'` (see js/core/pdf.js) must add that
+// file here too, or it is only readable online — the whole point is reaching it
+// mid-row on a bus. It falls through to the cache-first branch below, which is
+// right: a bundled PDF changes only when the deploy does. PDFs a user attaches
+// themselves live in IndexedDB and never come through the service worker.
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));

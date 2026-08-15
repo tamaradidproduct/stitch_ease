@@ -158,6 +158,10 @@ function claimLocalProjects(uid) {
     enqueue('project', p.id);
     enqueue('progress', p.id);
   });
+  // Attached PDFs are keyed by PATTERN, so they are not reachable by walking
+  // the projects above — and one may have been attached long before anyone
+  // signed in, when there was no account to send it to.
+  if (typeof enqueueUnsyncedPdfs === 'function') enqueueUnsyncedPdfs();
   closeSheet();
   refreshAccountButton();
   // canSync() was false until this moment — the projects were unclaimed, so
@@ -299,6 +303,7 @@ function openAccountSheet(msg) {
     </div>
     ${msg ? msgHtml(msg) : ''}
     ${syncBlockHtml()}
+    ${pdfStorageBlockHtml()}
     ${hasUnclaimedProjects() ? `<p class="acct-err">${liveProjects().length === 1
         ? 'A project on this device isn’t in your account yet.'
         : liveProjects().length + ' projects on this device aren’t in your account yet.'}
@@ -318,12 +323,73 @@ function openAccountSheet(msg) {
       // A second chance after "not now" — the sheet is where someone goes
       // when they wonder whether their work is actually backed up.
       if (claim) claim.onclick = () => { claimLocalProjects(currentUserId()); openAccountSheet(); };
+      wirePdfStorageBlock(el);
     }
   });
 }
 
 function msgHtml(m) {
   return `<p class="${m.ok ? 'acct-ok' : 'acct-err'}">${escapeHtml(m.text)}</p>`;
+}
+
+// ─────────────────────────────────────────────
+// PATTERN PDFs — what they cost, and how to get the space back
+//
+// This is the account sheet's job, not the PDF sheet's: the PDF sheet is per
+// pattern and someone clearing space does not want to open four projects to
+// find the big one. Collapsed by default — it is a maintenance answer, not
+// something to read on every visit — and absent entirely when there are none,
+// since a permanent "0 files · 0 B" row is a row that never earns its space.
+//
+// Attached files only. A bundled PDF ships with the app and is not the user's
+// to delete, so listing it beside things that have a Remove button would be
+// offering an action that cannot exist.
+// ─────────────────────────────────────────────
+function pdfStorageBlockHtml() {
+  if (typeof pdfStorageList !== 'function') return '';
+  const files = pdfStorageList();
+  if (!files.length) return '';
+
+  const rows = files.map(f => `<div class="acct-pdf-row">
+      <div class="acct-pdf-main">
+        <div class="acct-pdf-name">${escapeHtml(f.name)}</div>
+        <div class="acct-pdf-sub">${escapeHtml(f.fileName || '')} · ${escapeHtml(formatBytes(f.size))}</div>
+      </div>
+      <button class="acct-pdf-del" data-pdf-del="${escapeHtml(f.patternId)}">Remove</button>
+    </div>`).join('');
+
+  return `<div class="acct-pdfs">
+      <button class="acct-pdfs-head" id="acct-pdfs-toggle" aria-expanded="false">
+        <span>Pattern PDFs</span>
+        <span class="acct-pdfs-total">${files.length} file${files.length === 1 ? '' : 's'} · ${escapeHtml(formatBytes(pdfStorageTotal()))}
+          <svg class="chevron" width="10" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true">
+            <path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+      </button>
+      <div class="acct-pdfs-list" id="acct-pdfs-list" hidden>${rows}</div>
+    </div>`;
+}
+
+// Removing from here goes through the SAME path as removing from the PDF sheet
+// — confirmation and all — so a delete that propagates to the other devices
+// still says so before it happens. The account sheet is reopened afterwards so
+// the total is right rather than stale by exactly the file just removed.
+function wirePdfStorageBlock(el) {
+  const toggle = el.querySelector('#acct-pdfs-toggle');
+  const list = el.querySelector('#acct-pdfs-list');
+  if (toggle && list) toggle.onclick = () => {
+    const open = list.hasAttribute('hidden');
+    list.toggleAttribute('hidden', !open);
+    toggle.classList.toggle('open', open);
+    toggle.setAttribute('aria-expanded', String(open));
+  };
+  el.querySelectorAll('[data-pdf-del]').forEach(btn => {
+    btn.onclick = () => {
+      const pat = patternById(btn.getAttribute('data-pdf-del'));
+      if (pat) confirmRemovePatternPdfFrom(pat, () => openAccountSheet());
+    };
+  });
 }
 
 // When was this device last backed up, and is anything still waiting.

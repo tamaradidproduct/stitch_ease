@@ -44,6 +44,14 @@ const NOTES_SVG = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" a
         <path d="M12 6.5v13" stroke="currentColor" stroke-width="1.6"/>
       </svg>`;
 
+// Original-pattern PDF — a document with a folded corner. Sits beside the
+// notes book in the phase header; see js/core/pdf.js for what it opens.
+const PDF_SVG = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M14 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+        <path d="M13.8 3.6V8.2h4.6" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+        <path d="M8.8 13h6.4M8.8 16.2h4.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>`;
+
 // App logo — a ball of yarn with a knitting needle.
 const LOGO_SVG = `<svg class="lib-logo" viewBox="0 0 40 40" width="34" height="34" fill="none" aria-hidden="true">
   <circle cx="18" cy="22" r="13" fill="var(--accent-light)" stroke="var(--accent)" stroke-width="1.7"/>
@@ -57,6 +65,19 @@ const LOGO_SVG = `<svg class="lib-logo" viewBox="0 0 40 40" width="34" height="3
   <line x1="24" y1="13" x2="35.5" y2="4.5" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
   <circle cx="35.5" cy="4.5" r="1.7" fill="var(--accent)"/>
 </svg>`;
+
+// Does the PDF icon need a dot? Only for 'remote-newer' — a copy sitting in the
+// account that this device hasn't got, which is the one state with something to
+// do that nothing else on screen would ever reveal.
+//
+// Deliberately not shown for 'local' (not backed up yet). That resolves itself
+// on the next flush, so a badge for it would be up briefly after every attach
+// and mean nothing by the time anyone looked. A dot that appears for two
+// different reasons is a dot nobody reads.
+function pdfWaiting() {
+  const pat = activePattern();
+  return !!pat && typeof pdfSyncState === 'function' && pdfSyncState(pat.id) === 'remote-newer';
+}
 
 // A note's bullets are an informational list — no counter, no checkbox of
 // their own. A bulleted list that IS repeated work is a repeat block instead.
@@ -170,7 +191,12 @@ function renderPhase() {
         </div>
         <div class="phase-desc">${p.desc}</div>
       </div>
-      ${(activePattern() && activePattern().notes) ? `<button class="phase-folder" onclick="openNotes()" aria-label="Pattern notes" title="Pattern notes">${NOTES_SVG}</button>` : ''}
+      <div class="phase-head-tools">
+        ${(activePattern() && activePattern().notes) ? `<button class="phase-folder" onclick="openNotes()" aria-label="Pattern notes" title="Pattern notes">${NOTES_SVG}</button>` : ''}
+        <button class="phase-folder${pdfWaiting() ? ' has-dot' : ''}" onclick="openPatternPdf()"
+                aria-label="Original pattern PDF${pdfWaiting() ? ' — a copy is waiting to download' : ''}"
+                title="Original pattern PDF">${PDF_SVG}</button>
+      </div>
     </div>
     <div class="phase-scroll collapsed" id="phase-tabs"></div>
   </div>`;

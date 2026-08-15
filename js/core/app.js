@@ -235,6 +235,7 @@ loadOutbox();
 loadSyncStatus();
 loadCursor();
 loadConflicts();
+loadPdfIndex();
 loadProjects();
 view = 'home';
 render();
