@@ -67,6 +67,25 @@ function toggleEntry(id) {
   save(); render();
 }
 
+// Tap a row in a repeat to stand on it. Restores what the pre-conversion
+// checkable bullets allowed — reaching any part of the motif directly instead
+// of stepping to it — except that it moves ONE position rather than ticking
+// items that could disagree with the counter.
+//
+// It only moves within the current pass: jumping between passes by tapping
+// would make "back one" ambiguous, and the ± controls already do that.
+function setRepeatRow(id, z) {
+  const e = findEntry(id);
+  if (!e || e.kind !== 'repeat') return;
+  const prev = repeatPos(e, entryProg);
+  const R = repeatLength(e);
+  const want = Math.max(1, Math.min(R, z | 0));
+  if (repeatComplete(e, prev) || want === prev.z) return;
+  entryProg[repeatKey(id)] = clampRepeatPos(e, { y: prev.y, z: want });
+  stampClock(repeatKey(id));
+  save(); render(); renderGlobalRows();
+}
+
 function advanceEntry(id, delta) {
   const e = findEntry(id);
   if (!e || e.kind !== 'repeat') return;

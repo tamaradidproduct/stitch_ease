@@ -587,31 +587,14 @@
   .step.done .step-bullets li { color: var(--done-text); }
   .step.done .step-bullets li::before { background: var(--accent-mid); }
 
-  /* Checkable bullets (a repeat's individual rings/chains) — tapping one
-     doesn't toggle the parent step, see event.stopPropagation() in render.js */
-  .step-bullets.checkable li {
-    display: flex; align-items: flex-start; gap: 10px;
-    padding-left: 0; cursor: pointer;
-  }
-  .step-bullets.checkable li::before { content: none; }
-  .sub-check {
-    width: 18px; height: 18px; border-radius: 5px;
-    border: 2px solid var(--muted); background: transparent;
-    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
-    margin-top: 2px; transition: all 0.15s;
-  }
-  .sub-check svg { display: block; width: 10px; height: 8px; }
-  .step-bullets.checkable li.done .sub-check { background: var(--checkbox-done); border-color: var(--checkbox-done); }
-  .step-bullets.checkable li.done .sub-text { color: var(--done-text); text-decoration: line-through; text-decoration-color: var(--muted); }
-
-  /* Repeat-unit steps (a bulleted ring/chain group paired with a counter) —
-     the header isn't a checkbox: the counter (or the checkable bullets
-     below it) is what drives progress, see repeatEntryHtml() in render.js. */
+  /* ── Repeat block ──
+     The whole motif stays visible, with the row you are on highlighted. An
+     earlier pass at this showed only the current row plus a large number:
+     that reads fine for a one-row rib repeat and badly for a six-ring tatting
+     motif, where you need to see the shape of the whole thing while working
+     any part of it. */
   .repeat-step { cursor: default; }
   .repeat-step:active { background: transparent; }
-  /* Emphasized like a section header, not a plain checkbox row — bold,
-     accent-tinted, in its own band so it reads as "everything below this
-     belongs to this repeat" rather than blending into the step list. */
   .repeat-head {
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
     background: var(--accent-light); border-radius: var(--radius-sm);
@@ -620,13 +603,48 @@
   .repeat-head .step-text { flex: 1; min-width: 0; font-weight: 600; color: var(--accent); }
   .step.done .repeat-head { background: var(--done-bg); }
   .step.done .repeat-head .step-text { color: var(--done-text); text-decoration: line-through; text-decoration-color: var(--muted); }
-  .row-counter.inline { margin-top: 0; background: transparent; padding: 0; flex-shrink: 0; }
-  /* Sub-steps get the same generous spacing/divider as the main step list,
-     indented under the header (matching the old checkbox+gap indent) so
-     they read as nested under it rather than as their own top-level steps. */
-  .step-bullets.spaced { gap: 0; margin-top: 12px; padding-left: 36px; }
-  .step-bullets.spaced li { padding: 14px 0; border-bottom: 1px dashed var(--border); }
-  .step-bullets.spaced li:last-child { border-bottom: none; }
+
+  .rep-rows { list-style: none; margin: 10px 0 0; padding: 0; }
+  .rep-row {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 11px 12px; border-radius: var(--radius-sm);
+    border-left: 3px solid transparent;
+    cursor: pointer; transition: background 0.15s;
+  }
+  .rep-row + .rep-row { margin-top: 2px; }
+  .rep-n {
+    flex-shrink: 0; width: 20px; text-align: center;
+    font-size: 11px; font-weight: 600; color: var(--muted);
+    font-variant-numeric: tabular-nums; margin-top: 2px;
+  }
+  .rep-t { flex: 1; min-width: 0; font-size: 14px; line-height: 1.45; color: var(--text); }
+  /* Worked earlier in THIS pass — struck through, the way the old checkable
+     bullets were, and reset every pass. */
+  .rep-row.done .rep-n,
+  .rep-row.done .rep-t { color: var(--muted); }
+  .rep-row.done .rep-t { text-decoration: line-through; text-decoration-color: var(--border); }
+  /* The row you are on. */
+  .rep-row.now {
+    background: var(--accent-light); border-left-color: var(--accent);
+  }
+  .rep-row.now .rep-n { color: var(--accent); }
+  .rep-row.now .rep-t { color: var(--done-text); font-weight: 500; }
+  .step.done .rep-row { opacity: 0.6; }
+
+  /* Compact footer: 44px targets kept, the big number dropped to a size that
+     does not shout over the motif it belongs to. */
+  .rep-foot {
+    display: flex; align-items: center; gap: 12px;
+    margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);
+  }
+  .rep-stat { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px; }
+  .rep-lbl {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .rep-val { font-size: 17px; font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .rep-val em { font-style: normal; font-size: 12px; font-weight: 500; color: var(--muted); }
+  .rep-abs { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 
   /* Position line on a repeat block: which row of which pass, and the
      pattern row it works out to. Was the cadence reminder before repeats
@@ -667,28 +685,13 @@
   .rc-mini-bar { width: 100%; height: 3px; background: var(--border); border-radius: 2px; margin-top: 8px; overflow: hidden; }
   .rc-mini-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; }
 
-  /* ── Repeat dock ──
-     A repeat block gets the chart dock's own layout (.chart-footer + .cc-*):
-     one large current number, its total beneath, and 44px circular ± either
-     side. That is not a coincidence to be tidied away later — a chart row and
-     a repeat row are the same thing wearing different code, and giving them
-     the same control is the first half of admitting it.
-
-     Inline rather than fixed to the viewport, unlike the chart's: Body has two
-     repeat blocks and Lenore's Row 1 has three, so a single docked control
-     would have to guess which one a tap meant. */
-  .repeat-dock { border-top: 1px solid var(--border); margin-top: 10px; }
-  /* Green, not the chart's blue — this is a section control, and the blue is
-     the chart's own signal for "the row you are on". */
-  .repeat-dock .cc-cur-val { color: var(--accent); font-size: 30px; }
-  .repeat-dock .cc-plus { background: var(--accent); }
-  .repeat-dock .cc-plus:active { background: #3c584a; }
-  .repeat-dock .cc-stat-lbl { text-transform: uppercase; letter-spacing: 0.05em; font-size: 10px; font-weight: 600; }
-  .repeat-dock .cc-total-lbl { font-variant-numeric: tabular-nums; }
-  /* The instruction for the row you are actually on. Reuses .round-hint's box
-     (see below) so a repeat reads the way the cadence step used to. */
-  .repeat-now { margin-top: 10px; }
-  .step.repeat-step.done .repeat-dock { opacity: 0.55; }
+  /* The ± controls keep the chart dock's 44px circular shape (.cc-ctrl), but
+     green rather than the chart's blue: blue is the chart's own signal for
+     "the row you are on", and reusing it on a section control would say the
+     wrong thing. */
+  .rep-foot .cc-plus { background: var(--accent); }
+  .rep-foot .cc-plus:active { background: #3c584a; }
+  .rep-foot .cc-minus { background: var(--card); }
 
   /* ── Nav buttons — fixed at bottom ── */
   .nav-btns {
