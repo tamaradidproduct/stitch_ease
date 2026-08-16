@@ -48,6 +48,11 @@ function makeMockDb() {
     if (f[0] === 'eq') return v === f[2];
     if (f[0] === 'gt') return v > f[2];
     if (f[0] === 'gte') return v >= f[2];
+    // fetchLegacyColumns() reads the legacy columns for a whole batch of
+    // project ids in one query. Without `in` here the mock threw, which sent
+    // pull down its catch path and push down its retry path — so the upgrade
+    // was never exercised at all and the test passed on the old behaviour.
+    if (f[0] === 'in') return f[2].indexOf(v) !== -1;
     throw new Error('mock: unsupported filter ' + f[0]);
   });
 
@@ -99,6 +104,7 @@ function makeMockDb() {
         eq(k, v) { st.filters.push(['eq', k, v]); return api; },
         gt(k, v) { st.filters.push(['gt', k, v]); return api; },
         gte(k, v) { st.filters.push(['gte', k, v]); return api; },
+        in(k, vs) { st.filters.push(['in', k, vs]); return api; },
         maybeSingle() { st.single = true; return run(st); },
         upsert(row) { st.op = 'upsert'; st.payload = row; return run(st); },
         insert(row) { st.op = 'insert'; st.payload = row; return run(st); },
@@ -597,56 +603,154 @@ async function syncPushPullTest() {
     check('a conflict the two devices have since agreed on is dropped',
       liveConflicts().length, 0);
 
-    // ── 25b. The progress-schema gate ──
+    // ── 25b. The progress-schema gate, and upgrading a v1 row ──
     //
     // The entries model renamed every progress key, and splitFields() drops
-    // prefixes it does not recognise. Two live versions would therefore file
-    // each other's whole payload under "not mine" and write over the top, with
-    // no conflict raised. The gate makes that loud instead.
+    // prefixes it does not recognise. A row written in the OLD namespace can
+    // therefore not simply be merged: read through v2 prefixes it would come
+    // back empty, and writing that over the top loses everything it holds with
+    // no conflict raised.
     //
-    // The subtle half is the CURSOR: pull asks for server_rev > cursor, so if a
-    // later row carried the cursor past a skipped one, that project would never
-    // be looked at again — the exact silent loss the gate exists to prevent.
+    // The gate used to answer that by refusing a v1 row in BOTH directions —
+    // pull skipped it and held its cursor below it, push returned 'drop'. But
+    // the only line that writes schema_ver sits below that early return, so a
+    // v1 row could never become a v2 row. Every project on the account stopped
+    // syncing behind a banner whose advice ("open it on your other device")
+    // was impossible by construction.
+    //
+    // So an OLDER row is converted on read and merged normally. A NEWER one is
+    // still refused — this build cannot know what a later version's fields
+    // mean. These cases pin both halves of that split.
     db = makeMockDb();
     device(db);
     cloudProject(db, 'v1proj', 'Written by the old app');
     cloudProject(db, 'v2proj', 'Written by this app');
-    // The stale row lands FIRST (lower rev), the current one after it.
+    // The v1 row in its production shape: progress lives in steps/counters,
+    // and the clocks are in the s:/c: namespace. It lands FIRST (lower rev),
+    // so it also proves the cursor is not dragged past by the row after it.
     db.project_progress.push({ project_id: 'v1proj', owner_id: UID,
-      steps: { a: true }, counters: {}, cur: 0, chart_rows: {}, global_rows: 4,
-      entries: {}, schema_ver: 1, clocks: { 's:a': 700 }, server_rev: ++db.rev });
-    const staleRev = db.rev;
-    cloudProgress(db, 'v2proj', { 'r:a': true, cur: 1 }, { 'r:a': 700, cur: 700 });
+      steps: { m1: true, c3: true }, counters: { c2: 3 },
+      cur: 2, chart_rows: { chart: 10 }, global_rows: 9,
+      entries: {}, schema_ver: 1,
+      clocks: { 's:m1': 700, 's:c3': 700, 'c:c2': 700,
+                cur: 700, 'cr:chart': 700, global_rows: 700 },
+      server_rev: ++db.rev });
+    const v1Rev = db.rev;
+    cloudProgress(db, 'v2proj', { 'r:g1': true, cur: 1 }, { 'r:g1': 700, cur: 700 });
     await pull('test');
 
-    check('a row from another progress version is not merged',
-      { v1: readLocalProgress('v1proj').values, v2: readLocalProgress('v2proj').values },
-      { v1: { cur: 0 }, v2: { 'r:a': true, cur: 1 } });
-    check('and it says so, rather than losing the rows quietly',
-      !!document.getElementById('schema-banner'), true);
-    check('the cursor is held BELOW the skipped row, not carried past it',
-      syncCursor.rev < staleRev, true);
-
-    // The other device updates: same project, now written in this namespace.
-    db.project_progress[0] = { project_id: 'v1proj', owner_id: UID,
-      entries: { 'n:b': true }, cur: 3, chart_rows: {}, schema_ver: PROGRESS_SCHEMA,
-      clocks: { 'n:b': 900, cur: 900 }, server_rev: ++db.rev };
-    await pull('test');
-
-    check('once the other device catches up, the held-back row lands',
-      readLocalProgress('v1proj').values, { 'n:b': true, cur: 3 });
-    check('and the banner goes away on its own',
+    // c2 is times:7 over a single row, so 3 counted rounds is three full
+    // passes standing on row 1 of the fourth.
+    check('a v1 row is converted on read, not skipped',
+      readLocalProgress('v1proj').values,
+      { 'n:m1': true, 'r:c3': true, 'rp:c2': { y: 3, z: 1 }, cur: 2, 'cr:chart': 10 });
+    check('its clocks travel with it, into the new namespace',
+      readLocalProgress('v1proj').clocks,
+      { 'n:m1': 700, 'r:c3': 700, 'rp:c2': 700, cur: 700, 'cr:chart': 700 });
+    // global_rows is derived in v2. Carrying its clock would be a timestamp
+    // asserting an edit to a field that no longer exists.
+    check('but the derived global_rows clock is left behind',
+      'global_rows' in readLocalProgress('v1proj').clocks, false);
+    check('an out-of-date row raises no banner — it heals on sight',
       !!document.getElementById('schema-banner'), false);
+    check('and the cursor advances past it rather than pinning below it',
+      syncCursor.rev >= v1Rev, true);
 
-    // A push must refuse too, or it would merge against a row it cannot read
-    // and then overwrite it.
-    db.project_progress[0].schema_ver = 1;
-    seedProgress('v1proj', { 'n:b': true, cur: 3 }, { 'n:b': 1000 }, {});
-    enqueue('progress', 'v1proj');
-    const revBefore = db.project_progress[0].server_rev;
+    // Pushing is what makes the upgrade stick. Until schema_ver is rewritten
+    // every pull redoes the conversion, which is the permanent state the
+    // deadlock actually was.
     await flush('test');
-    check('push refuses a row it cannot read, leaving it untouched',
-      db.project_progress[0].server_rev, revBefore);
+    const upgraded = db.project_progress.find(r => r.project_id === 'v1proj');
+    check('the push that follows writes schema_ver 2, ending it for good',
+      upgraded.schema_ver, PROGRESS_SCHEMA);
+    check('and the upgraded values go up in the new namespace',
+      { entries: upgraded.entries, cur: upgraded.cur },
+      { entries: { 'n:m1': true, 'r:c3': true, 'rp:c2': { y: 3, z: 1 } }, cur: 2 });
+    // The v1 client's only copy of its own progress. Dropping it is a separate
+    // decision, for when no v1 client can exist.
+    check('the legacy columns are left alone, not cleared',
+      { steps: upgraded.steps, counters: upgraded.counters },
+      { steps: { m1: true, c3: true }, counters: { c2: 3 } });
+
+    // ── Both devices' work survives the upgrade ──
+    //
+    // The whole point of converting rather than overwriting: this device's
+    // ticks and the v1 row's ticks are disjoint fields, so both must land.
+    db = makeMockDb();
+    device(db);
+    cloudProject(db, 'both', 'Knitted on two devices');
+    db.project_progress.push({ project_id: 'both', owner_id: UID,
+      steps: { m1: true }, counters: {}, cur: 0, chart_rows: {},
+      entries: {}, schema_ver: 1, clocks: { 's:m1': 700 }, server_rev: ++db.rev });
+    await pull('test');
+    // This device moves a different field, after the pull.
+    (() => { const l = readLocalProgress('both'); const v = Object.assign({}, l.values);
+             const c = Object.assign({}, l.clocks);
+             v['r:c3'] = true; c['r:c3'] = 1200;
+             writeLocalProgress('both', v, c, readBase('both')); })();
+    enqueue('progress', 'both');
+    await flush('test');
+
+    check('the v1 row\'s work and this device\'s work both survive',
+      readLocalProgress('both').values,
+      { 'n:m1': true, 'r:c3': true, cur: 0 });
+    check('and neither is lost on the way up',
+      db.project_progress.find(r => r.project_id === 'both').entries,
+      { 'n:m1': true, 'r:c3': true });
+
+    // ── A newer row is still refused ──
+    //
+    // Guessing at a later version's fields would drop them silently, so this
+    // half of the gate stays exactly as it was — including the held cursor.
+    db = makeMockDb();
+    device(db);
+    cloudProject(db, 'future', 'Written by a later build');
+    cloudProject(db, 'now', 'Written by this build');
+    db.project_progress.push({ project_id: 'future', owner_id: UID,
+      entries: {}, cur: 0, chart_rows: {}, schema_ver: PROGRESS_SCHEMA + 1,
+      clocks: { cur: 700 }, server_rev: ++db.rev });
+    const futureRev = db.rev;
+    cloudProgress(db, 'now', { 'r:g1': true }, { 'r:g1': 700 });
+    await pull('test');
+
+    check('a row from a NEWER version is not merged',
+      readLocalProgress('future').values, { cur: 0 });
+    check('it says so, because reloading genuinely fixes it',
+      !!document.getElementById('schema-banner'), true);
+    check('and its cursor is held BELOW the skipped row',
+      syncCursor.rev < futureRev, true);
+
+    const futureRevBefore = db.project_progress[0].server_rev;
+    seedProgress('future', { 'r:c3': true }, { 'r:c3': 1000 }, {});
+    enqueue('progress', 'future');
+    await flush('test');
+    check('and push refuses it too, leaving it untouched',
+      db.project_progress[0].server_rev, futureRevBefore);
+
+    hideSchemaBanner(); schemaMismatches = {};
+
+    // ── A v1 row this build has no pattern for ──
+    //
+    // The conversion is pattern-driven: it maps step ids onto entries. Without
+    // the pattern there is no mapping, so guessing would put ticks on the
+    // wrong rows. Skipping is still right here — and unlike an out-of-date
+    // row, this one cannot heal on its own, so it does get a banner.
+    db = makeMockDb();
+    device(db);
+    cloudProject(db, 'orphan', 'From a pattern this build lacks',
+      { pattern_id: 'not-in-this-build' });
+    db.project_progress.push({ project_id: 'orphan', owner_id: UID,
+      steps: { m1: true }, counters: {}, cur: 0, chart_rows: {},
+      entries: {}, schema_ver: 1, clocks: { 's:m1': 700 }, server_rev: ++db.rev });
+    const orphanRev = db.rev;
+    await pull('test');
+
+    check('a v1 row whose pattern is missing is skipped, not guessed at',
+      readLocalProgress('orphan').values, { cur: 0 });
+    check('its cursor is held, so it lands once the pattern ships',
+      syncCursor.rev < orphanRev, true);
+    check('and it is banner-worthy, because it cannot heal on its own',
+      !!document.getElementById('schema-banner'), true);
 
     hideSchemaBanner(); schemaMismatches = {};
 
