@@ -92,6 +92,8 @@ localStorage stays the source of truth; the cloud is a background replica. **No 
 - **Sync only runs once the signed-in account has claimed this device's data** (`pt3_owner`), so a shared iPad can't hand one person's projects to another.
 - **Pull triggers:** sign-in, `online`, refocus after 30s away, and a 60s interval **while visible only**. Never a timer while hidden — this PWA sits open for weeks.
 - Schema and RLS live in `supabase/migrations/`; runbooks in `docs/`.
+- **A v1 progress row is upgraded on read, never skipped.** `upgradeLegacyRow` runs the remote `steps`/`counters` through `seedEntryProgress` (the same mapping `migrateToEntries` uses locally) and remaps `s:`/`c:` clocks to `n:`/`r:`/`rp:`, then merges normally; the next push writes `schema_ver: 2`. Refusing to *merge* a v1 row was right — refusing to *do anything* with it deadlocked every project on the account, because push returned `'drop'` before the only line that writes `schema_ver`, so no device could ever upgrade a row. Legacy columns are fetched in one extra query, only when a v1 row is actually seen.
+- The schema banner is now raised **only** for what this device can't resolve itself: a row from a *newer* version (reload fixes it), or a project whose pattern is missing from this build. An older row is silent — it heals on sight.
 - `js/cloud/sync.selftest.js` and `js/cloud/sync.pushpull.selftest.js` are **not shipped**. Load one from the console and call `syncSelfTest()` / `syncPushPullTest()`. The second stands up a mock server and snapshots/restores every `pt3_*` key, so it is safe to run on a device with real progress.
 
 ### Pattern versions (structure hash)
@@ -220,6 +222,8 @@ Within a pattern, phase nav is at the bottom. On non-chart phases it's the fixed
 - Don't add the stats bar back (Steps Done / Phase / Complete) — removed intentionally
 - Don't change the `pt3_` localStorage prefix or drop any of the three migrations — would break saved progress
 - Don't replace the progress push with a plain upsert — it silently erases the other device's rows and reports no conflict
+- Don't make a schema gate refuse an *older* row outright — push is the only thing that writes `schema_ver`, so "skip it" means "it can never be upgraded", which is exactly how all four projects stopped syncing. Convert and merge; refuse only what's *newer*
+- Don't raise a banner for a state the reader can't act on — the old one told people to open the app on another device, which was impossible by construction
 - Don't upload `pt3_proj_<id>_base` — each device's baseline is its own, and sharing it corrupts the other device's merge
 - Don't put a network call, an `await`, or a pattern-doc `JSON.stringify` on the `changeChartRow` path (budget: 100 taps under 50ms)
 - Don't `await` anything on a render path — read `session` synchronously, never `supabase.auth.getSession()`

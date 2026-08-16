@@ -676,15 +676,27 @@ async function pushProgress(id, uid) {
     .eq('project_id', id).maybeSingle();
   if (error) throw error;
 
-  // The row was last written by a client on a different progress namespace.
-  // Merging it would read its fields through the wrong prefixes and throw away
-  // whatever it does not recognise, silently. Stop and say so instead.
-  if (remote && !schemaMatches(remote)) { noteSchemaMismatch(id, remote.schema_ver | 0); return 'drop'; }
+  // A row from a different progress namespace. An OLDER one is converted and
+  // merged normally — this push is then what writes schema_ver 2 and ends the
+  // mismatch for good. A NEWER one is still refused: this build cannot know
+  // what a later version's fields mean, and guessing would drop them silently.
+  //
+  // This early return used to fire for both, which is what deadlocked the
+  // account: the only code that writes schema_ver sits below it.
+  let remoteRow = remote;
+  if (remote && !schemaMatches(remote)) {
+    if (rowSchema(remote) > PROGRESS_SCHEMA) { noteSchemaMismatch(id, rowSchema(remote)); return 'drop'; }
+    const legacy = await fetchLegacyColumns([id]);
+    remoteRow = upgradeLegacyRow(remote, legacy[id]);
+    if (!remoteRow) { noteSchemaMismatch(id, rowSchema(remote)); return 'drop'; }
+    logSync('info', 'progress ' + id + ' upgraded from schema v' + rowSchema(remote) + ' on push');
+  }
+  clearSchemaMismatch(id);
 
   let values = local.values, clocks = local.clocks;
 
-  if (remote) {
-    const r = diffProgress(local, joinFields(remote), base);
+  if (remoteRow) {
+    const r = diffProgress(local, joinFields(remoteRow), base);
     values = r.merged; clocks = r.mergedClocks;
     if (r.conflicts.length) {
       // Phase 6 fallback: keep this device's value — it is what is already on
@@ -897,6 +909,116 @@ function conflictLabel(c) {
 const PROGRESS_SCHEMA = 2;
 
 function schemaMatches(row) { return ((row && row.schema_ver) | 0) === PROGRESS_SCHEMA; }
+function rowSchema(row) { return (row && row.schema_ver) | 0; }
+
+// ─────────────────────────────────────────────
+// UPGRADING A v1 ROW — the deadlock fix
+//
+// The gate below used to refuse a v1 row in BOTH directions: pull skipped it
+// and push returned 'drop' before the line that writes schema_ver. Since
+// nothing else writes that column, a v1 row could never become a v2 row — not
+// by waiting, and not by "opening Stitch Ease on your other device", because
+// that device, once updated, refuses for exactly the same reason. Every
+// project on the account stopped syncing and the banner saying so could not be
+// dismissed or acted on. Four rows sat like that from 13 August.
+//
+// Refusing to MERGE a v1 row was right: its fields are in the old namespace, so
+// reading them through v2 prefixes would silently drop everything it holds.
+// The mistake was treating "cannot merge this" as "cannot do anything with
+// this". A v1 row is not foreign data — it is the same progress in the shape
+// this app used last week, and seedEntryProgress() is the exact, already-proven
+// mapping out of it. migrateToEntries() converted every local project with it.
+//
+// So: convert on read, then merge normally. The upgraded row goes through
+// diffProgress() like any other, both devices' work survives, real clashes
+// raise the usual conflict sheet, and the next push writes schema_ver 2 —
+// which is what makes it a one-time event rather than a permanent state.
+//
+// `steps`/`counters` are NOT cleared server-side. They are a v1 client's only
+// copy, seedEntryProgress() only ever reads them, and dropping them is a
+// separate decision for when no v1 client can exist.
+// ─────────────────────────────────────────────
+
+// The pattern a project actually knits — the frozen snapshot when it has
+// diverged, the live entry otherwise. The wrong one here would map ticks onto
+// the wrong entries, which is the whole failure the freeze mechanism exists to
+// prevent, so this returns null rather than guessing.
+function patternForUpgrade(projectId) {
+  const proj = projects.find(p => p.id === projectId);
+  if (!proj) return null;
+  const resolved = patternForProject(proj);
+  return (resolved && resolved.pattern) || null;
+}
+
+// v1 clock keys → v2 clock keys, through the same relationships
+// seedEntryProgress() uses for the values. A clock has to travel with the field
+// it describes: leaving one behind makes a real edit look like it never
+// happened, and the merge would then treat the other device's older value as
+// the newer one.
+//
+//   note / row   s:<id>                          → n:<id> / r:<id>
+//   repeat       c:<id> and s:<id>__b<i>          → rp:<id>
+//   cur, cr:<phaseId>                             unchanged, same key in both
+//
+// `global_rows` is deliberately dropped: it is derived in v2, carries no value
+// through readLocalProgress(), and diffProgress() ignores a clock with no value
+// anyway. Carrying it would be a timestamp asserting an edit to a field that no
+// longer exists.
+function upgradeLegacyClocks(v1, pattern) {
+  const out = {};
+  Object.keys(v1 || {}).forEach(k => {
+    if (k === 'cur' || k.indexOf('cr:') === 0) out[k] = v1[k];
+  });
+  ((pattern && pattern.phases) || []).forEach(ph => (ph.entries || []).forEach(e => {
+    if (e.kind === 'repeat') {
+      // A repeat's position was fed by the counter AND the bullet ticks, and
+      // either could have been the last thing touched. The newest of them is
+      // when this position last moved.
+      let t = (v1 || {})['c:' + e.id] || 0;
+      for (let i = 0; i < repeatLength(e); i++) {
+        t = Math.max(t, (v1 || {})['s:' + e.id + '__b' + i] || 0);
+      }
+      if (t) out[repeatKey(e.id)] = t;
+    } else {
+      const t = (v1 || {})['s:' + e.id] || 0;
+      if (t) out[e.kind === 'note' ? noteKey(e.id) : rowKey(e.id)] = t;
+    }
+  }));
+  return out;
+}
+
+// A v1 row (plus its legacy columns) rewritten in the v2 shape, or null if this
+// device cannot do it — which means the pattern is missing from this build, and
+// skipping is still correct.
+function upgradeLegacyRow(row, legacy) {
+  const pattern = patternForUpgrade(row.project_id);
+  if (!pattern) return null;
+  const entries = seedEntryProgress({}, (legacy && legacy.steps) || {},
+                                        (legacy && legacy.counters) || {}, pattern.phases);
+  return {
+    project_id: row.project_id,
+    entries: entries,
+    cur: row.cur | 0,
+    chart_rows: row.chart_rows || {},
+    clocks: upgradeLegacyClocks(row.clocks, pattern),
+    server_rev: row.server_rev,
+    schema_ver: PROGRESS_SCHEMA
+  };
+}
+
+// The legacy columns for specific projects, fetched only when a v1 row is
+// actually seen. Adding them to the ordinary select would spend a few KB per
+// project on every pull forever, to carry two columns that are dead the moment
+// the upgrade lands.
+async function fetchLegacyColumns(projectIds) {
+  const byId = {};
+  if (!projectIds.length) return byId;
+  const { data, error } = await sb.from('project_progress')
+    .select('project_id,steps,counters').in('project_id', projectIds);
+  if (error) throw error;
+  (data || []).forEach(r => { byId[r.project_id] = r; });
+  return byId;
+}
 
 let schemaMismatches = {};
 
@@ -917,6 +1039,16 @@ function clearSchemaMismatch(projectId) {
   }
 }
 
+// Only the two states this device genuinely cannot resolve on its own reach
+// here now. An older row is no longer one of them: it gets converted on sight,
+// so a mismatch that used to be permanent is a transient nobody needs telling
+// about — and the old banner for it could not be dismissed OR acted on, since
+// its advice ("open it on your other device") was impossible by construction.
+//
+// A banner is only worth raising when there is something the reader can do.
+// Newer-than-this-build: reload, which genuinely does fix it. Pattern missing:
+// nothing to do here, but silence would be worse — that project is not syncing
+// and the reason is not otherwise visible anywhere.
 function schemaBannerText() {
   const vers = Object.keys(schemaMismatches).map(k => schemaMismatches[k]);
   const n = vers.length;
@@ -924,7 +1056,7 @@ function schemaBannerText() {
   const what = n === 1 ? 'A project is' : n + ' projects are';
   return theirs > PROGRESS_SCHEMA
     ? what + ' saved by a newer version of Stitch Ease. Reload this device to catch up.'
-    : what + ' still saved by an older version. Open Stitch Ease on your other device to update it.';
+    : what + ' not syncing — the pattern isn’t in this version of the app. Your progress here is safe.';
 }
 
 function showSchemaBanner() {
@@ -1224,16 +1356,49 @@ async function pull(reason) {
     // that project forever, which is exactly the silent loss the gate exists
     // to prevent. Held one short of the lowest skipped rev instead, so it is
     // re-examined on every pull and lands the moment the other device updates.
+    // v1 rows are converted, not skipped (see upgradeLegacyRow). Their legacy
+    // columns are fetched in ONE extra query for the whole batch, before the
+    // merge loop, so the loop stays synchronous and a row cannot be half-merged
+    // while awaiting. Costs nothing once no v1 rows remain, which is the point.
+    let legacyById = {};
+    const legacyIds = (remoteProgress || [])
+      .filter(r => rowSchema(r) < PROGRESS_SCHEMA).map(r => r.project_id);
+    if (legacyIds.length) {
+      try {
+        legacyById = await fetchLegacyColumns(legacyIds);
+      } catch (e) {
+        // Leaving legacyById empty makes every upgrade below fail its own way
+        // and fall through to the skip path — the old behaviour, which is safe.
+        logSync('warn', 'could not read legacy progress columns — skipping those rows this pull', e);
+      }
+    }
+
     let minSkipped = Infinity;
     (remoteProgress || []).forEach(row => {
       const rev = Number(row.server_rev) || 0;
+      let use = row;
+
       if (!schemaMatches(row)) {
-        noteSchemaMismatch(row.project_id, row.schema_ver | 0);
-        if (rev < minSkipped) minSkipped = rev;
-        return;
+        // Newer than this build: genuinely nothing to do but reload.
+        // Older: convert it, unless the pattern is missing from this build.
+        const upgraded = rowSchema(row) < PROGRESS_SCHEMA
+          ? upgradeLegacyRow(row, legacyById[row.project_id]) : null;
+        if (!upgraded) {
+          noteSchemaMismatch(row.project_id, rowSchema(row));
+          if (rev < minSkipped) minSkipped = rev;
+          return;
+        }
+        logSync('info', 'progress ' + row.project_id + ' upgraded from schema v' +
+                        rowSchema(row) + ' on read');
+        use = upgraded;
+        // The upgraded row is only in memory. Pushing is what makes it stick,
+        // and until it does, every pull redoes this — harmless, but the point
+        // is to stop doing it.
+        enqueue('progress', row.project_id);
       }
+
       clearSchemaMismatch(row.project_id);
-      if (mergeRemoteProgress(row)) {
+      if (mergeRemoteProgress(use)) {
         changed = true;
         if (row.project_id === activeProjectId) touchedActive = true;
       }
