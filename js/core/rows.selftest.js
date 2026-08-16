@@ -69,7 +69,11 @@ function rowsSelfTest() {
 
   check('pattern totals after conversion',
     PATTERNS.map(p => p.id + '=' + patternRowTotal(p)),
-    ['peacock-tee=184', 'tatted-triangle=50', 'lenore=132', 'frost-flower-cardigan=50']);
+    // lenore was 132 until Ring N–Chain S went from 4 passes to 5 (89e6d3f),
+    // confirmed by hand while tatting it. One extra pass over a 6-row block
+    // is +6, so 138 is the correction landing here exactly as this case is
+    // meant to make it — the number moved because a `times` moved.
+    ['peacock-tee=184', 'tatted-triangle=50', 'lenore=138', 'frost-flower-cardigan=50']);
   check('the shipped patternTotalRows() delegates to the derived total',
     PATTERNS.map(p => legacyTotalFor(p)), PATTERNS.map(p => patternRowTotal(p)));
 
