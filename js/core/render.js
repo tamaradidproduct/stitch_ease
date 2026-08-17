@@ -125,10 +125,7 @@ function noteOrRowEntryHtml(e) {
 function repeatEntryHtml(e) {
   const pos      = repeatPos(e, entryProg);
   const R        = repeatLength(e), T = e.times | 0;
-  const total    = repeatRowCount(e);
-  const rowsDone = repeatRowsDone(e, pos);
   const done     = repeatComplete(e, pos);
-  const pct      = total ? Math.round(Math.min(100, rowsDone / total * 100)) : 0;
 
   const rows = e.rows.map((r, i) => {
     const n = i + 1;
@@ -160,7 +157,6 @@ function repeatEntryHtml(e) {
         </div>
       </div>
       <ul class="rep-rows">${rows}</ul>
-      <div class="rc-mini-bar"><div class="rc-mini-fill" style="width:${pct}%"></div></div>
     </div>
   </div>`;
 }
