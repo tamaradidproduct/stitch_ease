@@ -114,6 +114,21 @@ function toggleRepeatRow(id, n) {
   else setRepeatRow(id, n);
 }
 
+// The repeat's own checkbox, on its header — the whole-block equivalent of
+// a note/row's tick. Not done → jump straight to the last row of the last
+// pass, same as ticking every row without tapping through them. Done →
+// back to the very start, mirroring an unchecked note/row rather than
+// "back one row" (advanceEntry), which would only undo the final tap.
+function toggleRepeatDone(id) {
+  const e = findEntry(id);
+  if (!e || e.kind !== 'repeat') return;
+  const prev = repeatPos(e, entryProg);
+  const wasDone = repeatComplete(e, prev);
+  entryProg[repeatKey(id)] = repeatPosFromRowsDone(e, wasDone ? 0 : repeatRowCount(e));
+  stampClock(repeatKey(id));
+  save(); render(); renderGlobalRows();
+}
+
 // Skip a whole pass without tapping through every row in it. Always lands on
 // row 1 of the target pass — a plain counter step, not "finish wherever I am
 // in this pass" — so ± reads the same as the row it's next to: "Pass 2 of 3"

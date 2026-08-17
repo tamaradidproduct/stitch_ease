@@ -146,13 +146,18 @@ function repeatEntryHtml(e, isActive) {
   // check something — a preview, not a position change, so it never touches
   // entryProg. Rows/passes rather than "repeat unit" here: that label makes
   // sense once you're looking at the rows it names, not as a summary of them.
+  //
+  // The row count is R (rows in ONE pass), not R×T — "6 rows · 3 passes"
+  // describes the shape of the motif you're about to see; "18 rows" is the
+  // section's problem (the ROWS tally up top), not this block's.
   if (!isActive && !repeatExpanded[e.id]) {
     const summary = R === 1
       ? total + (total === 1 ? ' row' : ' rows')
-      : total + ' rows · ' + T + (T === 1 ? ' pass' : ' passes');
+      : R + ' rows · ' + T + (T === 1 ? ' pass' : ' passes');
     return `<div class="step repeat-step ${cls} collapsed">
       <div class="step-body">
         <div class="repeat-head" onclick="toggleRepeatExpand('${e.id}')">
+          <div class="step-circle" onclick="event.stopPropagation(); toggleRepeatDone('${e.id}')">${CHECK_SVG}</div>
           <div class="repeat-head-text">
             <div class="step-text">${title}</div>
             <div class="repeat-head-sub">${summary}</div>
@@ -187,6 +192,7 @@ function repeatEntryHtml(e, isActive) {
   return `<div class="step repeat-step ${cls}">
     <div class="step-body">
       <div class="repeat-head">
+        <div class="step-circle" onclick="event.stopPropagation(); toggleRepeatDone('${e.id}')">${CHECK_SVG}</div>
         <div class="repeat-head-text">
           <div class="step-text">${title}</div>
           <div class="repeat-head-sub">repeat unit</div>
