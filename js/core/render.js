@@ -129,7 +129,6 @@ function repeatEntryHtml(e) {
   const rowsDone = repeatRowsDone(e, pos);
   const done     = repeatComplete(e, pos);
   const pct      = total ? Math.round(Math.min(100, rowsDone / total * 100)) : 0;
-  const abs      = absoluteRow(activeDoc, PHASES[cur].id, e.id, entryProg);
   const standing = Math.min(rowsDone + 1, total);
 
   const rows = e.rows.map((r, i) => {
@@ -159,7 +158,6 @@ function repeatEntryHtml(e) {
         <div class="rep-stat">
           <span class="rep-lbl">${label}</span>
           <span class="rep-val">${done ? total : standing} <em>of ${total}</em></span>
-          ${abs && !done ? `<span class="rep-abs">pattern row ${abs}</span>` : ''}
         </div>
         <button class="cc-ctrl cc-plus" onclick="advanceEntry('${e.id}',1)" aria-label="Forward one row">+</button>
       </div>
@@ -170,11 +168,9 @@ function repeatEntryHtml(e) {
 function renderPhase() {
   const p = PHASES[cur];
   const items = p.entries || p.steps || [];
-  const totalSteps = items.length;
-  const doneSteps  = p.entries
-    ? p.entries.filter(e => entryDone(e, entryProg)).length
-    : items.filter(s => state[s.id]).length;
-  const showCompleted = !p.hasChart && totalSteps > 0;
+  const totalRows = sectionRowCount(p, activeDoc);
+  const doneRows = sectionRowsDone(p, entryProg, activeDoc);
+  const showCompleted = !p.hasChart && totalRows > 0;
   const phaseHeaderHtml = `<div class="phase-header">
     <div class="phase-head-row">
       <div class="phase-head-main">
@@ -204,8 +200,8 @@ function renderPhase() {
     html += buildChartTracker(phaseHeaderHtml);
   } else {
     html += phaseHeaderHtml;
-    if (showCompleted) html += `<div class="steps-row"><span class="steps-row-label">Steps</span><span class="steps-row-count"><span class="src-num">${doneSteps} / ${totalSteps}</span><span class="src-lbl">completed</span></span></div>`;
-    if (totalSteps) html += '<div class="steps">' + items.map(entryHtml).join('') + '</div>';
+    if (showCompleted) html += `<div class="steps-row"><span class="steps-row-label">Rows</span><span class="steps-row-count"><span class="src-num">${doneRows} / ${totalRows}</span><span class="src-lbl">completed</span></span></div>`;
+    if (totalRows) html += '<div class="steps">' + items.map(entryHtml).join('') + '</div>';
     // Only reachable if migrateToEntries() skipped this project because its
     // pattern is no longer in the code. Say so rather than rendering nothing.
     else if (!p.entries && !p.hasChart) html += '<div class="steps"><div class="step"><div class="step-body">' +
