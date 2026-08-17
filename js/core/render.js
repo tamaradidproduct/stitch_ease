@@ -169,7 +169,7 @@ function renderPhase() {
   const p = PHASES[cur];
   const items = p.entries || p.steps || [];
   const totalRows = sectionRowCount(p, activeDoc);
-  const doneRows = sectionRowsDone(p, entryProg, activeDoc);
+  const doneRows = sectionRowsDone(p, progressCtx(), activeDoc);
   const showCompleted = !p.hasChart && totalRows > 0;
   const phaseHeaderHtml = `<div class="phase-header">
     <div class="phase-head-row">
