@@ -559,6 +559,16 @@
     -webkit-user-select: none; user-select: none;
   }
   .step:active { background: var(--bg); }
+  /* The "you are here" card — the ONE entry in the section that's next to
+     work on. Done entries and ones not reached yet both stay on the flat
+     .step look above; only the active entry lifts off the page. Same
+     background/border/radius as .lib-card elsewhere in the app. */
+  .step.active {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px;
+    margin: 10px 0;
+  }
+  .step.active:active { background: var(--card); }
   .step-circle {
     width: 22px; height: 22px; border-radius: 6px;
     border: 2px solid var(--muted); background: transparent;
@@ -594,17 +604,17 @@
      motif, where you need to see the shape of the whole thing while working
      any part of it.
 
-     The block reads as one card, not just its header — a plain step blends
-     into the ones before and after it, and a colored header alone still left
-     the rows themselves sitting on the bare page. Same card treatment as
-     .lib-card: lifts the whole thing off the page in one move. */
-  .repeat-step {
-    cursor: default; border-bottom: none;
+     Same active/flat split as any other step: worked or not-yet-reached, a
+     repeat sits flat with every row still visible (there's no one-line
+     summary for a six-ring motif); only once it's the entry to work on does
+     it lift onto the .lib-card-style surface below. */
+  .repeat-step { cursor: default; }
+  .repeat-step.active {
     background: var(--card); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 14px;
     margin: 10px 0;
   }
-  .repeat-step:active { background: var(--card); }
+  .repeat-step.active:active { background: var(--card); }
   .repeat-head {
     display: flex; align-items: center; justify-content: space-between; gap: 10px;
     padding-bottom: 10px; margin-bottom: 10px;

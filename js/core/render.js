@@ -92,18 +92,24 @@ function bulletsHtml(e) {
 // The only entry renderer there is. A note and a row are one tappable card; a
 // repeat gets the chart dock's layout, because a repeat's position is the one
 // thing the old counter could never express.
+//
+// isActive marks the ONE entry — the first not-yet-done one in the section —
+// that gets lifted onto the "you are here" card. Done entries and ones not
+// reached yet both rest flat on the page; there is exactly one active entry
+// at a time, same as a repeat's own "now" row.
 // ─────────────────────────────────────────────
-function entryHtml(e) {
-  if (e.kind === 'repeat') return repeatEntryHtml(e);
-  return noteOrRowEntryHtml(e);
+function entryHtml(e, isActive) {
+  if (e.kind === 'repeat') return repeatEntryHtml(e, isActive);
+  return noteOrRowEntryHtml(e, isActive);
 }
 
 // A note and a row tick identically. They differ in what a tick MEANS — a row
 // moves the Rows tally, a note does not — which is toggleEntry()'s business,
 // not the markup's.
-function noteOrRowEntryHtml(e) {
+function noteOrRowEntryHtml(e, isActive) {
   const done = entryDone(e, entryProg);
-  return `<div class="step ${done ? 'done' : ''}" onclick="toggleEntry('${e.id}')">
+  const cls = done ? 'done' : isActive ? 'active' : '';
+  return `<div class="step ${cls}" onclick="toggleEntry('${e.id}')">
     <div class="step-circle">${CHECK_SVG}</div>
     <div class="step-body">
       <div class="step-text">${e.text.replace(/\n/g, '<br>')}</div>
@@ -122,7 +128,7 @@ function noteOrRowEntryHtml(e) {
 //
 // Rows earlier in the CURRENT pass strike through and reset each pass, which
 // is how the pre-conversion checkable bullets behaved.
-function repeatEntryHtml(e) {
+function repeatEntryHtml(e, isActive) {
   const pos      = repeatPos(e, entryProg);
   const R        = repeatLength(e), T = e.times | 0;
   const done     = repeatComplete(e, pos);
@@ -143,7 +149,8 @@ function repeatEntryHtml(e) {
     : R === 1 ? 'Repeat ' + (pos.y + 1) + ' of ' + T
     : 'Pass ' + (pos.y + 1) + ' of ' + T;
 
-  return `<div class="step repeat-step ${done ? 'done' : ''}">
+  const cls = done ? 'done' : isActive ? 'active' : '';
+  return `<div class="step repeat-step ${cls}">
     <div class="step-body">
       <div class="repeat-head">
         <div class="repeat-head-text">
@@ -167,6 +174,9 @@ function renderPhase() {
   const totalRows = sectionRowCount(p, activeDoc);
   const doneRows = sectionRowsDone(p, progressCtx(), activeDoc);
   const showCompleted = !p.hasChart && totalRows > 0;
+  // The first not-done entry, top to bottom — everything else is either
+  // already worked or not reached yet, and rests flat either way.
+  const active = p.entries ? items.find(e => !entryDone(e, entryProg)) : null;
   const phaseHeaderHtml = `<div class="phase-header">
     <div class="phase-head-row">
       <div class="phase-head-main">
@@ -197,7 +207,7 @@ function renderPhase() {
   } else {
     html += phaseHeaderHtml;
     if (showCompleted) html += `<div class="steps-row"><span class="steps-row-label">Rows</span><span class="steps-row-count"><span class="src-num">${doneRows} / ${totalRows}</span><span class="src-lbl">completed</span></span></div>`;
-    if (items.length) html += '<div class="steps">' + items.map(entryHtml).join('') + '</div>';
+    if (items.length) html += '<div class="steps">' + items.map(e => entryHtml(e, e === active)).join('') + '</div>';
     // Only reachable if migrateToEntries() skipped this project because its
     // pattern is no longer in the code. Say so rather than rendering nothing.
     else if (!p.entries && !p.hasChart) html += '<div class="steps"><div class="step"><div class="step-body">' +
