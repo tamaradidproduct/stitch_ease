@@ -604,16 +604,43 @@
   .step.done .repeat-head { background: var(--done-bg); }
   .step.done .repeat-head .step-text { color: var(--done-text); text-decoration: line-through; text-decoration-color: var(--muted); }
 
+  /* Pass stepper — jumps a whole pass (R rows) so getting from "Pass 1 of 3"
+     to "Pass 2 of 3" doesn't mean tapping through every row in between. Sits
+     above the motif since it's the coarse control; the fine one (± one row,
+     or a row's own checkbox) stays below where the rows are. */
+  .rep-pass {
+    display: flex; align-items: center; justify-content: center; gap: 14px;
+    margin-top: 10px;
+  }
+  .rep-pass-lbl {
+    font-size: 13px; font-weight: 600; color: var(--text);
+    min-width: 96px; text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .rep-pass .cc-ctrl { width: 32px; height: 32px; font-size: 17px; }
+  .rep-pass .cc-plus { background: var(--accent); }
+  .rep-pass .cc-plus:active { background: #3c584a; }
+  .rep-pass .cc-minus { background: var(--card); }
+
   .rep-rows { list-style: none; margin: 10px 0 0; padding: 0; }
   .rep-row {
-    display: flex; align-items: flex-start; gap: 10px;
+    display: flex; align-items: flex-start; gap: 8px;
     padding: 11px 12px; border-radius: var(--radius-sm);
     border-left: 3px solid transparent;
     cursor: pointer; transition: background 0.15s;
   }
   .rep-row + .rep-row { margin-top: 2px; }
+  .rep-check {
+    flex-shrink: 0; width: 20px; height: 20px; border-radius: 5px;
+    border: 2px solid var(--muted); background: transparent;
+    display: flex; align-items: center; justify-content: center;
+    margin-top: 1px; transition: all 0.15s;
+  }
+  .rep-row.done .rep-check { background: var(--checkbox-done); border-color: var(--checkbox-done); }
+  .rep-check svg { display: none; }
+  .rep-row.done .rep-check svg { display: block; }
   .rep-n {
-    flex-shrink: 0; width: 20px; text-align: center;
+    flex-shrink: 0; width: 16px; text-align: center;
     font-size: 11px; font-weight: 600; color: var(--muted);
     font-variant-numeric: tabular-nums; margin-top: 2px;
   }
@@ -638,13 +665,8 @@
     margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);
   }
   .rep-stat { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px; }
-  .rep-lbl {
-    font-size: 10px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
-    color: var(--muted);
-  }
   .rep-val { font-size: 17px; font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; }
   .rep-val em { font-style: normal; font-size: 12px; font-weight: 500; color: var(--muted); }
-  .rep-abs { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 
   /* Position line on a repeat block: which row of which pass, and the
      pattern row it works out to. Was the cadence reminder before repeats

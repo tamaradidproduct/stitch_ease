@@ -134,29 +134,34 @@ function repeatEntryHtml(e) {
   const rows = e.rows.map((r, i) => {
     const n = i + 1;
     const cls = done ? 'done' : n < pos.z ? 'done' : n === pos.z ? 'now' : '';
-    return `<li class="rep-row ${cls}" onclick="setRepeatRow('${e.id}',${n})">
+    return `<li class="rep-row ${cls}" onclick="toggleRepeatRow('${e.id}',${n})">
+      <span class="rep-check">${CHECK_SVG}</span>
       <span class="rep-n">${n}</span>
       <span class="rep-t">${r.text}</span>
     </li>`;
   }).join('');
 
   // A single-row repeat has no inside to be part-way through — its pass IS its
-  // row, so "pass 4 of 7 · row 1 of 1" would invent a distinction.
-  const label = done ? 'All ' + T + ' repeats worked'
+  // row, so "pass 4 of 7" next to a "row 1 of 1" would invent a distinction.
+  const passLabel = done ? 'All ' + T + ' repeats worked'
     : R === 1 ? 'Repeat ' + (pos.y + 1) + ' of ' + T
-    : 'Pass ' + (pos.y + 1) + ' of ' + T + ' · row ' + pos.z + ' of ' + R;
+    : 'Pass ' + (pos.y + 1) + ' of ' + T;
 
   return `<div class="step repeat-step ${done ? 'done' : ''}">
     <div class="step-body">
       <div class="repeat-head">
         <div class="step-text">${(e.text || 'Repeat').replace(/\n/g, '<br>')}</div>
       </div>
+      <div class="rep-pass">
+        <button class="cc-ctrl cc-minus" onclick="advanceRepeatPass('${e.id}',-1)" aria-label="Previous pass">−</button>
+        <span class="rep-pass-lbl">${passLabel}</span>
+        <button class="cc-ctrl cc-plus" onclick="advanceRepeatPass('${e.id}',1)" aria-label="Next pass">+</button>
+      </div>
       <ul class="rep-rows">${rows}</ul>
       <div class="rc-mini-bar"><div class="rc-mini-fill" style="width:${pct}%"></div></div>
       <div class="rep-foot">
         <button class="cc-ctrl cc-minus" onclick="advanceEntry('${e.id}',-1)" aria-label="Back one row">−</button>
         <div class="rep-stat">
-          <span class="rep-lbl">${label}</span>
           <span class="rep-val">${done ? total : standing} <em>of ${total}</em></span>
         </div>
         <button class="cc-ctrl cc-plus" onclick="advanceEntry('${e.id}',1)" aria-label="Forward one row">+</button>

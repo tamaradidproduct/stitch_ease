@@ -102,6 +102,35 @@ function advanceEntry(id, delta) {
   save(); render(); renderGlobalRows();
 }
 
+// A row's checkbox. Tapping the row you're standing on checks it off — the
+// same move as the + button, so the box you're looking at is the one that
+// responds. Tapping any other row still jumps to stand on it (setRepeatRow);
+// that tap target didn't change, only the row you're already on gained a
+// working checkbox instead of a no-op.
+function toggleRepeatRow(id, n) {
+  const e = findEntry(id);
+  if (!e || e.kind !== 'repeat') return;
+  const prev = repeatPos(e, entryProg);
+  if (n === prev.z && !repeatComplete(e, prev)) advanceEntry(id, 1);
+  else setRepeatRow(id, n);
+}
+
+// Skip a whole pass without tapping through every row in it. Always lands on
+// row 1 of the target pass — a plain counter step, not "finish wherever I am
+// in this pass" — so ± reads the same as the row it's next to: "Pass 2 of 3"
+// means you're standing at the top of pass 2.
+function advanceRepeatPass(id, delta) {
+  const e = findEntry(id);
+  if (!e || e.kind !== 'repeat') return;
+  const prev = repeatPos(e, entryProg);
+  const T = e.times | 0;
+  const wantY = Math.max(0, Math.min(T, prev.y + (delta | 0)));
+  if (wantY === prev.y) return;
+  entryProg[repeatKey(id)] = clampRepeatPos(e, { y: wantY, z: 1 });
+  stampClock(repeatKey(id));
+  save(); render(); renderGlobalRows();
+}
+
 // ── The Rows tally, derived ──
 //
 // Both halves are computed from the project's actual progress. Nothing stores
