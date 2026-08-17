@@ -597,17 +597,19 @@
   .repeat-step:active { background: transparent; }
   .repeat-head {
     display: flex; align-items: center; justify-content: space-between; gap: 10px;
-    background: var(--accent-light); border-radius: var(--radius-sm);
-    padding: 10px 12px;
+    background: var(--accent-light); border: 1px solid var(--accent);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px; margin-bottom: 2px;
   }
   .repeat-head-text { flex: 1; min-width: 0; }
   .repeat-head-text .step-text { font-weight: 600; color: var(--accent); }
   .repeat-head-sub {
-    font-size: 11px; font-weight: 500; color: var(--muted);
+    font-size: 11px; font-weight: 500; color: var(--accent-mid);
     margin-top: 1px;
   }
-  .step.done .repeat-head { background: var(--done-bg); }
+  .step.done .repeat-head { background: var(--done-bg); border-color: transparent; }
   .step.done .repeat-head-text .step-text { color: var(--done-text); text-decoration: line-through; text-decoration-color: var(--muted); }
+  .step.done .repeat-head-sub { color: var(--muted); }
 
   /* Pass stepper — jumps a whole pass (R rows) so getting from "Pass 1 of 3"
      to "Pass 2 of 3" doesn't mean tapping through every row in between. Sits
