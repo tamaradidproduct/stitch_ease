@@ -37,7 +37,13 @@
 const PDF_BUCKET = 'pattern-pdfs';
 const PDF_INDEX_KEY = 'pt3_pdfs';
 
-// { [patternId]: { name, size, localMs, deletedMs, remoteMs, remoteName, remoteSize } }
+// { [patternId]: { name, size, localMs, deletedMs, remoteMs, remoteName, remoteSize,
+//                  remotePath } }
+//
+// `remotePath` is the object key the FAMILY's copy actually lives at. It is
+// stored rather than recomputed because the uploader may be someone else:
+// objects stay at '<uploader_uid>/<patternId>.pdf', so deriving the path from
+// the signed-in user would ask for a file that only exists in their own folder.
 //
 // Global, not per-project: a PDF belongs to the pattern, and every project
 // knitted from it refers to the same one.
@@ -63,7 +69,8 @@ function pdfEntry(patternId) {
   return {
     name: e.name || '', size: e.size || 0,
     localMs: e.localMs || 0, deletedMs: e.deletedMs || 0,
-    remoteMs: e.remoteMs || 0, remoteName: e.remoteName || '', remoteSize: e.remoteSize || 0
+    remoteMs: e.remoteMs || 0, remoteName: e.remoteName || '', remoteSize: e.remoteSize || 0,
+    remotePath: e.remotePath || ''
   };
 }
 
@@ -173,9 +180,15 @@ async function pushPdf(patternId, uid) {
   const mine = pdfLocalClock(patternId);
   if (!mine) return 'drop';                    // nothing ever happened here
 
+  // The family is the scope now, not the account. Resolved lazily rather than
+  // assumed: a device that signed in before families existed has no cached id
+  // until it asks, and a push is a perfectly good moment to find out.
+  const fid = currentFamilyId() || await ensureFamily();
+  if (!fid) return 'retry';
+
   const { data: remote, error } = await sb.from('pattern_pdfs')
     .select('pattern_id,file_name,byte_size,updated_ms,deleted_ms,storage_path')
-    .eq('owner_id', uid).eq('pattern_id', patternId).maybeSingle();
+    .eq('family_id', fid).eq('pattern_id', patternId).maybeSingle();
   if (error) throw error;
 
   // The account's copy is newer than anything that happened on this device, so
@@ -200,9 +213,9 @@ async function pushPdf(patternId, uid) {
     const { error: rmErr } = await sb.storage.from(PDF_BUCKET).remove([path]);
     if (rmErr && !/not found/i.test(rmErr.message || '')) throw rmErr;
     const { error: upErr } = await sb.from('pattern_pdfs').upsert({
-      owner_id: uid, pattern_id: patternId, file_name: e.name || 'removed.pdf',
+      owner_id: uid, family_id: fid, pattern_id: patternId, file_name: e.name || 'removed.pdf',
       byte_size: 0, updated_ms: e.deletedMs, deleted_ms: e.deletedMs, storage_path: path
-    }, { onConflict: 'owner_id,pattern_id' });
+    }, { onConflict: 'family_id,pattern_id' });
     if (upErr) throw upErr;
     pdfIndex[patternId] = Object.assign(pdfEntry(patternId), { remoteMs: e.deletedMs, remoteName: '', remoteSize: 0 });
     savePdfIndex();
@@ -232,10 +245,10 @@ async function pushPdf(patternId, uid) {
     if (putErr) throw putErr;
 
     const { error: upErr } = await sb.from('pattern_pdfs').upsert({
-      owner_id: uid, pattern_id: patternId, file_name: e.name || rec.name,
+      owner_id: uid, family_id: fid, pattern_id: patternId, file_name: e.name || rec.name,
       byte_size: e.size || rec.size, content_type: rec.type || 'application/pdf',
       updated_ms: e.localMs, deleted_ms: null, storage_path: path
-    }, { onConflict: 'owner_id,pattern_id' });
+    }, { onConflict: 'family_id,pattern_id' });
     if (upErr) throw upErr;
   } catch (err) {
     // Recorded, then rethrown — flush() still owns the retry decision and must
@@ -250,7 +263,7 @@ async function pushPdf(patternId, uid) {
   // Server and device now hold the same copy, which is what makes the state
   // 'synced' rather than 'local'.
   pdfIndex[patternId] = Object.assign(pdfEntry(patternId), {
-    remoteMs: e.localMs, remoteName: e.name, remoteSize: e.size
+    remoteMs: e.localMs, remoteName: e.name, remoteSize: e.size, remotePath: path
   });
   savePdfIndex();
   return 'done';
@@ -272,7 +285,8 @@ function applyRemotePdfRow(row) {
   const next = Object.assign(e, {
     remoteMs: remoteMs,
     remoteName: deleted ? '' : (row.file_name || ''),
-    remoteSize: deleted ? 0 : (Number(row.byte_size) || 0)
+    remoteSize: deleted ? 0 : (Number(row.byte_size) || 0),
+    remotePath: deleted ? '' : (row.storage_path || '')
   });
 
   // A remove made on another device. Propagate it — that is what a tombstone
@@ -292,9 +306,11 @@ function applyRemotePdfRow(row) {
 // per family — so a cursor would be bookkeeping that costs more than the read
 // it saves.
 async function pullPdfs(uid) {
+  const fid = currentFamilyId() || await ensureFamily();
+  if (!fid) return false;
   const { data, error } = await sb.from('pattern_pdfs')
     .select('pattern_id,file_name,byte_size,updated_ms,deleted_ms,storage_path')
-    .eq('owner_id', uid);
+    .eq('family_id', fid);
   if (error) throw error;
   let changed = false;
   (data || []).forEach(row => { if (applyRemotePdfRow(row)) changed = true; });
@@ -312,9 +328,13 @@ async function pullPdfs(uid) {
 // and it renders the failure rather than letting it reach the console alone.
 async function fetchRemotePdf(patternId) {
   if (typeof canSync !== 'function' || !canSync()) return false;
-  const uid = currentUserId();
   const e = pdfEntry(patternId);
-  const path = pdfStoragePath(uid, patternId);
+  // The FAMILY's copy, at whatever key its uploader wrote it to — which is
+  // their uid, not this device's. Falling back to a locally-derived path would
+  // ask for a file that only exists if this account uploaded it, so a member
+  // downloading someone else's attachment would get a 404 that reads like a
+  // permissions failure.
+  const path = e.remotePath || pdfStoragePath(currentUserId(), patternId);
   setPdfActivity(patternId, { busy: 'download', failed: null });
   // Every exit runs through here. Two of the failure paths below are plain
   // `return false`, not throws — a `finally` that only cleared on the happy
@@ -369,4 +389,22 @@ function pdfStorageList() {
 
 function pdfStorageTotal() {
   return pdfStorageList().reduce((a, f) => a + f.size, 0);
+}
+
+// Drop every remote half of the index.
+//
+// Called when this account changes family: those rows belong to the household
+// it just left, so the flags saying "a copy is in your account" now describe
+// files RLS will refuse. Leaving them would put a download button on the sheet
+// that can only fail.
+//
+// The LOCAL halves are untouched. The blob on this device is still this
+// device's, and it re-uploads into the new family on the next flush.
+function forgetRemotePdfs() {
+  Object.keys(pdfIndex).forEach(id => {
+    const e = pdfEntry(id);
+    pdfIndex[id] = Object.assign(e, { remoteMs: 0, remoteName: '', remoteSize: 0, remotePath: '' });
+    if (e.localMs) enqueue('pdf', id);
+  });
+  savePdfIndex();
 }

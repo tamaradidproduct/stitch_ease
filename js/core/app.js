@@ -255,6 +255,7 @@ loadSyncStatus();
 loadCursor();
 loadConflicts();
 loadPdfIndex();
+loadFamily();
 loadProjects();
 view = 'home';
 render();
