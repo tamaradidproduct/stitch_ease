@@ -102,11 +102,10 @@ function advanceEntry(id, delta) {
   save(); render(); renderGlobalRows();
 }
 
-// A row's checkbox. Tapping the row you're standing on checks it off — the
-// same move as the + button, so the box you're looking at is the one that
-// responds. Tapping any other row still jumps to stand on it (setRepeatRow);
-// that tap target didn't change, only the row you're already on gained a
-// working checkbox instead of a no-op.
+// A row's checkbox is the only per-row control now — the row-level ± footer
+// is gone, replaced by these plus the pass stepper. Tapping the row you're
+// standing on checks it off (advanceEntry). Tapping any other row jumps to
+// stand on it (setRepeatRow), same as before.
 function toggleRepeatRow(id, n) {
   const e = findEntry(id);
   if (!e || e.kind !== 'repeat') return;

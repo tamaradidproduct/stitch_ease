@@ -129,7 +129,6 @@ function repeatEntryHtml(e) {
   const rowsDone = repeatRowsDone(e, pos);
   const done     = repeatComplete(e, pos);
   const pct      = total ? Math.round(Math.min(100, rowsDone / total * 100)) : 0;
-  const standing = Math.min(rowsDone + 1, total);
 
   const rows = e.rows.map((r, i) => {
     const n = i + 1;
@@ -159,13 +158,6 @@ function repeatEntryHtml(e) {
       </div>
       <ul class="rep-rows">${rows}</ul>
       <div class="rc-mini-bar"><div class="rc-mini-fill" style="width:${pct}%"></div></div>
-      <div class="rep-foot">
-        <button class="cc-ctrl cc-minus" onclick="advanceEntry('${e.id}',-1)" aria-label="Back one row">−</button>
-        <div class="rep-stat">
-          <span class="rep-val">${done ? total : standing} <em>of ${total}</em></span>
-        </div>
-        <button class="cc-ctrl cc-plus" onclick="advanceEntry('${e.id}',1)" aria-label="Forward one row">+</button>
-      </div>
     </div>
   </div>`;
 }
