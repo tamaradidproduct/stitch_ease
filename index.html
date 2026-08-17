@@ -633,6 +633,19 @@
   }
   .step.done .repeat-head-text .step-text { color: var(--done-text); text-decoration: line-through; text-decoration-color: var(--muted); }
 
+  /* Collapsed, the name reads like any other step — the bold accent
+     treatment was doing the same job the "repeat" tag now does on its own,
+     and having both said it twice. Expanded/active keeps the bold accent
+     title; that's the one place the extra weight is earning its keep. */
+  .repeat-step.collapsed .repeat-head-title-row { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+  .repeat-step.collapsed .repeat-head-text .step-text { font-weight: 400; color: var(--text); }
+  .repeat-tag {
+    flex-shrink: 0; font-size: 10px; font-weight: 600; letter-spacing: 0.03em;
+    text-transform: uppercase; color: var(--accent); background: var(--accent-light);
+    padding: 2px 7px; border-radius: 20px; line-height: 1.4;
+  }
+  .step.done .repeat-tag { color: var(--muted); background: var(--bg); }
+
   /* Expand/collapse chevron — same 24px circle as .phase-switch-btn, so a
      "reveal more" control looks the same wherever it shows up. Points down
      to open (there's more below), flips to point up once open. tabindex="-1"

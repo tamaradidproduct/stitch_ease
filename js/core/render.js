@@ -159,7 +159,10 @@ function repeatEntryHtml(e, isActive) {
         <div class="repeat-head" onclick="toggleRepeatExpand('${e.id}')">
           <div class="step-circle" onclick="event.stopPropagation(); toggleRepeatDone('${e.id}')">${CHECK_SVG}</div>
           <div class="repeat-head-text">
-            <div class="step-text">${title}</div>
+            <div class="repeat-head-title-row">
+              <div class="step-text">${title}</div>
+              <span class="repeat-tag">repeat</span>
+            </div>
             <div class="repeat-head-sub">${summary}</div>
           </div>
           <button class="repeat-expand-btn" aria-label="Expand" tabindex="-1">${DOWN_CHEVRON_SVG}</button>
@@ -207,6 +210,28 @@ function repeatEntryHtml(e, isActive) {
       <ul class="rep-rows">${rows}</ul>
     </div>
   </div>`;
+}
+
+// Puts the active entry at the top of the viewport on a fresh phase load.
+// Deliberately NOT called from render() itself — re-snapping the scroll
+// position on every tick of a checkbox would fight whatever the knitter is
+// mid-scroll doing. Only the navigation entry points (go, openProject) call
+// this, once, after the new phase is on screen.
+//
+// scrollIntoView clamps at the bottom of the page on its own: an active
+// entry near the end of a section can't be pushed all the way to the top
+// without scrolling past content that doesn't exist, so the browser just
+// scrolls as far as it can and stops — which is exactly "keep it at the
+// top unless that would run past the end."
+//
+// Falls back to the very top when there's no active entry to find — a
+// chart phase (which tracks its own current row separately) or a section
+// that's entirely done.
+function scrollActiveIntoView(smooth) {
+  const active = document.querySelector('#phase-content .step.active');
+  const behavior = smooth ? 'smooth' : 'auto';
+  if (active) active.scrollIntoView({ block: 'start', behavior });
+  else window.scrollTo({ top: 0, behavior });
 }
 
 function renderPhase() {

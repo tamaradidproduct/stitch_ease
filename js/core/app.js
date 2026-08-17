@@ -4,8 +4,8 @@
 function openProject(id) {
   if (!activateProject(id)) return;
   view = 'project';
-  window.scrollTo(0, 0);
   render();
+  requestAnimationFrame(() => scrollActiveIntoView(false));
 }
 
 function goHome() {
@@ -43,7 +43,7 @@ function go(i) {
   cur = i; stampClock('cur'); phaseNavOpen = false;
   syncActiveChart(); // phases can have different charts — repoint before render
   save(); render();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  requestAnimationFrame(() => scrollActiveIntoView(true));
 }
 
 // ── Entry mutators ──
