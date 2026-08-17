@@ -157,7 +157,7 @@ function repeatEntryHtml(e, isActive) {
     return `<div class="step repeat-step ${cls} collapsed">
       <div class="step-body">
         <div class="repeat-head" onclick="toggleRepeatExpand('${e.id}')">
-          <div class="step-circle" onclick="event.stopPropagation(); toggleRepeatDone('${e.id}')">${CHECK_SVG}</div>
+          <div class="step-circle" onclick="toggleRepeatDone('${e.id}', event)">${CHECK_SVG}</div>
           <div class="repeat-head-text">
             <div class="repeat-head-title-row">
               <div class="step-text">${title}</div>
@@ -195,7 +195,7 @@ function repeatEntryHtml(e, isActive) {
   return `<div class="step repeat-step ${cls}">
     <div class="step-body">
       <div class="repeat-head">
-        <div class="step-circle" onclick="event.stopPropagation(); toggleRepeatDone('${e.id}')">${CHECK_SVG}</div>
+        <div class="step-circle" onclick="toggleRepeatDone('${e.id}', event)">${CHECK_SVG}</div>
         <div class="repeat-head-text">
           <div class="step-text">${title}</div>
           <div class="repeat-head-sub">repeat unit</div>
@@ -633,8 +633,8 @@ function renderHome() {
         <div class="lib-card-bottom">
           <span class="lib-card-sub">${pr.done} of ${pr.total} steps done</span>
           <span class="proj-actions">
-            <button class="proj-act" onclick="event.stopPropagation();renameProject('${proj.id}')">Rename</button>
-            <button class="proj-act proj-del" onclick="event.stopPropagation();deleteProject('${proj.id}')">Delete</button>
+            <button class="proj-act" onclick="renameProject('${proj.id}', event)">Rename</button>
+            <button class="proj-act proj-del" onclick="deleteProject('${proj.id}', event)">Delete</button>
           </span>
         </div>
       </div>`;

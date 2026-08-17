@@ -126,7 +126,8 @@ function frozenPattern(projectId) {
   } catch(e) { return null; }
 }
 
-function renameProject(projectId) {
+function renameProject(projectId, evt) {
+  if (evt) evt.stopPropagation();
   const proj = projects.find(p => p.id === projectId);
   if (!proj || proj.deletedAt) return;
   sheetPrompt({
@@ -152,14 +153,15 @@ function renameProject(projectId) {
 // Tombstones are ~150 bytes and are never collected. At family scale that is
 // nothing; if it ever matters, they can be dropped once every device has
 // confirmed the delete, which needs sync state that does not exist yet.
-function deleteProject(projectId) {
+function deleteProject(projectId, evt) {
+  if (evt) evt.stopPropagation();
   const proj = projects.find(p => p.id === projectId);
   if (!proj || proj.deletedAt) return;
   sheetConfirm({
-    title: 'Delete project',
-    message: 'Delete “' + proj.name + '”?',
-    detail: 'This removes its progress from this device. It can’t be undone.',
-    confirmLabel: 'Delete',
+    title: ‘Delete project’,
+    message: ‘Delete “’ + proj.name + ‘”?’,
+    detail: ‘This removes its progress from this device. It can’t be undone.’,
+    confirmLabel: ‘Delete’,
     danger: true,
     onConfirm: () => {
       purgeProjectData(projectId);
@@ -169,9 +171,9 @@ function deleteProject(projectId) {
       // Any queued progress push is now meaningless — its source keys were
       // just purged, so flushing it would send an empty row for a project
       // being tombstoned in the same pass. The tombstone carries the delete.
-      dequeue('progress', projectId);
-      enqueue('project', projectId);
-      if (activeProjectId === projectId) { activeProjectId = null; view = 'home'; }
+      dequeue(‘progress’, projectId);
+      enqueue(‘project’, projectId);
+      if (activeProjectId === projectId) { activeProjectId = null; view = ‘home’; }
       render();
     }
   });

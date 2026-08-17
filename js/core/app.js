@@ -119,7 +119,8 @@ function toggleRepeatRow(id, n) {
 // pass, same as ticking every row without tapping through them. Done →
 // back to the very start, mirroring an unchecked note/row rather than
 // "back one row" (advanceEntry), which would only undo the final tap.
-function toggleRepeatDone(id) {
+function toggleRepeatDone(id, evt) {
+  if (evt) evt.stopPropagation();
   const e = findEntry(id);
   if (!e || e.kind !== 'repeat') return;
   const prev = repeatPos(e, entryProg);
