@@ -38,6 +38,12 @@ const BACK_CHEVRON_SVG = `<svg class="chevron" width="6" height="10" viewBox="0 
         <path d="M5 1L1 5L5 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>`;
 
+// Down chevron — same shape as the phase-switch-btn's, reused for a
+// collapsed repeat's expand control.
+const DOWN_CHEVRON_SVG = `<svg class="chevron" width="10" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true">
+        <path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`;
+
 // Open-book icon (pattern notes / stitch help)
 const NOTES_SVG = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M12 6.5C10.6 5.2 8.7 4.5 6.5 4.5c-1.2 0-2.4.2-3.5.7v13c1.1-.5 2.3-.7 3.5-.7 2.2 0 4.1.7 5.5 2 1.4-1.3 3.3-2 5.5-2 1.2 0 2.4.2 3.5.7v-13c-1.1-.5-2.3-.7-3.5-.7-2.2 0-4.1.7-5.5 2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
@@ -131,12 +137,36 @@ function noteOrRowEntryHtml(e, isActive) {
 function repeatEntryHtml(e, isActive) {
   const pos      = repeatPos(e, entryProg);
   const R        = repeatLength(e), T = e.times | 0;
+  const total    = repeatRowCount(e);
   const done     = repeatComplete(e, pos);
+  const cls      = done ? 'done' : isActive ? 'active' : '';
+  const title    = (e.text || 'Repeat').replace(/\n/g, '<br>');
+
+  // Collapsed unless it's the active entry or the knitter tapped it open to
+  // check something — a preview, not a position change, so it never touches
+  // entryProg. Rows/passes rather than "repeat unit" here: that label makes
+  // sense once you're looking at the rows it names, not as a summary of them.
+  if (!isActive && !repeatExpanded[e.id]) {
+    const summary = R === 1
+      ? total + (total === 1 ? ' row' : ' rows')
+      : total + ' rows · ' + T + (T === 1 ? ' pass' : ' passes');
+    return `<div class="step repeat-step ${cls} collapsed">
+      <div class="step-body">
+        <div class="repeat-head" onclick="toggleRepeatExpand('${e.id}')">
+          <div class="repeat-head-text">
+            <div class="step-text">${title}</div>
+            <div class="repeat-head-sub">${summary}</div>
+          </div>
+          <button class="repeat-expand-btn" aria-label="Expand" tabindex="-1">${DOWN_CHEVRON_SVG}</button>
+        </div>
+      </div>
+    </div>`;
+  }
 
   const rows = e.rows.map((r, i) => {
     const n = i + 1;
-    const cls = done ? 'done' : n < pos.z ? 'done' : n === pos.z ? 'now' : '';
-    return `<li class="rep-row ${cls}" onclick="toggleRepeatRow('${e.id}',${n})">
+    const rcls = done ? 'done' : n < pos.z ? 'done' : n === pos.z ? 'now' : '';
+    return `<li class="rep-row ${rcls}" onclick="toggleRepeatRow('${e.id}',${n})">
       <span class="rep-check">${CHECK_SVG}</span>
       <span class="rep-n">${n}</span>
       <span class="rep-t">${r.text}</span>
@@ -149,14 +179,19 @@ function repeatEntryHtml(e, isActive) {
     : R === 1 ? 'Repeat ' + (pos.y + 1) + ' of ' + T
     : 'Pass ' + (pos.y + 1) + ' of ' + T;
 
-  const cls = done ? 'done' : isActive ? 'active' : '';
+  // The active entry has nothing to collapse back to — it's what you're
+  // working on. Only a manually-opened preview offers a way to close itself.
+  const collapseBtn = isActive ? '' :
+    `<button class="repeat-expand-btn open" onclick="toggleRepeatExpand('${e.id}')" aria-label="Collapse">${DOWN_CHEVRON_SVG}</button>`;
+
   return `<div class="step repeat-step ${cls}">
     <div class="step-body">
       <div class="repeat-head">
         <div class="repeat-head-text">
-          <div class="step-text">${(e.text || 'Repeat').replace(/\n/g, '<br>')}</div>
+          <div class="step-text">${title}</div>
           <div class="repeat-head-sub">repeat unit</div>
         </div>
+        ${collapseBtn}
         <div class="rep-pass">
           <button class="rep-pass-btn" onclick="advanceRepeatPass('${e.id}',-1)" aria-label="Previous pass">−</button>
           <span class="rep-pass-lbl">${passLabel}</span>

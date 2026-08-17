@@ -605,9 +605,11 @@
      any part of it.
 
      Same active/flat split as any other step: worked or not-yet-reached, a
-     repeat sits flat with every row still visible (there's no one-line
-     summary for a six-ring motif); only once it's the entry to work on does
-     it lift onto the .lib-card-style surface below. */
+     repeat collapses to its name plus a row/pass count — there's no useful
+     one-line stand-in for what a six-ring motif actually says, so this is a
+     summary, not a preview. Tapping it (or the chevron) opens the full row
+     list without changing your position. Becoming the active entry expands
+     it automatically and lifts it onto the .lib-card-style surface below. */
   .repeat-step { cursor: default; }
   .repeat-step.active {
     background: var(--card); border: 1px solid var(--border);
@@ -620,6 +622,9 @@
     padding-bottom: 10px; margin-bottom: 10px;
     border-bottom: 1px solid var(--border);
   }
+  .repeat-step.collapsed .repeat-head {
+    padding-bottom: 0; margin-bottom: 0; border-bottom: none; cursor: pointer;
+  }
   .repeat-head-text { flex: 1; min-width: 0; }
   .repeat-head-text .step-text { font-weight: 600; color: var(--accent); }
   .repeat-head-sub {
@@ -627,6 +632,22 @@
     margin-top: 1px;
   }
   .step.done .repeat-head-text .step-text { color: var(--done-text); text-decoration: line-through; text-decoration-color: var(--muted); }
+
+  /* Expand/collapse chevron — same 24px circle as .phase-switch-btn, so a
+     "reveal more" control looks the same wherever it shows up. Points down
+     to open (there's more below), flips to point up once open. tabindex="-1"
+     on the collapsed version: the whole header is already the tap target,
+     so the button is a visual cue, not a second stop. */
+  .repeat-expand-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; border-radius: 50%;
+    border: 1px solid var(--border); background: var(--card);
+    color: var(--muted); cursor: pointer; flex-shrink: 0; padding: 0;
+    transition: background 0.15s;
+  }
+  .repeat-expand-btn:active { background: var(--bg); }
+  .repeat-expand-btn .chevron { transition: transform 0.2s; }
+  .repeat-expand-btn.open .chevron { transform: rotate(180deg); }
 
   /* Pass stepper — jumps a whole pass (R rows) so getting from "Pass 1 of 3"
      to "Pass 2 of 3" doesn't mean tapping through every row in between. Sits

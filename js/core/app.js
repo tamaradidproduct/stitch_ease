@@ -130,6 +130,14 @@ function advanceRepeatPass(id, delta) {
   save(); render(); renderGlobalRows();
 }
 
+// A collapsed repeat's expand toggle — a manual preview, not a progress
+// change, so no save()/clock/renderGlobalRows(). The active entry ignores
+// this and stays expanded regardless.
+function toggleRepeatExpand(id) {
+  repeatExpanded[id] = !repeatExpanded[id];
+  render();
+}
+
 // ── The Rows tally, derived ──
 //
 // Both halves are computed from the project's actual progress. Nothing stores
