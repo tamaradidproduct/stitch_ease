@@ -596,31 +596,41 @@
   .repeat-step { cursor: default; }
   .repeat-step:active { background: transparent; }
   .repeat-head {
-    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
     background: var(--accent-light); border-radius: var(--radius-sm);
     padding: 10px 12px;
   }
-  .repeat-head .step-text { flex: 1; min-width: 0; font-weight: 600; color: var(--accent); }
+  .repeat-head-text { flex: 1; min-width: 0; }
+  .repeat-head-text .step-text { font-weight: 600; color: var(--accent); }
+  .repeat-head-sub {
+    font-size: 11px; font-weight: 500; color: var(--muted);
+    margin-top: 1px;
+  }
   .step.done .repeat-head { background: var(--done-bg); }
-  .step.done .repeat-head .step-text { color: var(--done-text); text-decoration: line-through; text-decoration-color: var(--muted); }
+  .step.done .repeat-head-text .step-text { color: var(--done-text); text-decoration: line-through; text-decoration-color: var(--muted); }
 
   /* Pass stepper — jumps a whole pass (R rows) so getting from "Pass 1 of 3"
      to "Pass 2 of 3" doesn't mean tapping through every row in between. Sits
-     above the motif since it's the coarse control; the fine one (± one row,
-     or a row's own checkbox) stays below where the rows are. */
+     beside the name, secondary to it: quieter than the row checkboxes below,
+     which are what's actually being worked. */
   .rep-pass {
-    display: flex; align-items: center; justify-content: center; gap: 14px;
-    margin-top: 10px;
+    display: flex; align-items: center; gap: 4px; flex-shrink: 0;
   }
   .rep-pass-lbl {
-    font-size: 13px; font-weight: 600; color: var(--text);
-    min-width: 96px; text-align: center;
+    font-size: 12px; font-weight: 600; color: var(--done-text);
+    min-width: 68px; text-align: center;
     font-variant-numeric: tabular-nums;
   }
-  .rep-pass .cc-ctrl { width: 32px; height: 32px; font-size: 17px; }
-  .rep-pass .cc-plus { background: var(--accent); }
-  .rep-pass .cc-plus:active { background: #3c584a; }
-  .rep-pass .cc-minus { background: var(--card); }
+  .rep-pass-btn {
+    width: 22px; height: 22px; border-radius: 50%; border: none;
+    background: transparent; color: var(--accent);
+    font-size: 14px; font-weight: 400; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: background 0.12s; flex-shrink: 0;
+  }
+  .rep-pass-btn:active { background: rgba(0,0,0,0.08); }
+  .step.done .rep-pass-lbl,
+  .step.done .rep-pass-btn { color: var(--muted); }
 
   .rep-rows { list-style: none; margin: 10px 0 0; padding: 0; }
   .rep-row {

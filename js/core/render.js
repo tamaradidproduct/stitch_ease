@@ -149,12 +149,15 @@ function repeatEntryHtml(e) {
   return `<div class="step repeat-step ${done ? 'done' : ''}">
     <div class="step-body">
       <div class="repeat-head">
-        <div class="step-text">${(e.text || 'Repeat').replace(/\n/g, '<br>')}</div>
-      </div>
-      <div class="rep-pass">
-        <button class="cc-ctrl cc-minus" onclick="advanceRepeatPass('${e.id}',-1)" aria-label="Previous pass">−</button>
-        <span class="rep-pass-lbl">${passLabel}</span>
-        <button class="cc-ctrl cc-plus" onclick="advanceRepeatPass('${e.id}',1)" aria-label="Next pass">+</button>
+        <div class="repeat-head-text">
+          <div class="step-text">${(e.text || 'Repeat').replace(/\n/g, '<br>')}</div>
+          <div class="repeat-head-sub">repeat unit</div>
+        </div>
+        <div class="rep-pass">
+          <button class="rep-pass-btn" onclick="advanceRepeatPass('${e.id}',-1)" aria-label="Previous pass">−</button>
+          <span class="rep-pass-lbl">${passLabel}</span>
+          <button class="rep-pass-btn" onclick="advanceRepeatPass('${e.id}',1)" aria-label="Next pass">+</button>
+        </div>
       </div>
       <ul class="rep-rows">${rows}</ul>
       <div class="rc-mini-bar"><div class="rc-mini-fill" style="width:${pct}%"></div></div>

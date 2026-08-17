@@ -43,7 +43,7 @@ const LENORE_PHASES = [
       {kind:'row', id:'r1-a', text:'Ring A: 4 - 6 - 2'},
       {kind:'row', id:'r1-b', text:'Ring B: 2 + 6 - 4 (join to Ring A)'},
       {kind:'row', id:'r1-c', text:'Chain C: 6'},
-      {kind:'repeat', id:'r1-def-ghi', text:'Ring D – Chain I (repeat unit):', times:3, legacyCount:'passes', rows:[
+      {kind:'repeat', id:'r1-def-ghi', text:'Ring D – Chain I', times:3, legacyCount:'passes', rows:[
         {id:'r1-def-ghi-1', text:'Ring D: 2 - 2 + 2 - 2 - 2 (join to Ring B, or to the last Ring L on repeats)'},
         {id:'r1-def-ghi-2', text:'Ring E: 2 + 2 - 1 --- 1 - 2 - 2 (join to Ring D)'},
         {id:'r1-def-ghi-3', text:'Ring F: 2 - + 2 - 2 - 2 - 2 (join to Ring E)'},
@@ -55,7 +55,7 @@ const LENORE_PHASES = [
       {kind:'row', id:'r1-k', text:'Chain K: 2 - 2 - 2 - 2'},
       {kind:'row', id:'r1-l', text:'Ring L: 2 + 2 - 2 - 2 (join to Ring J)'},
       {kind:'row', id:'r1-i2', text:'Chain I: 2 - 2 - 2 - 4'},
-      {kind:'repeat', id:'r1-def-ghi2', text:'Ring D – Chain I (repeat unit):', times:2, legacyCount:'passes', rows:[
+      {kind:'repeat', id:'r1-def-ghi2', text:'Ring D – Chain I', times:2, legacyCount:'passes', rows:[
         {id:'r1-def-ghi2-1', text:'Ring D: 2 - 2 + 2 - 2 - 2 (join to last Ring L, or to the previous repeat)'},
         {id:'r1-def-ghi2-2', text:'Ring E: 2 + 2 - 1 --- 1 - 2 - 2 (join to Ring D)'},
         {id:'r1-def-ghi2-3', text:'Ring F: 2 - + 2 - 2 - 2 - 2 (join to Ring E)'},
@@ -70,7 +70,7 @@ const LENORE_PHASES = [
       {kind:'row', id:'r1-n', text:'Ring N: 4 + 6 - 2 (join to last Ring F)'},
       {kind:'row', id:'r1-o', text:'Ring O: 2 + 6 - 4 (join to Ring N)'},
       {kind:'row', id:'r1-p', text:'Chain P: 4'},
-      {kind:'repeat', id:'r1-qr', text:'Ring Q – Chain R (repeat unit):', times:11, legacyCount:'passes', rows:[
+      {kind:'repeat', id:'r1-qr', text:'Ring Q – Chain R', times:11, legacyCount:'passes', rows:[
         {id:'r1-qr-1', text:'Ring Q: 2 - 2 - 2 - 2 - 2 (four picots)'},
         {id:'r1-qr-2', text:'Chain R: 2 - 2 + 2 - 2 (join to the center picot of Chains G and I)'},
       ]},
@@ -84,7 +84,7 @@ const LENORE_PHASES = [
       {kind:'row', id:'r2-a', text:'Ring A: 4 - 4 - 2'},
       {kind:'row', id:'r2-b', text:'Ring B: 2 + 6 + 2 - 4 (join to Ring A, join to Ring A of Row 1)'},
       {kind:'row', id:'r2-c', text:'Chain C: 6'},
-      {kind:'repeat', id:'r2-de', text:'Ring D – Chain E (repeat unit):', times:11, legacyCount:'passes', rows:[
+      {kind:'repeat', id:'r2-de', text:'Ring D – Chain E', times:11, legacyCount:'passes', rows:[
         {id:'r2-de-1', text:'Ring D: 2 - 2 + 2 + 2 - 2 (join to Ring B, join to a Ring Q of Row 1)'},
         {id:'r2-de-2', text:'Chain E: 2 - 2 - 2 - 2'},
       ]},
@@ -97,7 +97,7 @@ const LENORE_PHASES = [
       {kind:'row', id:'r2-k', text:'Ring K: 2 + 4 - 1 --- 1 - 4 - 2 (join to Ring J)'},
       {kind:'row', id:'r2-l', text:'Ring L: 2 + 2 - 2 - 4 (join to Ring K)'},
       {kind:'row', id:'r2-m', text:'Chain M: 6'},
-      {kind:'repeat', id:'r2-nopqrs', text:'Ring N – Chain S (repeat unit):', times:5, legacyCount:'passes', rows:[
+      {kind:'repeat', id:'r2-nopqrs', text:'Ring N – Chain S', times:5, legacyCount:'passes', rows:[
         {id:'r2-nopqrs-1', text:'Ring N: 2 + 2 - 2 - 2 (join to Ring L, or to the previous repeat)'},
         {id:'r2-nopqrs-2', text:'Chain O: 2 - 2 + 2 - 4 (join to the center picot of Chain E)'},
         {id:'r2-nopqrs-3', text:'Ring P: 2 - 2 + 2 - 2 - 2 (join to Ring N)'},
