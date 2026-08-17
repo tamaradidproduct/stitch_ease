@@ -201,7 +201,7 @@ function renderPhase() {
   } else {
     html += phaseHeaderHtml;
     if (showCompleted) html += `<div class="steps-row"><span class="steps-row-label">Rows</span><span class="steps-row-count"><span class="src-num">${doneRows} / ${totalRows}</span><span class="src-lbl">completed</span></span></div>`;
-    if (totalRows) html += '<div class="steps">' + items.map(entryHtml).join('') + '</div>';
+    if (items.length) html += '<div class="steps">' + items.map(entryHtml).join('') + '</div>';
     // Only reachable if migrateToEntries() skipped this project because its
     // pattern is no longer in the code. Say so rather than rendering nothing.
     else if (!p.entries && !p.hasChart) html += '<div class="steps"><div class="step"><div class="step-body">' +
