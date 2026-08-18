@@ -18,7 +18,8 @@ const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './ic
   './js/patterns/peacock-tee.js',
   './js/patterns/tatted-triangle.js',
   './js/patterns/lenore.js',
-  './js/patterns/frost-flower.js'];
+  './js/patterns/frost-flower.js',
+  './js/patterns/posy.js'];
 // A pattern that declares `pdf: 'pdf/x.pdf'` (see js/core/pdf.js) must add that
 // file here too, or it is only readable online — the whole point is reaching it
 // mid-row on a bus. It falls through to the cache-first branch below, which is

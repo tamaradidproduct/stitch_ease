@@ -65,6 +65,7 @@ function toggleEntry(id) {
   entryProg[key] = !entryProg[key];
   stampClock(key);
   save(); render();
+  requestAnimationFrame(() => scrollActiveIntoView(true));
 }
 
 // Tap a row in a repeat to stand on it. Restores what the pre-conversion
@@ -112,6 +113,7 @@ function toggleRepeatRow(id, n) {
   const prev = repeatPos(e, entryProg);
   if (n === prev.z && !repeatComplete(e, prev)) advanceEntry(id, 1);
   else setRepeatRow(id, n);
+  requestAnimationFrame(() => scrollActiveIntoView(true));
 }
 
 // The repeat's own checkbox, on its header — the whole-block equivalent of
@@ -128,6 +130,7 @@ function toggleRepeatDone(id, evt) {
   entryProg[repeatKey(id)] = repeatPosFromRowsDone(e, wasDone ? 0 : repeatRowCount(e));
   stampClock(repeatKey(id));
   save(); render(); renderGlobalRows();
+  requestAnimationFrame(() => scrollActiveIntoView(true));
 }
 
 // Skip a whole pass without tapping through every row in it. Always lands on
@@ -144,6 +147,7 @@ function advanceRepeatPass(id, delta) {
   entryProg[repeatKey(id)] = clampRepeatPos(e, { y: wantY, z: 1 });
   stampClock(repeatKey(id));
   save(); render(); renderGlobalRows();
+  requestAnimationFrame(() => scrollActiveIntoView(true));
 }
 
 // A collapsed repeat's expand toggle — a manual preview, not a progress
@@ -252,6 +256,17 @@ let scrollTicking = false;
 const SCROLL_HIDE_THRESHOLD = 24; // net movement required before toggling
 const SCROLL_HIDE_MIN_Y = 40;     // always show header near the top
 
+// Set for the duration of a scrollActiveIntoView() focus-scroll (see
+// render.js). That scroll is itself a scroll-down by any normal reading of
+// scrollAnchor, so without this the auto-hide logic below re-hides the
+// header mid-flight — right as scrollActiveIntoView is depending on it
+// staying put to compute where "below the sticky bars" actually is. A
+// suppression flag sidesteps the whole race rather than trying to out-time
+// it: nothing can hide the header while it's set, however many scroll
+// events the programmatic scroll (or the layout shift from re-rendering)
+// happens to fire.
+let suppressHeaderHide = false;
+
 function updatePhaseHeaderOffset() {
   const h = document.getElementById('header');
   if (!h) return;
@@ -264,8 +279,9 @@ function updateHeaderScrollState() {
   const h = document.getElementById('header');
   if (!h) return;
   // The chart page's header is always visible — never let it hide, even if a
-  // stray scroll event fires during a phase-transition race.
-  if (document.body.classList.contains('chart-page')) {
+  // stray scroll event fires during a phase-transition race. Same treatment
+  // while a focus-scroll is in flight (suppressHeaderHide) — see above.
+  if (document.body.classList.contains('chart-page') || suppressHeaderHide) {
     h.classList.remove('header-hidden');
     updatePhaseHeaderOffset();
     return;
