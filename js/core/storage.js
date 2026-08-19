@@ -159,8 +159,8 @@ function deleteProject(projectId, evt) {
   if (!proj || proj.deletedAt) return;
   sheetConfirm({
     title: 'Delete project',
-    message: 'Delete “' + proj.name + '”?',
-    detail: 'This removes its progress from this device. It can’t be undone.',
+    message: 'Delete "' + proj.name + '"?',
+    detail: 'This removes its progress from this device. It can\'t be undone.',
     confirmLabel: 'Delete',
     danger: true,
     onConfirm: () => {
