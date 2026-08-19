@@ -212,26 +212,56 @@ function repeatEntryHtml(e, isActive) {
   </div>`;
 }
 
-// Puts the active entry at the top of the viewport on a fresh phase load.
-// Deliberately NOT called from render() itself — re-snapping the scroll
-// position on every tick of a checkbox would fight whatever the knitter is
-// mid-scroll doing. Only the navigation entry points (go, openProject) call
-// this, once, after the new phase is on screen.
+// Puts the active entry at the top of the viewport — after a fresh phase
+// load, and after every progress-changing tap (toggleEntry, toggleRepeatRow,
+// toggleRepeatDone, advanceRepeatPass), so the "you are here" card never
+// drifts out of view as a knitter works down a section.
 //
-// scrollIntoView clamps at the bottom of the page on its own: an active
-// entry near the end of a section can't be pushed all the way to the top
-// without scrolling past content that doesn't exist, so the browser just
-// scrolls as far as it can and stops — which is exactly "keep it at the
-// top unless that would run past the end."
+// Plain scrollIntoView({block:'start'}) isn't enough: .header and
+// .phase-header both sit position:sticky on top of the scrolling content, so
+// aligning the target to the scroll container's own top tucks it straight
+// behind them.
+//
+// window.scrollTo clamps at the bottom of the page on its own: an active
+// entry near the end of a section can't be pushed all the way under the
+// sticky bars without scrolling past content that doesn't exist, so it just
+// scrolls as far as it can and stops — "keep it at the top unless that would
+// run past the end."
 //
 // Falls back to the very top when there's no active entry to find — a
 // chart phase (which tracks its own current row separately) or a section
 // that's entirely done.
+//
+// Forces the header visible first, via suppressHeaderHide (app.js) rather
+// than just flipping the class — snapping the active step back into focus
+// is exactly the moment the header should be visible, and .header
+// auto-hides on scroll-down (see updateHeaderScrollState), which this
+// scroll itself triggers if left alone. A plain one-time class flip isn't
+// enough: the scroll listener re-evaluates on every 'scroll' event this
+// programmatic scroll fires (and on the layout shift from whatever
+// re-rendered before this ran), and by its own reading this IS a scroll
+// down, so it would hide the header again mid-flight. The suppression flag
+// sidesteps that race outright instead of trying to out-time it, and
+// clears itself after the scroll (smooth or instant) has had time to settle.
+//
+// Clearance is the two sticky bars' own heights (offsetHeight), not
+// .phase-header's getBoundingClientRect — its `top` runs a 0.25s CSS
+// transition off --header-h, so a rect read straight after flipping
+// header-hidden would catch it mid-transition, not at either end state.
+// offsetHeight is intrinsic box height, untouched by that transition.
 function scrollActiveIntoView(smooth) {
   const active = document.querySelector('#phase-content .step.active');
   const behavior = smooth ? 'smooth' : 'auto';
-  if (active) active.scrollIntoView({ block: 'start', behavior });
-  else window.scrollTo({ top: 0, behavior });
+  if (!active) { window.scrollTo({ top: 0, behavior }); return; }
+  if (typeof suppressHeaderHide !== 'undefined') suppressHeaderHide = true;
+  const h = document.getElementById('header');
+  if (h) h.classList.remove('header-hidden');
+  const phaseHeader = document.querySelector('.phase-header');
+  const clearance = (h ? h.offsetHeight : 0) + (phaseHeader ? phaseHeader.offsetHeight : 0);
+  if (typeof updatePhaseHeaderOffset === 'function') updatePhaseHeaderOffset();
+  const target = Math.max(0, window.scrollY + active.getBoundingClientRect().top - clearance - 8);
+  window.scrollTo({ top: target, behavior });
+  setTimeout(() => { if (typeof suppressHeaderHide !== 'undefined') suppressHeaderHide = false; }, smooth ? 500 : 150);
 }
 
 function renderPhase() {
