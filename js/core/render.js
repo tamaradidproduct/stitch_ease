@@ -684,7 +684,10 @@ function renderPicker() {
       <div class="lib-card-meta">${[p.badge, p.desc].filter(Boolean).join(' · ')}</div>
     </div>`).join('');
   document.getElementById('phase-content').innerHTML =
-    `<div class="picker-hint">Choose a pattern for your new project</div><div class="lib-list">${cards}</div>`;
+    `<div class="picker-hint">Choose a pattern for your new project</div><div class="lib-list">${cards}</div>
+    <button class="picker-import-btn" onclick="triggerImportPattern()">Import pattern (CSV)</button>
+    <input type="file" id="pattern-csv-input" accept=".csv,text/csv" style="display:none"
+           onchange="handlePatternCsvFile(this)">`;
 }
 
 // Build the header for the current view. Only rebuilds when the view/project
