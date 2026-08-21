@@ -742,13 +742,26 @@ const POSY_PHASES = [
     ]
   },
   {
+    // A hasChart phase only ever renders the chart itself plus the ONE
+    // entry marked postChart — every other entry is invisible (see
+    // buildChartTracker/recapHtml in chart.js). So the cast-on row and the
+    // "how to read this chart" framing (the placket sts wrapping the lace
+    // panel on every row, which the chart array itself has no room for)
+    // have to live in their own phase before the chart, not inside it.
+    id:'posy-rf-setup', name:'Right front · setup', desc:'Cast on, place marker, start Chart 1',
+    entries:[
+      {kind:'row', id:'rfl0', text:'Next row (WS): sl1 pw, *p1, k1* repeat ** to 2 sts before end, p2, cast on 34 sts. You now have 47 sts.'},
+      {kind:'note', id:'rfl1', text:'How Chart 1 fits with the placket:', bullets:[
+        'The chart\'s 1st stitch is the edge stitch — knit it on RS, purl it on WS',
+        '1st row (RS): work chart row 1, place a marker, then *k1, p1* rep ** to 2 sts before end, k2 — you\'ll have 12 sts for the placket and 35 for the lace panel',
+        'Every WS row after that: sl1 pw, *p1, k1* rep ** to 1 st before the marker, p1, sm, work the chart\'s next row',
+      ]},
+    ]
+  },
+  {
     id:'posy-rf-lace', name:'Right front · lace', desc:'Chart 1 · 43 sts',
     hasChart: true, flatChart: true, chart: POSY_CHART_1,
     entries:[
-      {kind:'note', id:'rfl0', text:'Next row (WS): sl1 pw, *p1, k1* repeat ** to 2 sts before end, p2, cast on 34 sts. You now have 47 sts.'},
-      {kind:'note', id:'rfl1', text:'Chart 1 contains an edge stitch (the 1st stitch), which is knitted on RS and purled on WS.'},
-      {kind:'note', id:'rfl2', text:'1st lace row (RS): work the 1st row of Chart 1, place marker, then *k1, p1* repeat ** to 2 sts before end, k2. You now have 12 sts for the placket and 35 sts for the lace panel.'},
-      {kind:'note', id:'rfl3', text:'2nd lace row (WS): sl1 pw, *p1, k1* repeat ** to 1 st before m, p1, sm, work the next row of Chart 1.'},
       {kind:'note', id:'rfl4', text:'You now have 55 sts.', postChart:true},
     ]
   },
@@ -771,13 +784,21 @@ const POSY_PHASES = [
     ]
   },
   {
+    id:'posy-lf-setup', name:'Left front · setup', desc:'Cast on, place marker, start Chart 2',
+    entries:[
+      {kind:'row', id:'lfl0', text:'Move the 13 sts from the other end of the placket (on the stitch holder) to the needle. Lay your work with RS facing you — all sts should be on the right-hand needle with the loose end of the thread at the tip. Attach the thread and cast on 34 sts. You now have 47 sts.'},
+      {kind:'note', id:'lfl1', text:'How Chart 2 fits with the placket:', bullets:[
+        'The chart\'s 43rd stitch is the edge stitch — knit it on RS, purl it on WS',
+        'This chart is inverted: its odd rows are WS, so you start from the left, not the right',
+        '1st row (WS): work chart row 1, place a marker, then *p1, k1* rep ** to 2 sts before end, p2',
+        'Every RS row after that: sl1 kw, *k1, p1* rep ** to 1 st before the marker, k1, sm, work the chart\'s next row',
+      ]},
+    ]
+  },
+  {
     id:'posy-lf-lace', name:'Left front · lace', desc:'Chart 2 · 43 sts',
     hasChart: true, flatChart: true, wsFirst: true, chart: POSY_CHART_2,
     entries:[
-      {kind:'note', id:'lfl0', text:'Move the 13 sts from the other end of the placket (on the stitch holder) to the needle. Lay your work with RS facing you — all sts should be on the right-hand needle with the loose end of the thread at the tip. Attach the thread and cast on 34 sts. You now have 47 sts.'},
-      {kind:'note', id:'lfl1', text:'Chart 2 contains an edge stitch (the 43rd stitch), which is knitted on RS and purled on WS. This time all odd rows are on WS, so you start working the chart from left to right.'},
-      {kind:'note', id:'lfl2', text:'1st lace row (WS): work the 1st row of Chart 2, place marker, then *p1, k1* repeat ** to 2 sts before end, p2.'},
-      {kind:'note', id:'lfl3', text:'2nd lace row (RS): sl1 kw, *k1, p1* repeat ** to 1 st before m, k1, sm, work the next row of Chart 2.'},
       {kind:'note', id:'lfl4', text:'You now have 55 sts.', postChart:true},
     ]
   },
@@ -799,16 +820,25 @@ const POSY_PHASES = [
     ]
   },
   {
+    id:'posy-back-setup', name:'Back · setup', desc:'Pick up 123 sts, place markers, start the charts',
+    entries:[
+      {kind:'row', id:'bkl0', text:'Lay your work with RS facing you. Starting on the "left front", pick up and knit 34 sts along the cast-on edge, then 55 sts along the placket edge, then 34 sts from the "right front" cast-on edge. There should be no holes where the placket joins the fronts — pick up carefully. On the placket edge, pick up evenly: when you reach the middle you should have picked up 27 sts. You now have 123 sts.'},
+      {kind:'note', id:'bkl1', text:'How the back charts fit together:', bullets:[
+        'The lace panels are established in the first row, in order Chart 5, Chart 4, Chart 3, Chart 4, Chart 3, Chart 4, Chart 6 (mirroring the front panels — it helps to have Charts 1 and 2 in front of you)',
+        'Edge sts aren\'t included in the charts; use stitch markers to separate the panels',
+        'All odd rows are WS this time, so start each chart from the left',
+      ]},
+      {kind:'note', id:'bkl2', text:'How to work the rows:', bullets:[
+        '1st row (WS): p1, work the 1st row of each chart in order — Chart 5, [Chart 4, Chart 3] repeat once more, Chart 4, Chart 6 — then k1, p1',
+        'Every RS row after that: k1, p1, work the next row of each chart as established, then k1',
+        'After 25 rows of the charts: the edge sts change — RS becomes k2, work charts, k1; WS becomes p1, work charts, p2 — for the remaining rows',
+      ]},
+    ]
+  },
+  {
     id:'posy-back-lace', name:'Back · lace', desc:'Charts 3–6 combined · 120 sts + edges',
     hasChart: true, flatChart: true, wsFirst: true, chart: POSY_BACK_CHART,
     entries:[
-      {kind:'note', id:'bkl0', text:'Lay your work with RS facing you. Starting on the "left front", pick up and knit 34 sts along the cast-on edge, then 55 sts along the placket edge, then 34 sts from the "right front" cast-on edge. There should be no holes where the placket joins the fronts — pick up carefully. On the placket edge, pick up evenly: when you reach the middle you should have picked up 27 sts. You now have 123 sts.'},
-      {kind:'note', id:'bkl1', text:'The lace panels are established in the first row below, in the order Chart 5, Chart 4, Chart 3, Chart 4, Chart 3, Chart 4, Chart 6 (mirroring the front lace panels — it can help to have Charts 1 and 2 in front of you). Edge sts aren’t included in the charts; use stitch markers to separate the panels. All odd rows are on WS this time, so start each chart from the left.'},
-      {kind:'note', id:'bkl2', text:'1st lace row (WS): p1, work the 1st row of each chart in order — Chart 5, [Chart 4, Chart 3] repeat once more, Chart 4, Chart 6 — then k1, p1.'},
-      {kind:'note', id:'bkl3', text:'2nd lace row (RS): k1, p1, work the next row of each chart as established, then k1.'},
-      {kind:'note', id:'bkl4', text:'Work as established until you’ve finished 25 rows of the charts.'},
-      {kind:'note', id:'bkl5', text:'Next lace row (RS): k2, work the next row of charts as established, k1.'},
-      {kind:'note', id:'bkl6', text:'Next lace row (WS): p1, work the next row of charts as established, p2.'},
       {kind:'note', id:'bkl7', text:'Remove all markers between lace panels once all rows of the charts are finished.', postChart:true},
     ]
   },
@@ -850,12 +880,19 @@ const POSY_PHASES = [
     ]
   },
   {
+    id:'posy-body-hem-setup', name:'Body · lace hem setup', desc:'Place markers, start Charts 7 & 8',
+    entries:[
+      {kind:'note', id:'bhl0', text:'Use stitch markers to separate lace panels.'},
+      {kind:'note', id:'bhl1', text:'How to work the rows:', bullets:[
+        '1st row (RS): sl1 kw, *k1, p1* rep ** to 1 st before m, k1, sm, k1, work the 1st row of each chart in order — [Chart 8, Chart 7] repeated 5 more times, then Chart 8 — then sm, *k1, p1* rep ** to 2 sts before end, k2',
+        'Every WS row after that: sl1 pw, *p1, k1* rep ** to 1 st before m, p1, sm, work the next row of each chart as established, p1, sm, *p1, k1* rep ** to 2 sts before end, p2',
+      ]},
+    ]
+  },
+  {
     id:'posy-body-hem-lace', name:'Body · lace hem', desc:'Charts 7 & 8 combined × 13 · 234 sts',
     hasChart: true, flatChart: true, chart: POSY_BODY_HEM_CHART,
     entries:[
-      {kind:'note', id:'bhl0', text:'Use stitch markers to separate lace panels.'},
-      {kind:'note', id:'bhl1', text:'1st lace row (RS): sl1 kw, *k1, p1* repeat ** to 1 st before m, k1, sm, k1, work the 1st row of each chart in order — [Chart 8, Chart 7] repeated 5 more times, then Chart 8 — then sm, *k1, p1* repeat ** to 2 sts before end, k2.'},
-      {kind:'note', id:'bhl2', text:'2nd lace row (WS): sl1 pw, *p1, k1* repeat ** to 1 st before m, p1, sm, work the next row of each chart as established in the previous row, p1, sm, *p1, k1* repeat ** to 2 sts before end, p2.'},
       {kind:'note', id:'bhl3', text:'Remove all markers once all rows of the charts are finished.', postChart:true},
     ]
   },
