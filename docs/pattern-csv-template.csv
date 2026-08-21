@@ -1,0 +1,7 @@
+pattern_id,pattern_name,pattern_badge,pattern_desc,phase_id,phase_name,phase_desc,kind,entry_id,text,bullets,repeat_times,sub_row_id,sub_row_text
+my-tatting-pattern,My Tatting Pattern,Tatting,"One-line description of the finished piece",materials,Materials,,note,materials-list,"List everything needed before starting",Thread size and color|Bead sizes/colors|Findings (clasp etc.),,,
+my-tatting-pattern,,,,motif,Motif,Notes about this phase,row,motif-step-1,"First single-row instruction, e.g. a ring or chain",,,,
+my-tatting-pattern,,,,motif,,,row,motif-step-2,"Second single-row instruction",,,,
+my-tatting-pattern,,,,motif,,,repeat,motif-repeat-1,"Optional intro text for the repeated block",,3,sub-a,"First sub-row repeated each pass"
+my-tatting-pattern,,,,motif,,,repeat,motif-repeat-1,,,3,sub-b,"Second sub-row repeated each pass"
+my-tatting-pattern,,,,finishing,Finishing,,note,finishing-note,"Assembly / beading / blocking instructions",,,,
