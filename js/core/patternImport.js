@@ -62,7 +62,9 @@ function buildPatternFromRows(rows) {
   if (!rows.length) throw new Error('CSV has no data rows.');
   const patternId = rows[0].pattern_id;
   if (!patternId) throw new Error('First row is missing pattern_id.');
-  if (patternById(patternId)) throw new Error(`A pattern with id "${patternId}" already exists.`);
+  // Whether patternId may already be taken (a fresh import vs. an update) is
+  // importPatternCsvText's call, not this function's — this only builds and
+  // validates the shape of what the CSV describes.
 
   const named = rows.find(r => r.pattern_name);
   const pattern = {
@@ -134,9 +136,28 @@ function buildPatternFromRows(rows) {
   return pattern;
 }
 
-function importPatternCsvText(text) {
+// `replace: true` is the caller's confirmation that overwriting an existing
+// custom pattern is intended (see confirmReplacePattern below) — without it,
+// a same-id CSV is treated as a mistake rather than silently applied, since
+// it changes what every project on that pattern knits.
+function importPatternCsvText(text, opts) {
+  opts = opts || {};
   const pattern = buildPatternFromRows(parseCsv(text));
-  PATTERNS.push(pattern);
+  const existingIdx = PATTERNS.findIndex(p => p.id === pattern.id);
+  if (existingIdx === -1) {
+    PATTERNS.push(pattern);
+  } else {
+    const existing = PATTERNS[existingIdx];
+    if (!existing.custom) {
+      throw new Error(`"${existing.name}" is a built-in pattern and can't be replaced by CSV import.`);
+    }
+    if (!opts.replace) {
+      const err = new Error(`already-exists`);
+      err.existingId = pattern.id;
+      throw err;
+    }
+    PATTERNS[existingIdx] = pattern;
+  }
   saveCustomPatterns();
   return pattern;
 }
@@ -148,8 +169,12 @@ function triggerImportPattern() {
   if (input) input.click();
 }
 
-function importResultSheet(title, message) {
-  openSheet(title, `<p class="sheet-msg">${escapeHtml(message)}</p>
+// `safeHtml` is trusted HTML the caller has already made safe — either
+// escapeHtml()'d raw text, or a pattern field that was escaped once already
+// at import time (see buildPatternFromRows) and would be double-escaped by
+// escaping it again here.
+function importResultSheet(title, safeHtml) {
+  openSheet(title, `<p class="sheet-msg">${safeHtml}</p>
     <div class="sheet-actions"><button class="sheet-btn primary" onclick="dismissSheet()">OK</button></div>`);
 }
 
@@ -159,17 +184,51 @@ function handlePatternCsvFile(input) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = () => {
+    const text = String(reader.result);
     try {
-      const pattern = importPatternCsvText(String(reader.result));
+      const pattern = importPatternCsvText(text);
       resetHeaderKey();
       render();
       importResultSheet('Pattern imported', `${pattern.name} was added to the library.`);
     } catch (e) {
-      importResultSheet('Import failed', e.message || String(e));
+      if (e.existingId) confirmReplacePattern(text, e.existingId);
+      else importResultSheet('Import failed', escapeHtml(e.message || String(e)));
     }
   };
   reader.onerror = () => importResultSheet('Import failed', 'Could not read that file.');
   reader.readAsText(file);
+}
+
+// A same-id CSV is an update, not a duplicate — but it's still a structural
+// change to a pattern projects may already be knitting, so it's confirmed
+// rather than applied silently. The existing patternForProject()/adoptPattern
+// flow (state.js) already handles that: a project whose progress predates the
+// change keeps working from its frozen snapshot and gets the normal
+// "Pattern updated · Review" chip, exactly as it would for a bundled pattern
+// whose code changed underneath it. Nothing project-side needed adding here.
+function confirmReplacePattern(text, id) {
+  const existing = patternById(id);
+  const body = `<p class="sheet-msg">"${existing.name}" is already in your library. Replace it with this CSV?</p>
+    <p class="sheet-sub">Existing projects keep their progress — they'll show "Pattern updated" so you can review what changed.</p>
+    <div class="sheet-actions">
+      <button class="sheet-btn" onclick="dismissSheet()">Cancel</button>
+      <button class="sheet-btn primary" id="pattern-replace-ok">Update</button>
+    </div>`;
+  openSheet('Update pattern?', body, {
+    onOpen: el => {
+      el.querySelector('#pattern-replace-ok').onclick = () => {
+        closeSheet();
+        try {
+          const pattern = importPatternCsvText(text, { replace: true });
+          resetHeaderKey();
+          render();
+          importResultSheet('Pattern updated', `${pattern.name} was updated.`);
+        } catch (e) {
+          importResultSheet('Import failed', escapeHtml(e.message || String(e)));
+        }
+      };
+    }
+  });
 }
 
 function removeCustomPattern(id) {
