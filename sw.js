@@ -15,6 +15,7 @@ const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './ic
   './js/core/app.js',
   './js/cloud/auth.js',
   './js/cloud/sync.js',
+  './js/cloud/family.js',
   './js/cloud/pdfsync.js',
   './js/patterns/peacock-tee.js',
   './js/patterns/tatted-triangle.js',

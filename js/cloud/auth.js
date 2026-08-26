@@ -83,8 +83,22 @@ function initCloud() {
       resetHeaderKey();
       render();
     }
-    if (session) { handleSignedIn(currentUserId()); syncOnSignedIn(); }
-    else syncOnSignedOut();
+    if (session) {
+      handleSignedIn(currentUserId());
+      syncOnSignedIn();
+      // A family is resolved once per sign-in, not per push: pdfsync needs the
+      // id synchronously and must never be the thing that discovers it.
+      // ensure_family() is idempotent, so this is safe on every token refresh.
+      if (typeof ensureFamily === 'function') {
+        ensureFamily().then(() => { if (typeof refreshFamilyRoster === 'function') refreshFamilyRoster(); });
+      }
+    } else {
+      syncOnSignedOut();
+      // Same reasoning as pt3_owner: a cached family id left behind would let
+      // the next account on a shared iPad push PDFs into the previous
+      // household's storage.
+      if (typeof clearFamily === 'function') clearFamily();
+    }
   });
 
   // Coming back online doesn't fire an auth event, but it does change what the
@@ -303,6 +317,7 @@ function openAccountSheet(msg) {
     </div>
     ${msg ? msgHtml(msg) : ''}
     ${syncBlockHtml()}
+    ${familyBlockHtml()}
     ${pdfStorageBlockHtml()}
     ${hasUnclaimedProjects() ? `<p class="acct-err">${liveProjects().length === 1
         ? 'A project on this device isn’t in your account yet.'
@@ -324,6 +339,7 @@ function openAccountSheet(msg) {
       // when they wonder whether their work is actually backed up.
       if (claim) claim.onclick = () => { claimLocalProjects(currentUserId()); openAccountSheet(); };
       wirePdfStorageBlock(el);
+      if (typeof wireFamilyBlock === 'function') wireFamilyBlock(el);
     }
   });
 }

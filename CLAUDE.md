@@ -15,6 +15,7 @@ peacock-tee-deploy/
   js/core/render.js             ← render*/stepHtml/openSheet/escapeHtml
   js/core/pdf.js                ← the original pattern PDF (IndexedDB + the sheet)
   js/cloud/pdfsync.js           ← PDF sync: metadata always, bytes on demand
+  js/cloud/family.js            ← families: who a pattern PDF is shared with
   js/cloud/auth.js              ← Supabase client, session, account sheet, claim flow
   js/cloud/sync.js              ← clocks, outbox, push, pull, three-way merge
   js/core/app.js                ← nav, SW registration, bootstrap  ← MUST BE LAST
@@ -133,6 +134,10 @@ The tracker is a transcription — no schematics, no photos, no sizing table. Th
 - `pullPdfs` runs in **its own try** inside `pull()`, so a storage hiccup can't cost the pull its cursor save and look like sync failing.
 - `fetchRemotePdf` sets `localMs` to the **remote** clock, not `now()` — claiming a fresh local edit for a file that was only copied down would push the same bytes straight back up. `pushPdf` also drops when `remoteMs === localMs`.
 - `claimLocalProjects` calls `enqueueUnsyncedPdfs()`: PDFs are keyed by pattern, so walking the projects list doesn't reach them, and one may have been attached long before anyone signed in.
+- **PDFs are shared across a FAMILY**, not an account (`js/cloud/family.js`). One person attaches Lenore once; everyone else opens it. Projects and progress stay per-account — two people knitting the same pattern are knitting different garments and must not share a row counter.
+- **Joining is by single-use, 7-day invite code**, not "any signed-in user": sign-up is open, so that would mean anyone who cares to make an account. Redeeming REPLACES your family — "my family's copy of Lenore" has to name exactly one file.
+- **Storage paths did not change** — objects stay at `<uploader_uid>/<patternId>.pdf` and only the READ policy widened. Re-pathing them to `<family_id>/…` needs the Storage API object by object, and there is a real 6.7MB upload in there; rewriting `storage.objects.name` in SQL alone points the row at bytes that aren't there. `remotePath` is therefore stored in the index, never recomputed from the signed-in uid.
+- **`auth_family_ids()` is SECURITY DEFINER** because the obvious membership policy re-enters itself — Postgres raises `infinite recursion detected in policy`. Its EXECUTE stays granted to `authenticated`: RLS expressions run with the querying user's privileges, so revoking it breaks every policy rather than hardening it.
 - **The bucket is private.** Bought patterns; a public bucket is the same redistribution problem as committing them. Owner-only policies, `<uid>/<patternId>.pdf`, where the first path segment *is* the authorisation check.
 
 > ⚠️ **The GitHub Pages repo is public.** Anything in `pdf/` is world-readable at a guessable URL. Only bundle patterns this repo has the right to publish — a bought pattern (Lenore, Peacock Tee) must be attached on-device, never committed.
@@ -235,6 +240,8 @@ Within a pattern, phase nav is at the bottom. On non-chart phases it's the fixed
 - Don't commit a bought pattern's PDF to `pdf/` — the Pages repo is public, so publishing it is redistribution
 - Don't purge a pattern's PDF in `deleteProject` — it belongs to the pattern, and another project may still refer to it
 - Don't make the `pattern-pdfs` bucket public, and don't auto-download PDF bytes on pull — metadata syncs, bytes wait for a tap
+- Don't widen PDF reads to `authenticated` instead of the family — sign-up is open, so that publishes bought patterns to anyone who makes an account
+- Don't derive a PDF's storage path from the signed-in uid — the uploader may be another family member; use the row's `storage_path`
 - Don't deploy or push unless the user asks
 
 ## Figma design reference
