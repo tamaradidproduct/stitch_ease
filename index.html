@@ -74,12 +74,22 @@
     flex: 1; min-height: 0; margin: 0; border: none;
     display: flex; flex-direction: column;
   }
-  /* The stage holds the scrolling viewport + the floating recenter button. */
+  /* The stage holds the scrolling viewport + the mid-row track. */
   body.chart-page .chart-stage {
     flex: 1; min-height: 0; position: relative;
     display: flex; flex-direction: column;
   }
-  body.chart-page .chart-vp { flex: 1; min-height: 0; height: auto; }
+  /* Still fills whatever space is left (flex:1, as before) — a bigger
+     screen shows more rows, which is fine. min-height is the floor: at
+     least ~11 rows stay visible even when the phase header/recap crowd it,
+     so the current row always has real context around it rather than being
+     squeezed down to a sliver. In cell-size units, not a flat px number, so
+     the row count is what stays constant across zoom, not the pixel height
+     — see resizeChart(). */
+  body.chart-page .chart-vp {
+    flex: 1; height: auto;
+    min-height: calc((var(--cell-sz) + 1px) * 11);
+  }
 
   .chart-overlay-top, .chart-overlay-bottom {
     flex: 0 0 auto; background: var(--card); overflow: hidden;
@@ -87,23 +97,27 @@
   .chart-overlay-top { border-bottom: 1px solid var(--border); }
   .chart-overlay-bottom { border-top: 1px solid var(--border); }
 
-  /* Floating zoom + recenter buttons — stacked bottom-right of the chart area */
-  .chart-fabs {
+  /* Mid-row tracker drag handle — lives in its own strip BELOW the scrolling
+     grid (.chart-vp), not overlapping it, so it never covers a row of
+     stitches. Same width as .chart-vp (both fill .chart-stage), so the
+     handle's `left` — set entirely by JS (updateMidRowHandle) — lines up
+     with the line's x position inside the grid above it. */
+  .mid-row-track {
+    position: relative;
+    flex: 0 0 30px;
+    border-top: 1px solid var(--border);
+  }
+  .mid-row-handle {
     display: none;
-    position: absolute; right: 14px; bottom: 14px; z-index: 15;
-    flex-direction: column; gap: 8px; align-items: center;
+    position: absolute; top: 50%; z-index: 16;
+    width: 22px; height: 22px; margin-left: -11px; transform: translateY(-50%);
+    border-radius: 50%;
+    background: var(--ch-blue); border: 2px solid var(--card);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    cursor: grab; touch-action: none;
   }
-  body.chart-page .chart-fabs { display: flex; }
-  .chart-fab-btn {
-    width: 40px; height: 40px; border-radius: 50%;
-    border: 1px solid var(--border); background: var(--card);
-    color: var(--text); cursor: pointer; font-size: 13px; font-weight: 600;
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-    transition: background 0.15s, transform 0.15s;
-  }
-  .chart-fab-btn:active { background: var(--bg); transform: scale(0.92); }
-  .chart-fab-btn.chart-recenter { width: 44px; height: 44px; color: var(--accent); }
+  .mid-row-handle:active { cursor: grabbing; }
+  body.chart-page .mid-row-handle { display: block; }
 
   /* ── Header ── */
   .header {
@@ -341,6 +355,10 @@
   /* Notes and the original PDF sit together, top-right of the section header. */
   .phase-head-tools { flex-shrink: 0; display: flex; align-items: center; gap: 6px; margin-top: 2px; }
   .phase-head-tools .phase-folder { margin-top: 0; }
+  /* Chart zoom, in the header tool row rather than floating over the grid
+     (where it used to cover stitches on narrow charts). Text buttons, same
+     icon-button treatment as the notes/PDF SVGs beside them. */
+  .chart-zoom-btn { font-size: 13px; font-weight: 700; line-height: 1; padding: 2px 3px; }
 
   /* ── Reset menu (context menu on project title) ── */
   .reset-menu {
@@ -797,14 +815,28 @@
   .chart-vp::-webkit-scrollbar { display: none; }
 
   .chart-inner {
+    position: relative;
     display: flex; flex-direction: column;
-    padding: 8px 0; width: max-content; margin: 0 auto;
+    padding: 2px 0; width: max-content; margin: 0 auto;
+  }
+
+  /* Mid-row tracker — a bright line marking a stitch-column boundary, shared
+     across every row. Lives in #chart-inner (not #chart-vp) so it scrolls
+     WITH the chart content on both axes, same as the rows it crosses. */
+  .mid-row-line {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 2px;
+    background: var(--ch-blue);
+    pointer-events: none;
+    left: var(--mid-row-x, 0px);
+    z-index: 2;
   }
 
   .crow {
     display: flex; align-items: center;
-    padding: 2px 8px 2px 12px;
-    height: calc(var(--cell-sz) + 4px); flex-shrink: 0;
+    padding: 0.5px 8px 0.5px 4px;
+    height: calc(var(--cell-sz) + 1px); flex-shrink: 0;
   }
   .crow-active { background: var(--ch-active-bg); }
 
@@ -902,13 +934,16 @@
   .leg-cc-e { background: var(--ch-empty-bg); border-color: transparent; }
 
   /* Chart row recap — plain-language stitches for the current row */
-  .chart-recap { padding: 8px 16px 9px; }
+  .chart-recap { padding: 12px 16px 13px; }
   .recap-head {
     font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
     color: var(--muted); margin-bottom: 3px;
   }
   .recap-body {
-    font-size: 14px; line-height: 1.45; color: var(--text);
+    /* Matches .step-text — the same instruction typography used everywhere
+       else in the pattern, now that shrinking the grid (see chart-vp above)
+       leaves room to size it the same instead of a cramped chart-only 14px. */
+    font-size: 16px; line-height: 1.5; color: var(--text);
     font-variant-numeric: tabular-nums;
   }
 

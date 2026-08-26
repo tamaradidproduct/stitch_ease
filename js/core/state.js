@@ -101,6 +101,13 @@ function chartForPhase(phase) {
 // site only ever cares about that one, not the whole map.
 let chartRows = {};
 
+// The mid-row tracker line's column position, same shape as chartRows: a
+// per-phase map (persisted, local-only — see storage.js) plus a scalar for
+// "whichever chart is current right now". Index is 0..stitchCount, marking
+// the gap BEFORE column `idx` (0 = before the first stitch).
+let midRowPos = {};
+let midRowColIdx = 0;
+
 // Refresh CHART_B/CHART_TOTAL/chartCurrentRow for whichever phase is
 // current. Call this whenever `cur` changes or PHASES is reassigned —
 // applyPattern(), go(), and loadProjectState() (after restoring `cur` and
@@ -111,6 +118,16 @@ function syncActiveChart() {
   CHART_TOTAL = CHART_B.length;
   if (phase && phase.hasChart) {
     chartCurrentRow = Math.max(1, Math.min(CHART_TOTAL, chartRows[phase.id] || 1));
+
+    // Default to the middle stitch the first time this phase's chart is
+    // opened; otherwise clamp the stored index against the current row
+    // width, since a frozen-vs-live pattern mismatch could disagree on how
+    // many stitches a row has.
+    const stitchCount = CHART_B[0] ? CHART_B[0].length : 0;
+    const stored = midRowPos[phase.id];
+    midRowColIdx = (stored === undefined)
+      ? Math.round(stitchCount / 2)
+      : Math.max(0, Math.min(stitchCount, stored));
   }
 }
 

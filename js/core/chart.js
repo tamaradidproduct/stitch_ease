@@ -69,7 +69,7 @@ function buildChartTracker(phaseHeaderHtml) {
 
   // Stage: the scrolling chart viewport + floating recenter/zoom buttons
   html += '<div class="chart-stage">';
-  html += '<div class="chart-vp" id="chart-vp"><div class="chart-inner" id="chart-inner">';
+  html += '<div class="chart-vp" id="chart-vp" onscroll="updateMidRowHandle()"><div class="chart-inner" id="chart-inner">';
 
   // Render rows top-to-bottom visually (row 44 at top, row 1 at bottom).
   // The last-worked row (44) carries the post-chart confirm step directly
@@ -91,18 +91,14 @@ function buildChartTracker(phaseHeaderHtml) {
     html += '</div>';
   }
 
+  html += '<div class="mid-row-line" id="mid-row-line"></div>';
   html += '</div></div>'; // chart-inner + chart-vp
-  html += `<div class="chart-fabs">
-    <button class="chart-fab-btn" onclick="resizeChart(2)" aria-label="Zoom in">A+</button>
-    <button class="chart-fab-btn" onclick="resizeChart(-2)" aria-label="Zoom out">A−</button>
-    <button class="chart-fab-btn chart-recenter" onclick="centerOnCurrentRow()" aria-label="Center on current row">
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-        <circle cx="9" cy="9" r="3" fill="currentColor"/>
-        <circle cx="9" cy="9" r="6.5" stroke="currentColor" stroke-width="1.5"/>
-        <path d="M9 0.5V3M9 15v2.5M17.5 9H15M3 9H0.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-      </svg>
-    </button>
-  </div>`;
+  // Drag handle for the mid-row line — lives in its own strip BELOW the
+  // scrolling grid (a sibling of #chart-vp, not inside it), so it never
+  // covers a row of stitches. Directly below wherever the line currently
+  // sits on screen, tracking it through both zoom and horizontal scroll
+  // (see updateMidRowHandle). Position is set entirely by JS.
+  html += '<div class="mid-row-track"><div class="mid-row-handle" id="mid-row-handle" onpointerdown="startMidRowDrag(event)"></div></div>';
   html += '</div>'; // chart-stage
 
   // Bottom panel: legend (kept for the pattern-notes sheet, hidden here)
@@ -289,7 +285,7 @@ function renderChartDock() {
 // ─────────────────────────────────────────────
 // CHART SCROLL — centre current row in viewport
 // ─────────────────────────────────────────────
-function getRowH() { return cellSz + 4; } // must match .crow height in CSS (var(--cell-sz) + 4px)
+function getRowH() { return cellSz + 1; } // must match .crow height in CSS (var(--cell-sz) + 1px)
 
 function scrollChartToCurrent(behavior) {
   // Centre the current row in the chart viewport. The viewport itself grows
@@ -335,8 +331,101 @@ function smartScrollChart(rowEl, delta) {
 function resizeChart(delta) {
   cellSz = Math.max(10, Math.min(32, cellSz + delta));
   document.documentElement.style.setProperty('--cell-sz', cellSz + 'px');
+  updateMidRowLine();
   save();
   requestAnimationFrame(scrollChartToCurrent);
+}
+
+// ─────────────────────────────────────────────
+// MID-ROW TRACKER — a bright line marking a stitch-column boundary, shared
+// across every row of the current chart, plus a drag handle sitting right
+// below it. Snaps to column gaps, scrolls with the chart content (the line
+// lives inside #chart-inner, not #chart-vp), and is local-only: see the
+// pt3_proj_<id>_midRowPos comment in storage.js for why it never goes
+// through stampClock/sync.
+//
+// The handle is deliberately NOT inside #chart-inner: it needs to stay
+// grabbable at a fixed height in the viewport regardless of vertical scroll,
+// so it lives in #chart-stage instead (like the zoom/recenter FABs) and its
+// `left` is recomputed from the line's content position minus the
+// viewport's own horizontal scroll — the one thing that can move the two
+// out of sync between renders.
+// ─────────────────────────────────────────────
+const MID_ROW_GAP = 1, MID_ROW_PAD_L = 4; // must mirror .crow-cells gap / .crow padding-left
+
+// Column index → pixel offset within #chart-inner. cellSz is the only one of
+// the three constants that actually varies (via resizeChart), so it's the
+// only one read live.
+function midRowX(colIdx) {
+  return MID_ROW_PAD_L + colIdx * (cellSz + MID_ROW_GAP) - MID_ROW_GAP / 2;
+}
+
+function updateMidRowLine() {
+  const inner = document.getElementById('chart-inner');
+  if (!inner) return;
+  inner.style.setProperty('--mid-row-x', midRowX(midRowColIdx) + 'px');
+  updateMidRowHandle();
+}
+
+// Re-anchors the handle under the line's current on-screen position. Called
+// after any change to midRowColIdx/cellSz, and on every horizontal scroll of
+// #chart-vp (wired via the vp's inline onscroll), since scrolling moves the
+// line under a handle that doesn't scroll with it.
+function updateMidRowHandle() {
+  const vp = document.getElementById('chart-vp');
+  const handle = document.getElementById('mid-row-handle');
+  if (!vp || !handle) return;
+  const viewportX = midRowX(midRowColIdx) - vp.scrollLeft;
+  handle.style.left = Math.max(0, Math.min(vp.clientWidth, viewportX)) + 'px';
+}
+
+function changeMidRowPos(newColIndex) {
+  const phase = PHASES[cur];
+  if (!phase) return;
+  const stitchCount = CHART_B[0] ? CHART_B[0].length : 0;
+  const clamped = Math.max(0, Math.min(stitchCount, newColIndex));
+  if (clamped === midRowColIdx) return; // clamped drag — nothing moved, nothing to save
+  midRowColIdx = clamped;
+  midRowPos[phase.id] = midRowColIdx;
+  updateMidRowLine();
+  save();
+}
+
+function startMidRowDrag(evt) {
+  const inner = document.getElementById('chart-inner');
+  if (!inner) return;
+  evt.preventDefault();
+  const stitchCount = CHART_B[0] ? CHART_B[0].length : 0;
+
+  // #chart-inner's own bounding rect already reflects the viewport's current
+  // scroll position, so a pointer's clientX maps straight to a content
+  // x-offset without needing to add scrollLeft back in.
+  const colFromEvent = e => {
+    const relX = e.clientX - inner.getBoundingClientRect().left;
+    const col = Math.round((relX - MID_ROW_PAD_L + MID_ROW_GAP / 2) / (cellSz + MID_ROW_GAP));
+    return Math.max(0, Math.min(stitchCount, col));
+  };
+  // Live visual feedback every move, without writing to storage on every
+  // pixel of travel — same reasoning as resizeChart not persisting mid-gesture.
+  const preview = col => {
+    const inn = document.getElementById('chart-inner');
+    const handle = document.getElementById('mid-row-handle');
+    const vp = document.getElementById('chart-vp');
+    if (!inn || !handle || !vp) return;
+    inn.style.setProperty('--mid-row-x', midRowX(col) + 'px');
+    const viewportX = midRowX(col) - vp.scrollLeft;
+    handle.style.left = Math.max(0, Math.min(vp.clientWidth, viewportX)) + 'px';
+  };
+
+  preview(colFromEvent(evt));
+  const onMove = e => preview(colFromEvent(e));
+  const onUp = e => {
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+    changeMidRowPos(colFromEvent(e));
+  };
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
 }
 
 function changeChartRow(delta) {
