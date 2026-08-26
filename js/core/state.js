@@ -33,6 +33,10 @@ let CHART_TOTAL = 0;
 let TOTAL_STEPS = 0;
 let cur = 0;
 let phaseNavOpen = false;
+// A manual preview of a collapsed (inactive) repeat block, keyed by entry
+// id. UI-only — not progress, never saved or synced — so it resets on
+// reload the same as phaseNavOpen.
+let repeatExpanded = {};
 // `state` and `ctrs` are PRE-CONVERSION RELICS. Nothing writes them any more;
 // migrateToEntries() read them into entryProg and they are kept on disk only
 // as the record of what a project looked like before. No `globalRows` either:

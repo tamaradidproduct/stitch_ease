@@ -279,6 +279,13 @@
   .fab-new:active { background: #3c5a4b; transform: scale(0.94); }
   .home-empty { text-align: center; color: var(--muted); font-size: 14px; line-height: 1.6; padding: 24px 12px; }
   .picker-hint { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+  .picker-import-btn {
+    width: 100%; margin-top: 16px; padding: 13px; border-radius: var(--radius);
+    border: 1px solid var(--border); background: var(--card);
+    font-family: inherit; font-size: 14px; font-weight: 500;
+    color: var(--text); cursor: pointer;
+  }
+  .picker-import-btn:active { background: var(--bg); }
 
   /* ── Phase switch control + tabs ── */
   .phase-name-row { display: flex; align-items: center; gap: 8px; }
@@ -585,6 +592,16 @@
     -webkit-user-select: none; user-select: none;
   }
   .step:active { background: var(--bg); }
+  /* The "you are here" card — the ONE entry in the section that's next to
+     work on. Done entries and ones not reached yet both stay on the flat
+     .step look above; only the active entry lifts off the page. Same
+     background/border/radius as .lib-card elsewhere in the app. */
+  .step.active {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px;
+    margin: 10px 0;
+  }
+  .step.active:active { background: var(--card); }
   .step-circle {
     width: 22px; height: 22px; border-radius: 6px;
     border: 2px solid var(--muted); background: transparent;
@@ -618,28 +635,108 @@
      earlier pass at this showed only the current row plus a large number:
      that reads fine for a one-row rib repeat and badly for a six-ring tatting
      motif, where you need to see the shape of the whole thing while working
-     any part of it. */
-  .repeat-step { cursor: default; }
-  .repeat-step:active { background: transparent; }
-  .repeat-head {
-    display: flex; align-items: center; justify-content: space-between; gap: 12px;
-    background: var(--accent-light); border-radius: var(--radius-sm);
-    padding: 10px 12px;
-  }
-  .repeat-head .step-text { flex: 1; min-width: 0; font-weight: 600; color: var(--accent); }
-  .step.done .repeat-head { background: var(--done-bg); }
-  .step.done .repeat-head .step-text { color: var(--done-text); text-decoration: line-through; text-decoration-color: var(--muted); }
+     any part of it.
 
-  .rep-rows { list-style: none; margin: 10px 0 0; padding: 0; }
+     Same active/flat split as any other step: worked or not-yet-reached, a
+     repeat collapses to its name plus a row/pass count — there's no useful
+     one-line stand-in for what a six-ring motif actually says, so this is a
+     summary, not a preview. Tapping it (or the chevron) opens the full row
+     list without changing your position. Becoming the active entry expands
+     it automatically and lifts it onto the .lib-card-style surface below. */
+  .repeat-step { cursor: default; }
+  .repeat-step.active {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px;
+    margin: 10px 0;
+  }
+  .repeat-step.active:active { background: var(--card); }
+  .repeat-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding-bottom: 10px; margin-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .repeat-step.collapsed .repeat-head {
+    padding-bottom: 0; margin-bottom: 0; border-bottom: none; cursor: pointer;
+  }
+  .repeat-head-text { flex: 1; min-width: 0; }
+  .repeat-head-text .step-text { font-weight: 600; color: var(--accent); }
+  .repeat-head-sub {
+    font-size: 11px; font-weight: 500; color: var(--muted);
+    margin-top: 1px;
+  }
+  .step.done .repeat-head-text .step-text { color: var(--done-text); text-decoration: line-through; text-decoration-color: var(--muted); }
+
+  /* Collapsed, the name reads like any other step — the bold accent
+     treatment was doing the same job the "repeat" tag now does on its own,
+     and having both said it twice. Expanded/active keeps the bold accent
+     title; that's the one place the extra weight is earning its keep. */
+  .repeat-step.collapsed .repeat-head-title-row { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+  .repeat-step.collapsed .repeat-head-text .step-text { font-weight: 400; color: var(--text); }
+  .repeat-tag {
+    flex-shrink: 0; font-size: 10px; font-weight: 600; letter-spacing: 0.03em;
+    text-transform: uppercase; color: var(--accent); background: var(--accent-light);
+    padding: 2px 7px; border-radius: 20px; line-height: 1.4;
+  }
+  .step.done .repeat-tag { color: var(--muted); background: var(--bg); }
+
+  /* Expand/collapse chevron — same 24px circle as .phase-switch-btn, so a
+     "reveal more" control looks the same wherever it shows up. Points down
+     to open (there's more below), flips to point up once open. tabindex="-1"
+     on the collapsed version: the whole header is already the tap target,
+     so the button is a visual cue, not a second stop. */
+  .repeat-expand-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; border-radius: 50%;
+    border: 1px solid var(--border); background: var(--card);
+    color: var(--muted); cursor: pointer; flex-shrink: 0; padding: 0;
+    transition: background 0.15s;
+  }
+  .repeat-expand-btn:active { background: var(--bg); }
+  .repeat-expand-btn .chevron { transition: transform 0.2s; }
+  .repeat-expand-btn.open .chevron { transform: rotate(180deg); }
+
+  /* Pass stepper — jumps a whole pass (R rows) so getting from "Pass 1 of 3"
+     to "Pass 2 of 3" doesn't mean tapping through every row in between. Sits
+     beside the name, secondary to it: quieter than the row checkboxes below,
+     which are what's actually being worked. */
+  .rep-pass {
+    display: flex; align-items: center; gap: 4px; flex-shrink: 0;
+  }
+  .rep-pass-lbl {
+    font-size: 12px; font-weight: 600; color: var(--done-text);
+    min-width: 68px; text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .rep-pass-btn {
+    width: 22px; height: 22px; border-radius: 50%; border: none;
+    background: transparent; color: var(--accent);
+    font-size: 14px; font-weight: 400; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: background 0.12s; flex-shrink: 0;
+  }
+  .rep-pass-btn:active { background: rgba(0,0,0,0.08); }
+  .step.done .rep-pass-lbl,
+  .step.done .rep-pass-btn { color: var(--muted); }
+
+  .rep-rows { list-style: none; margin: 0; padding: 0; }
   .rep-row {
-    display: flex; align-items: flex-start; gap: 10px;
+    display: flex; align-items: flex-start; gap: 8px;
     padding: 11px 12px; border-radius: var(--radius-sm);
     border-left: 3px solid transparent;
     cursor: pointer; transition: background 0.15s;
   }
   .rep-row + .rep-row { margin-top: 2px; }
+  .rep-check {
+    flex-shrink: 0; width: 20px; height: 20px; border-radius: 5px;
+    border: 2px solid var(--muted); background: transparent;
+    display: flex; align-items: center; justify-content: center;
+    margin-top: 1px; transition: all 0.15s;
+  }
+  .rep-row.done .rep-check { background: var(--checkbox-done); border-color: var(--checkbox-done); }
+  .rep-check svg { display: none; }
+  .rep-row.done .rep-check svg { display: block; }
   .rep-n {
-    flex-shrink: 0; width: 20px; text-align: center;
+    flex-shrink: 0; width: 16px; text-align: center;
     font-size: 11px; font-weight: 600; color: var(--muted);
     font-variant-numeric: tabular-nums; margin-top: 2px;
   }
@@ -656,21 +753,6 @@
   .rep-row.now .rep-n { color: var(--accent); }
   .rep-row.now .rep-t { color: var(--done-text); font-weight: 500; }
   .step.done .rep-row { opacity: 0.6; }
-
-  /* Compact footer: 44px targets kept, the big number dropped to a size that
-     does not shout over the motif it belongs to. */
-  .rep-foot {
-    display: flex; align-items: center; gap: 12px;
-    margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);
-  }
-  .rep-stat { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px; }
-  .rep-lbl {
-    font-size: 10px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
-    color: var(--muted);
-  }
-  .rep-val { font-size: 17px; font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; }
-  .rep-val em { font-style: normal; font-size: 12px; font-weight: 500; color: var(--muted); }
-  .rep-abs { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 
   /* Position line on a repeat block: which row of which pass, and the
      pattern row it works out to. Was the cadence reminder before repeats
@@ -708,16 +790,6 @@
   .rc-btn:active { background: var(--accent-light); }
   .rc-val { font-size: 18px; font-weight: 500; min-width: 28px; text-align: center; color: var(--text); }
   .rc-target { font-size: 12px; color: var(--muted); }
-  .rc-mini-bar { width: 100%; height: 3px; background: var(--border); border-radius: 2px; margin-top: 8px; overflow: hidden; }
-  .rc-mini-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; }
-
-  /* The ± controls keep the chart dock's 44px circular shape (.cc-ctrl), but
-     green rather than the chart's blue: blue is the chart's own signal for
-     "the row you are on", and reusing it on a section control would say the
-     wrong thing. */
-  .rep-foot .cc-plus { background: var(--accent); }
-  .rep-foot .cc-plus:active { background: #3c584a; }
-  .rep-foot .cc-minus { background: var(--card); }
 
   /* ── Nav buttons — fixed at bottom ── */
   .nav-btns {
@@ -1029,10 +1101,12 @@
 <script src="js/patterns/tatted-triangle.js"></script>
 <script src="js/patterns/lenore.js"></script>
 <script src="js/patterns/frost-flower.js"></script>
+<script src="js/patterns/posy.js"></script>
 <script src="js/core/storage.js"></script>
 <script src="js/core/rows.js"></script>
 <script src="js/core/chart.js"></script>
 <script src="js/core/render.js"></script>
+<script src="js/core/patternImport.js"></script>
 <script src="js/core/pdf.js"></script>
 <script src="js/cloud/auth.js"></script>
 <script src="js/cloud/sync.js"></script>

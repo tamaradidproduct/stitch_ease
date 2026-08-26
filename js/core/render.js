@@ -38,6 +38,12 @@ const BACK_CHEVRON_SVG = `<svg class="chevron" width="6" height="10" viewBox="0 
         <path d="M5 1L1 5L5 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>`;
 
+// Down chevron — same shape as the phase-switch-btn's, reused for a
+// collapsed repeat's expand control.
+const DOWN_CHEVRON_SVG = `<svg class="chevron" width="10" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true">
+        <path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`;
+
 // Open-book icon (pattern notes / stitch help)
 const NOTES_SVG = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M12 6.5C10.6 5.2 8.7 4.5 6.5 4.5c-1.2 0-2.4.2-3.5.7v13c1.1-.5 2.3-.7 3.5-.7 2.2 0 4.1.7 5.5 2 1.4-1.3 3.3-2 5.5-2 1.2 0 2.4.2 3.5.7v-13c-1.1-.5-2.3-.7-3.5-.7-2.2 0-4.1.7-5.5 2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
@@ -92,18 +98,24 @@ function bulletsHtml(e) {
 // The only entry renderer there is. A note and a row are one tappable card; a
 // repeat gets the chart dock's layout, because a repeat's position is the one
 // thing the old counter could never express.
+//
+// isActive marks the ONE entry — the first not-yet-done one in the section —
+// that gets lifted onto the "you are here" card. Done entries and ones not
+// reached yet both rest flat on the page; there is exactly one active entry
+// at a time, same as a repeat's own "now" row.
 // ─────────────────────────────────────────────
-function entryHtml(e) {
-  if (e.kind === 'repeat') return repeatEntryHtml(e);
-  return noteOrRowEntryHtml(e);
+function entryHtml(e, isActive) {
+  if (e.kind === 'repeat') return repeatEntryHtml(e, isActive);
+  return noteOrRowEntryHtml(e, isActive);
 }
 
 // A note and a row tick identically. They differ in what a tick MEANS — a row
 // moves the Rows tally, a note does not — which is toggleEntry()'s business,
 // not the markup's.
-function noteOrRowEntryHtml(e) {
+function noteOrRowEntryHtml(e, isActive) {
   const done = entryDone(e, entryProg);
-  return `<div class="step ${done ? 'done' : ''}" onclick="toggleEntry('${e.id}')">
+  const cls = done ? 'done' : isActive ? 'active' : '';
+  return `<div class="step ${cls}" onclick="toggleEntry('${e.id}')">
     <div class="step-circle">${CHECK_SVG}</div>
     <div class="step-body">
       <div class="step-text">${e.text.replace(/\n/g, '<br>')}</div>
@@ -122,59 +134,145 @@ function noteOrRowEntryHtml(e) {
 //
 // Rows earlier in the CURRENT pass strike through and reset each pass, which
 // is how the pre-conversion checkable bullets behaved.
-function repeatEntryHtml(e) {
+function repeatEntryHtml(e, isActive) {
   const pos      = repeatPos(e, entryProg);
   const R        = repeatLength(e), T = e.times | 0;
   const total    = repeatRowCount(e);
-  const rowsDone = repeatRowsDone(e, pos);
   const done     = repeatComplete(e, pos);
-  const pct      = total ? Math.round(Math.min(100, rowsDone / total * 100)) : 0;
-  const abs      = absoluteRow(activeDoc, PHASES[cur].id, e.id, entryProg);
-  const standing = Math.min(rowsDone + 1, total);
+  const cls      = done ? 'done' : isActive ? 'active' : '';
+  const title    = (e.text || 'Repeat').replace(/\n/g, '<br>');
+
+  // Collapsed unless it's the active entry or the knitter tapped it open to
+  // check something — a preview, not a position change, so it never touches
+  // entryProg. Rows/passes rather than "repeat unit" here: that label makes
+  // sense once you're looking at the rows it names, not as a summary of them.
+  //
+  // The row count is R (rows in ONE pass), not R×T — "6 rows · 3 passes"
+  // describes the shape of the motif you're about to see; "18 rows" is the
+  // section's problem (the ROWS tally up top), not this block's.
+  if (!isActive && !repeatExpanded[e.id]) {
+    const summary = R === 1
+      ? total + (total === 1 ? ' row' : ' rows')
+      : R + ' rows · ' + T + (T === 1 ? ' pass' : ' passes');
+    return `<div class="step repeat-step ${cls} collapsed">
+      <div class="step-body">
+        <div class="repeat-head" onclick="toggleRepeatExpand('${e.id}')">
+          <div class="step-circle" onclick="toggleRepeatDone('${e.id}', event)">${CHECK_SVG}</div>
+          <div class="repeat-head-text">
+            <div class="repeat-head-title-row">
+              <div class="step-text">${title}</div>
+              <span class="repeat-tag">repeat</span>
+            </div>
+            <div class="repeat-head-sub">${summary}</div>
+          </div>
+          <button class="repeat-expand-btn" aria-label="Expand" tabindex="-1">${DOWN_CHEVRON_SVG}</button>
+        </div>
+      </div>
+    </div>`;
+  }
 
   const rows = e.rows.map((r, i) => {
     const n = i + 1;
-    const cls = done ? 'done' : n < pos.z ? 'done' : n === pos.z ? 'now' : '';
-    return `<li class="rep-row ${cls}" onclick="setRepeatRow('${e.id}',${n})">
+    const rcls = done ? 'done' : n < pos.z ? 'done' : n === pos.z ? 'now' : '';
+    return `<li class="rep-row ${rcls}" onclick="toggleRepeatRow('${e.id}',${n})">
+      <span class="rep-check">${CHECK_SVG}</span>
       <span class="rep-n">${n}</span>
       <span class="rep-t">${r.text}</span>
     </li>`;
   }).join('');
 
   // A single-row repeat has no inside to be part-way through — its pass IS its
-  // row, so "pass 4 of 7 · row 1 of 1" would invent a distinction.
-  const label = done ? 'All ' + T + ' repeats worked'
+  // row, so "pass 4 of 7" next to a "row 1 of 1" would invent a distinction.
+  const passLabel = done ? 'All ' + T + ' repeats worked'
     : R === 1 ? 'Repeat ' + (pos.y + 1) + ' of ' + T
-    : 'Pass ' + (pos.y + 1) + ' of ' + T + ' · row ' + pos.z + ' of ' + R;
+    : 'Pass ' + (pos.y + 1) + ' of ' + T;
 
-  return `<div class="step repeat-step ${done ? 'done' : ''}">
+  // The active entry has nothing to collapse back to — it's what you're
+  // working on. Only a manually-opened preview offers a way to close itself.
+  const collapseBtn = isActive ? '' :
+    `<button class="repeat-expand-btn open" onclick="toggleRepeatExpand('${e.id}')" aria-label="Collapse">${DOWN_CHEVRON_SVG}</button>`;
+
+  return `<div class="step repeat-step ${cls}">
     <div class="step-body">
       <div class="repeat-head">
-        <div class="step-text">${(e.text || 'Repeat').replace(/\n/g, '<br>')}</div>
+        <div class="step-circle" onclick="toggleRepeatDone('${e.id}', event)">${CHECK_SVG}</div>
+        <div class="repeat-head-text">
+          <div class="step-text">${title}</div>
+          <div class="repeat-head-sub">repeat unit</div>
+        </div>
+        ${collapseBtn}
+        <div class="rep-pass">
+          <button class="rep-pass-btn" onclick="advanceRepeatPass('${e.id}',-1)" aria-label="Previous pass">−</button>
+          <span class="rep-pass-lbl">${passLabel}</span>
+          <button class="rep-pass-btn" onclick="advanceRepeatPass('${e.id}',1)" aria-label="Next pass">+</button>
+        </div>
       </div>
       <ul class="rep-rows">${rows}</ul>
-      <div class="rc-mini-bar"><div class="rc-mini-fill" style="width:${pct}%"></div></div>
-      <div class="rep-foot">
-        <button class="cc-ctrl cc-minus" onclick="advanceEntry('${e.id}',-1)" aria-label="Back one row">−</button>
-        <div class="rep-stat">
-          <span class="rep-lbl">${label}</span>
-          <span class="rep-val">${done ? total : standing} <em>of ${total}</em></span>
-          ${abs && !done ? `<span class="rep-abs">pattern row ${abs}</span>` : ''}
-        </div>
-        <button class="cc-ctrl cc-plus" onclick="advanceEntry('${e.id}',1)" aria-label="Forward one row">+</button>
-      </div>
     </div>
   </div>`;
+}
+
+// Puts the active entry at the top of the viewport — after a fresh phase
+// load, and after every progress-changing tap (toggleEntry, toggleRepeatRow,
+// toggleRepeatDone, advanceRepeatPass), so the "you are here" card never
+// drifts out of view as a knitter works down a section.
+//
+// Plain scrollIntoView({block:'start'}) isn't enough: .header and
+// .phase-header both sit position:sticky on top of the scrolling content, so
+// aligning the target to the scroll container's own top tucks it straight
+// behind them.
+//
+// window.scrollTo clamps at the bottom of the page on its own: an active
+// entry near the end of a section can't be pushed all the way under the
+// sticky bars without scrolling past content that doesn't exist, so it just
+// scrolls as far as it can and stops — "keep it at the top unless that would
+// run past the end."
+//
+// Falls back to the very top when there's no active entry to find — a
+// chart phase (which tracks its own current row separately) or a section
+// that's entirely done.
+//
+// Forces the header visible first, via suppressHeaderHide (app.js) rather
+// than just flipping the class — snapping the active step back into focus
+// is exactly the moment the header should be visible, and .header
+// auto-hides on scroll-down (see updateHeaderScrollState), which this
+// scroll itself triggers if left alone. A plain one-time class flip isn't
+// enough: the scroll listener re-evaluates on every 'scroll' event this
+// programmatic scroll fires (and on the layout shift from whatever
+// re-rendered before this ran), and by its own reading this IS a scroll
+// down, so it would hide the header again mid-flight. The suppression flag
+// sidesteps that race outright instead of trying to out-time it, and
+// clears itself after the scroll (smooth or instant) has had time to settle.
+//
+// Clearance is the two sticky bars' own heights (offsetHeight), not
+// .phase-header's getBoundingClientRect — its `top` runs a 0.25s CSS
+// transition off --header-h, so a rect read straight after flipping
+// header-hidden would catch it mid-transition, not at either end state.
+// offsetHeight is intrinsic box height, untouched by that transition.
+function scrollActiveIntoView(smooth) {
+  const active = document.querySelector('#phase-content .step.active');
+  const behavior = smooth ? 'smooth' : 'auto';
+  if (!active) { window.scrollTo({ top: 0, behavior }); return; }
+  if (typeof suppressHeaderHide !== 'undefined') suppressHeaderHide = true;
+  const h = document.getElementById('header');
+  if (h) h.classList.remove('header-hidden');
+  const phaseHeader = document.querySelector('.phase-header');
+  const clearance = (h ? h.offsetHeight : 0) + (phaseHeader ? phaseHeader.offsetHeight : 0);
+  if (typeof updatePhaseHeaderOffset === 'function') updatePhaseHeaderOffset();
+  const target = Math.max(0, window.scrollY + active.getBoundingClientRect().top - clearance - 8);
+  window.scrollTo({ top: target, behavior });
+  setTimeout(() => { if (typeof suppressHeaderHide !== 'undefined') suppressHeaderHide = false; }, smooth ? 500 : 150);
 }
 
 function renderPhase() {
   const p = PHASES[cur];
   const items = p.entries || p.steps || [];
-  const totalSteps = items.length;
-  const doneSteps  = p.entries
-    ? p.entries.filter(e => entryDone(e, entryProg)).length
-    : items.filter(s => state[s.id]).length;
-  const showCompleted = !p.hasChart && totalSteps > 0;
+  const totalRows = sectionRowCount(p, activeDoc);
+  const doneRows = sectionRowsDone(p, progressCtx(), activeDoc);
+  const showCompleted = !p.hasChart && totalRows > 0;
+  // The first not-done entry, top to bottom — everything else is either
+  // already worked or not reached yet, and rests flat either way.
+  const active = p.entries ? items.find(e => !entryDone(e, entryProg)) : null;
   const phaseHeaderHtml = `<div class="phase-header">
     <div class="phase-head-row">
       <div class="phase-head-main">
@@ -204,8 +302,8 @@ function renderPhase() {
     html += buildChartTracker(phaseHeaderHtml);
   } else {
     html += phaseHeaderHtml;
-    if (showCompleted) html += `<div class="steps-row"><span class="steps-row-label">Steps</span><span class="steps-row-count"><span class="src-num">${doneSteps} / ${totalSteps}</span><span class="src-lbl">completed</span></span></div>`;
-    if (totalSteps) html += '<div class="steps">' + items.map(entryHtml).join('') + '</div>';
+    if (showCompleted) html += `<div class="steps-row"><span class="steps-row-label">Rows</span><span class="steps-row-count"><span class="src-num">${doneRows} / ${totalRows}</span><span class="src-lbl">completed</span></span></div>`;
+    if (items.length) html += '<div class="steps">' + items.map(e => entryHtml(e, e === active)).join('') + '</div>';
     // Only reachable if migrateToEntries() skipped this project because its
     // pattern is no longer in the code. Say so rather than rendering nothing.
     else if (!p.entries && !p.hasChart) html += '<div class="steps"><div class="step"><div class="step-body">' +
@@ -565,8 +663,8 @@ function renderHome() {
         <div class="lib-card-bottom">
           <span class="lib-card-sub">${pr.done} of ${pr.total} steps done</span>
           <span class="proj-actions">
-            <button class="proj-act" onclick="event.stopPropagation();renameProject('${proj.id}')">Rename</button>
-            <button class="proj-act proj-del" onclick="event.stopPropagation();deleteProject('${proj.id}')">Delete</button>
+            <button class="proj-act" onclick="renameProject('${proj.id}', event)">Rename</button>
+            <button class="proj-act proj-del" onclick="deleteProject('${proj.id}', event)">Delete</button>
           </span>
         </div>
       </div>`;
@@ -586,7 +684,10 @@ function renderPicker() {
       <div class="lib-card-meta">${[p.badge, p.desc].filter(Boolean).join(' · ')}</div>
     </div>`).join('');
   document.getElementById('phase-content').innerHTML =
-    `<div class="picker-hint">Choose a pattern for your new project</div><div class="lib-list">${cards}</div>`;
+    `<div class="picker-hint">Choose a pattern for your new project</div><div class="lib-list">${cards}</div>
+    <button class="picker-import-btn" onclick="triggerImportPattern()">Import pattern (CSV)</button>
+    <input type="file" id="pattern-csv-input" accept=".csv,text/csv" style="display:none"
+           onchange="handlePatternCsvFile(this)">`;
 }
 
 // Build the header for the current view. Only rebuilds when the view/project
