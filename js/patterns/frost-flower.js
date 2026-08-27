@@ -183,7 +183,7 @@ PATTERNS.push(
     notes: [
       { term:'Knit / Purl', def:'Blank square — RS rows: knit. WS rows: purl.' },
       { term:'Purl / Knit', def:'Dot — RS rows: purl. WS rows: knit.', sym:'P' },
-      { term:'Yarn over', def:'YO — wrap the yarn to create a new stitch and an eyelet.', sym:'YO' },
+      { term:'Yarn over', sym:'YO' },
       { term:'Right-leaning decrease', def:'RS rows: k2tog. WS rows: p2tog.', sym:'K2' },
       { term:'Left-leaning decrease', def:'RS rows: ssk. WS rows: ssp.', sym:'SK' },
       { term:'Make one left', def:'Raglan increase — RS rows: M1L. WS rows: M1LP.', sym:'M1L' },

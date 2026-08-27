@@ -137,6 +137,16 @@
      wrong, the work is just not backed up yet. */
   .acct-btn.off { border-color: #c99a3f; color: #a97c22; }
 
+  /* Glossary button — same circular icon-button family as .acct-btn, sits
+     just before it so the two read as a row of header utilities. */
+  .glossary-btn {
+    flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%;
+    border: 1px solid var(--border); background: var(--bg);
+    color: var(--muted); cursor: pointer; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .glossary-btn:active { background: var(--card); }
+
   .acct-row { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
   .acct-avatar {
     width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
@@ -516,6 +526,23 @@
   }
   .note-sym { width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; color: var(--text); flex-shrink: 0; }
   .note-def { font-size: 15px; line-height: 1.5; color: var(--text); }
+
+  /* ── Stitch glossary ── */
+  .glossary-search {
+    width: 100%; box-sizing: border-box; padding: 10px 12px; margin-bottom: 18px;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--card);
+    color: var(--text); font-family: inherit; font-size: 15px;
+  }
+  .glossary-craft { margin-bottom: 24px; }
+  .glossary-craft-name {
+    font-family: Georgia, serif; font-size: 1.2rem; color: var(--text);
+    padding-bottom: 6px; margin-bottom: 4px; border-bottom: 1px solid var(--border);
+  }
+  .glossary-group { margin-top: 14px; }
+  .glossary-group-name {
+    font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+    color: var(--muted); margin-bottom: 2px;
+  }
 
   /* ── Pattern-finished celebration screen ── */
   .finished-scrim {
@@ -1097,6 +1124,7 @@
      the app must carry on exactly as it does today. -->
 <script src="js/vendor/supabase.js"></script>
 <script src="js/core/state.js"></script>
+<script src="js/core/glossary.js"></script>
 <script src="js/patterns/peacock-tee.js"></script>
 <script src="js/patterns/tatted-triangle.js"></script>
 <script src="js/patterns/lenore.js"></script>

@@ -23,6 +23,12 @@ function startNewProject() {
   render();
 }
 
+function openGlossary() {
+  view = 'glossary';
+  window.scrollTo(0, 0);
+  render();
+}
+
 function choosePattern(patternId) {
   const proj = createProject(patternId);
   if (proj) openProject(proj.id);
