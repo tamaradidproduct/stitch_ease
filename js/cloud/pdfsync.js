@@ -330,11 +330,10 @@ async function fetchRemotePdf(patternId) {
   if (typeof canSync !== 'function' || !canSync()) return false;
   const e = pdfEntry(patternId);
   // The FAMILY's copy, at whatever key its uploader wrote it to — which is
-  // their uid, not this device's. Falling back to a locally-derived path would
-  // ask for a file that only exists if this account uploaded it, so a member
-  // downloading someone else's attachment would get a 404 that reads like a
-  // permissions failure.
-  const path = e.remotePath || pdfStoragePath(currentUserId(), patternId);
+  // their uid, not this device's. The remotePath field is always present for
+  // synced PDFs; absence means the index entry is stale or the family changed.
+  if (!e.remotePath) return finish(false);
+  const path = e.remotePath;
   setPdfActivity(patternId, { busy: 'download', failed: null });
   // Every exit runs through here. Two of the failure paths below are plain
   // `return false`, not throws — a `finally` that only cleared on the happy

@@ -50,7 +50,9 @@ function saveFamily() {
   try {
     if (familyState) localStorage.setItem(FAMILY_KEY, JSON.stringify(familyState));
     else localStorage.removeItem(FAMILY_KEY);
-  } catch (e) {}
+  } catch (e) {
+    logSync('warn', 'could not persist family state', e);
+  }
 }
 
 function currentFamilyId() { return (familyState && familyState.id) || null; }
@@ -77,7 +79,15 @@ async function ensureFamily() {
 }
 
 async function refreshFamilyRoster() {
-  if (!currentFamilyId()) await ensureFamily();
+  if (!currentFamilyId()) {
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('ensureFamily timeout')), 5000));
+    try {
+      await Promise.race([ensureFamily(), timeout]);
+    } catch (e) {
+      logSync('warn', 'could not resolve family for roster', e);
+      return null;
+    }
+  }
   if (!currentFamilyId()) return null;
   const { data, error } = await sb.rpc('family_roster');
   if (error) { logSync('warn', 'could not read family roster', error); return null; }
@@ -109,7 +119,12 @@ async function redeemFamilyInvite(code) {
   // The local PDF index describes the OLD family's files. Their remote halves
   // are not ours any more, so the "there's a copy in your account" flags have
   // to go or the sheet would offer a download that RLS will refuse.
-  if (typeof forgetRemotePdfs === 'function') forgetRemotePdfs();
+  if (typeof forgetRemotePdfs === 'function') {
+    try { forgetRemotePdfs(); }
+    catch (e) { logSync('warn', 'could not clear old family PDFs', e); }
+  } else {
+    logSync('warn', 'forgetRemotePdfs not available; old family PDFs not cleared');
+  }
   await refreshFamilyRoster();
   if (typeof kickSync === 'function') kickSync('family-joined');
   return data;

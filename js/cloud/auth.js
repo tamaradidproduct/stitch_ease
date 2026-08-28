@@ -90,7 +90,7 @@ function initCloud() {
       // id synchronously and must never be the thing that discovers it.
       // ensure_family() is idempotent, so this is safe on every token refresh.
       if (typeof ensureFamily === 'function') {
-        ensureFamily().then(() => { if (typeof refreshFamilyRoster === 'function') refreshFamilyRoster(); });
+        ensureFamily().then(async () => { if (typeof refreshFamilyRoster === 'function') await refreshFamilyRoster(); });
       }
     } else {
       syncOnSignedOut();
