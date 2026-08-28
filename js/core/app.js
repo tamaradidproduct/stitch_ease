@@ -216,6 +216,28 @@ if ('serviceWorker' in navigator) {
         }
       });
     });
+
+    // register() only fetches sw.js once, at load. This PWA sits open on a
+    // phone for weeks with no reload in sight, so without a poll it can go
+    // that whole time never learning a new version shipped. Same shape as
+    // the sync pull timer: check on refocus, and on an interval while
+    // visible only — never a timer while hidden.
+    const SW_CHECK_INTERVAL_MS = 60000;
+    let swCheckTimer = null;
+    function startSwPolling() {
+      clearInterval(swCheckTimer);
+      if (document.visibilityState !== 'visible') return;
+      swCheckTimer = setInterval(() => reg.update().catch(() => {}), SW_CHECK_INTERVAL_MS);
+    }
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        reg.update().catch(() => {});
+        startSwPolling();
+      } else {
+        clearInterval(swCheckTimer);
+      }
+    });
+    startSwPolling();
   }).catch(() => {});
 
   // Once skipWaiting fires, the controller changes — reload to get fresh files
