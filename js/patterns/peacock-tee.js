@@ -231,7 +231,7 @@ PATTERNS.push(
       { term:'k2tog', symbol:'<svg width="9" height="9" viewBox="0 0 9 9" style="display:block"><polygon points="0,9 9,9 9,0" fill="currentColor"/></svg>' },
       { term:'SKPO', symbol:'<svg width="9" height="9" viewBox="0 0 9 9" style="display:block"><polygon points="0,0 0,9 9,9" fill="currentColor"/></svg>' },
       { term:'M1', symbol:'<svg width="10" height="10" viewBox="0 0 10 10" style="display:block"><circle cx="5" cy="5" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="1.5" y1="5" x2="8.5" y2="5" stroke="currentColor" stroke-width="1.5"/></svg>' },
-      { term:'No stitch', def:'E — an empty cell used to center the pattern; the stitch does not exist.' },
+      { term:'No stitch' },
       { term:'GSR' },
       { term:'m1-R / m1-L', def:'Right- and left-leaning make-one increases, worked before and after the marker stitch.' },
       { term:'SSK' },

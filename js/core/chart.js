@@ -285,7 +285,11 @@ function renderChartDock() {
 // ─────────────────────────────────────────────
 // CHART SCROLL — centre current row in viewport
 // ─────────────────────────────────────────────
-function getRowH() { return cellSz + 1; } // must match .crow height in CSS (var(--cell-sz) + 1px)
+
+// CRITICAL: must match .crow CSS height exactly. If changed, update index.html
+// `.crow { height: calc(var(--cell-sz) + 1px); }` in parallel. Mismatch breaks
+// row alignment with mid-row line and scroll centering.
+function getRowH() { return cellSz + 1; }
 
 function scrollChartToCurrent(behavior) {
   // Centre the current row in the chart viewport. The viewport itself grows

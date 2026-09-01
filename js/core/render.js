@@ -744,22 +744,26 @@ function glossaryListHtml(crafts) {
 // Re-filters GLOSSARY down to matching terms on every keystroke, keeping the
 // craft/group headers so the result stays legible instead of collapsing into
 // a flat list. Craft/group wrappers with nothing left inside are dropped.
+let filterGlossaryTimer = null;
 function filterGlossary(q) {
-  const list = document.getElementById('glossary-list');
-  if (!list) return;
-  const query = q.trim().toLowerCase();
-  if (!query) { list.innerHTML = glossaryListHtml(GLOSSARY); return; }
-  const crafts = GLOSSARY.map(c => ({
-    craft: c.craft,
-    groups: c.groups.map(g => ({
-      name: g.name,
-      terms: g.terms.filter(t =>
-        t.term.toLowerCase().includes(query) ||
-        (t.abbr && t.abbr.toLowerCase().includes(query)) ||
-        t.def.toLowerCase().includes(query))
-    })).filter(g => g.terms.length)
-  })).filter(c => c.groups.length);
-  list.innerHTML = glossaryListHtml(crafts);
+  clearTimeout(filterGlossaryTimer);
+  filterGlossaryTimer = setTimeout(() => {
+    const list = document.getElementById('glossary-list');
+    if (!list) return;
+    const query = q.trim().toLowerCase();
+    if (!query) { list.innerHTML = glossaryListHtml(GLOSSARY); return; }
+    const crafts = GLOSSARY.map(c => ({
+      craft: c.craft,
+      groups: c.groups.map(g => ({
+        name: g.name,
+        terms: g.terms.filter(t =>
+          t.term.toLowerCase().includes(query) ||
+          (t.abbr && t.abbr.toLowerCase().includes(query)) ||
+          t.def.toLowerCase().includes(query))
+      })).filter(g => g.terms.length)
+    })).filter(c => c.groups.length);
+    list.innerHTML = glossaryListHtml(crafts);
+  }, 150);
 }
 
 // Picker = choose a pattern to start a new project from.

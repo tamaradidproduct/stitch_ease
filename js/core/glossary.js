@@ -111,16 +111,26 @@ const GLOSSARY = [
 // same stitch — is not a candidate: collapsing it into the shared definition
 // would drop the very thing that note exists to say, so those keep their own
 // `def` and are never looked up here.
-function glossaryEntry(query) {
-  if (!query) return null;
-  const q = query.trim().toLowerCase();
+
+// Build O(1) lookup index from term name + abbreviations to entry
+const glossaryIndex = (() => {
+  const idx = {};
   for (const c of GLOSSARY) {
     for (const g of c.groups) {
       for (const t of g.terms) {
-        if (t.term.toLowerCase() === q) return t;
-        if (t.abbr && t.abbr.split('/').map(s => s.trim().toLowerCase()).includes(q)) return t;
+        idx[t.term.toLowerCase()] = t;
+        if (t.abbr) {
+          t.abbr.split('/').forEach(a => {
+            idx[a.trim().toLowerCase()] = t;
+          });
+        }
       }
     }
   }
-  return null;
+  return idx;
+})();
+
+function glossaryEntry(query) {
+  if (!query) return null;
+  return glossaryIndex[query.trim().toLowerCase()] || null;
 }

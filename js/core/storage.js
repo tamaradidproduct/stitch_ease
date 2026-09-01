@@ -276,7 +276,7 @@ function loadProjectState() {
     }
 
     const mrp = localStorage.getItem(pkey('midRowPos'));
-    if (mrp) { try { midRowPos = JSON.parse(mrp) || {}; } catch(e) {} }
+    if (mrp) { try { midRowPos = JSON.parse(mrp) || {}; } catch(e) { logSync('warn', 'corrupted midRowPos in storage', e); } }
 
     // `grows` is deliberately NOT read back — the tally is recomputed from
     // the progress that was just loaded. Reading it would reintroduce the

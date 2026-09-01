@@ -125,9 +125,10 @@ function syncActiveChart() {
     // many stitches a row has.
     const stitchCount = CHART_B[0] ? CHART_B[0].length : 0;
     const stored = midRowPos[phase.id];
-    midRowColIdx = (stored === undefined)
+    const storedNum = typeof stored === 'number' && !isNaN(stored) ? stored : undefined;
+    midRowColIdx = (storedNum === undefined)
       ? Math.round(stitchCount / 2)
-      : Math.max(0, Math.min(stitchCount, stored));
+      : Math.max(0, Math.min(stitchCount, storedNum));
   }
 }
 
