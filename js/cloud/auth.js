@@ -268,8 +268,9 @@ function openAccountSheet(msg) {
   if (st === 'unavailable') {
     body = `<p class="sheet-msg">Sync isn’t available on this device.</p>
       <p class="acct-note">The app works normally — your projects are saved here as always.
-      This usually means part of the app didn’t finish downloading; reopening it later should fix it.</p>`;
-    openSheet('Account', body);
+      This usually means part of the app didn’t finish downloading; reopening it later should fix it.</p>
+      ${updateCheckBlockHtml()}`;
+    openSheet('Account', body, { onOpen: el => wireUpdateCheckBlock(el) });
     return;
   }
 
@@ -285,7 +286,8 @@ function openAccountSheet(msg) {
         <button class="sheet-btn primary" id="acct-send">Email me a link</button>
       </div>
       ${msg ? msgHtml(msg) : ''}
-      <p class="acct-note">Your projects stay on this device either way. Signing in only adds a copy in the cloud.</p>`;
+      <p class="acct-note">Your projects stay on this device either way. Signing in only adds a copy in the cloud.</p>
+      ${updateCheckBlockHtml()}`;
     openSheet('Account', body, {
       onOpen: el => {
         el.querySelector('#acct-google').onclick = signInWithGoogle;
@@ -299,6 +301,7 @@ function openAccountSheet(msg) {
         send.onclick = go;
         sync();
         input.focus();
+        wireUpdateCheckBlock(el);
       }
     });
     return;
@@ -328,7 +331,8 @@ function openAccountSheet(msg) {
       <button class="sheet-btn" onclick="dismissSheet()">Done</button>
       <button class="sheet-btn" id="acct-signout">Sign out</button>
     </div>
-    <p class="acct-note">Signing out leaves your projects on this device. Nothing is deleted.</p>`;
+    <p class="acct-note">Signing out leaves your projects on this device. Nothing is deleted.</p>
+    ${updateCheckBlockHtml()}`;
   openSheet('Account', body, {
     onOpen: el => {
       el.querySelector('#acct-signout').onclick = signOut;
@@ -340,12 +344,42 @@ function openAccountSheet(msg) {
       if (claim) claim.onclick = () => { claimLocalProjects(currentUserId()); openAccountSheet(); };
       wirePdfStorageBlock(el);
       if (typeof wireFamilyBlock === 'function') wireFamilyBlock(el);
+      wireUpdateCheckBlock(el);
     }
   });
 }
 
 function msgHtml(m) {
   return `<p class="${m.ok ? 'acct-ok' : 'acct-err'}">${escapeHtml(m.text)}</p>`;
+}
+
+// The periodic poll in app.js assumes the tab stays open long enough to hit
+// the next interval. Someone who was just told "there's a fix, reload" wants
+// a synchronous answer instead of waiting on that — this button gives them
+// one. Shown in every account-sheet state: whether the update check works is
+// unrelated to whether Supabase loaded or you're signed in.
+function updateCheckBlockHtml() {
+  if (typeof checkForUpdates !== 'function') return '';
+  return `<div class="acct-update">
+      <button class="sheet-btn" id="acct-check-update">Check for updates</button>
+      <p class="acct-update-status" id="acct-check-update-status"></p>
+    </div>`;
+}
+
+function wireUpdateCheckBlock(el) {
+  const btn = el.querySelector('#acct-check-update');
+  const status = el.querySelector('#acct-check-update-status');
+  if (!btn) return;
+  btn.onclick = () => {
+    btn.disabled = true;
+    status.textContent = 'Checking…';
+    checkForUpdates(result => {
+      btn.disabled = false;
+      if (!result.ok) status.textContent = 'Couldn’t check right now — try again later.';
+      else if (result.found) status.textContent = 'Update found — tap “Update now” below.';
+      else status.textContent = 'You’re on the latest version.';
+    });
+  };
 }
 
 // ─────────────────────────────────────────────

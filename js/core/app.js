@@ -201,8 +201,25 @@ function applyUpdate() {
   if (window._waitingSW) window._waitingSW.postMessage({ type: 'SKIP_WAITING' });
 }
 
+let swReg = null;
+
+// A manual trigger for someone who wants an answer right now (told there's a
+// fix, wondering why nothing changed) rather than waiting for the next poll.
+// reg.update() resolves once the check is kicked off, not once an install
+// finishes, so the result is read a moment later off whatever the existing
+// updatefound/statechange listener wrote (the banner, or nothing).
+function checkForUpdates(onResult) {
+  if (!swReg) { onResult({ ok: false }); return; }
+  swReg.update().then(() => {
+    setTimeout(() => {
+      onResult({ ok: true, found: !!document.getElementById('update-banner') });
+    }, 1500);
+  }).catch(() => onResult({ ok: false }));
+}
+
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').then(reg => {
+    swReg = reg;
     // A new SW may already be waiting (e.g. user had tab open when update deployed)
     if (reg.waiting && navigator.serviceWorker.controller) {
       showUpdateBanner(reg.waiting);
