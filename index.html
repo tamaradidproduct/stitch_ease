@@ -104,17 +104,27 @@
      with the line's x position inside the grid above it. */
   .mid-row-track {
     position: relative;
-    flex: 0 0 30px;
+    flex: 0 0 36px;
     border-top: 1px solid var(--border);
   }
+  /* The hit target is a wide, short rectangle (76x34) rather than a square —
+     a horizontal drag wants room to grab side-to-side, not a bigger circle.
+     The visible grip (via ::before) now fills nearly all of that height
+     instead of sitting as a thin sliver in the middle of it. */
   .mid-row-handle {
     display: none;
     position: absolute; top: 50%; z-index: 16;
-    width: 22px; height: 22px; margin-left: -11px; transform: translateY(-50%);
-    border-radius: 50%;
-    background: var(--ch-blue); border: 2px solid var(--card);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    width: 76px; height: 34px; margin-left: -38px; transform: translateY(-50%);
     cursor: grab; touch-action: none;
+  }
+  .mid-row-handle::before {
+    content: '';
+    position: absolute; top: 50%; left: 50%;
+    width: 62px; height: 26px; margin: -13px 0 0 -31px;
+    border-radius: 8px;
+    background: var(--ch-blue); border: 1px solid var(--card);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    pointer-events: none;
   }
   .mid-row-handle:active { cursor: grabbing; }
   body.chart-page .mid-row-handle { display: block; }
