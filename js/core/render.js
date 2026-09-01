@@ -72,6 +72,15 @@ const LOGO_SVG = `<svg class="lib-logo" viewBox="0 0 40 40" width="34" height="3
   <circle cx="35.5" cy="4.5" r="1.7" fill="var(--accent)"/>
 </svg>`;
 
+// Open-book icon for the glossary button. Deliberately distinct from
+// NOTES_SVG below (same idea, a book) rather than shared — that one is sized
+// and colored for the phase-header tools row, this one sits in the circular
+// icon-button family with the account button on the home header.
+const GLOSSARY_SVG = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 6.5C10.6 5.2 8.7 4.5 6.5 4.5c-1.2 0-2.4.2-3.5.7v13c1.1-.5 2.3-.7 3.5-.7 2.2 0 4.1.7 5.5 2 1.4-1.3 3.3-2 5.5-2 1.2 0 2.4.2 3.5.7v-13c-1.1-.5-2.3-.7-3.5-.7-2.2 0-4.1.7-5.5 2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+        <path d="M12 6.5v13" stroke="currentColor" stroke-width="1.6"/>
+      </svg>`;
+
 // Does the PDF icon need a dot? Only for 'remote-newer' — a copy sitting in the
 // account that this device hasn't got, which is the one state with something to
 // do that nothing else on screen would ever reveal.
@@ -396,9 +405,15 @@ function openNotes() {
   // raw SVG string, still supported for one-off glyphs with no chart cell.
   const rows = pat.notes.map(n => {
     const art = n.sym ? SYMS[n.sym] : n.symbol;
+    // A note can omit its own `def` to defer to js/core/glossary.js — the
+    // shared source of truth for stitch descriptions. Falls back to the note
+    // itself if the term isn't in the glossary, so an un-migrated or
+    // pattern-only note keeps working exactly as before.
+    const glossary = n.def ? null : (typeof glossaryEntry === 'function' ? glossaryEntry(n.term) : null);
+    const def = n.def || (glossary && glossary.def) || '';
     return `<div class="note-row">
       <span class="note-term">${art ? `<span class="note-sym">${art}</span>` : ''}${n.term ? escapeHtml(n.term) : ''}</span>
-      <span class="note-def">${escapeHtml(n.def)}</span>
+      <span class="note-def">${escapeHtml(def)}</span>
     </div>`;
   }).join('');
   openSheet('Pattern notes', rows);
@@ -605,8 +620,9 @@ function render() {
   // The chip belongs to the open project, so every render decides afresh
   // whether it should be up — including the renders that navigate away.
   showPatternChip();
-  if (view === 'home')   { renderHome();   requestAnimationFrame(updatePhaseHeaderOffset); return; }
-  if (view === 'picker') { renderPicker(); requestAnimationFrame(updatePhaseHeaderOffset); return; }
+  if (view === 'home')     { renderHome();     requestAnimationFrame(updatePhaseHeaderOffset); return; }
+  if (view === 'picker')   { renderPicker();   requestAnimationFrame(updatePhaseHeaderOffset); return; }
+  if (view === 'glossary') { renderGlossary(); requestAnimationFrame(updatePhaseHeaderOffset); return; }
   renderProject();
   requestAnimationFrame(() => {
     updatePhaseHeaderOffset();
@@ -675,6 +691,59 @@ function renderHome() {
   document.getElementById('phase-content').innerHTML = html;
 }
 
+// Glossary = general craft-stitch reference, grouped by craft. Independent of
+// any pattern's own `notes` (the abbreviations one specific pattern uses) —
+// this is the "what does ssk mean" lookup, browsable with no project open.
+function renderGlossary() {
+  leaveChartMode();
+  renderHeader();
+  document.getElementById('phase-content').innerHTML =
+    `<div class="picker-hint">Stitches and terms, across every craft in the library.</div>
+    <input type="text" id="glossary-search" class="glossary-search" placeholder="Search stitches…"
+           oninput="filterGlossary(this.value)" autocomplete="off">
+    <div id="glossary-list">${glossaryListHtml(GLOSSARY)}</div>`;
+}
+
+function glossaryListHtml(crafts) {
+  if (!crafts.length) return '<div class="home-empty">No matches.</div>';
+  return crafts.map(c => `
+    <div class="glossary-craft">
+      <div class="glossary-craft-name">${escapeHtml(c.craft)}</div>
+      ${c.groups.map(g => `
+        <div class="glossary-group">
+          <div class="glossary-group-name">${escapeHtml(g.name)}</div>
+          ${g.terms.map(t => {
+            const art = t.sym ? SYMS[t.sym] : null;
+            return `<div class="note-row">
+            <span class="note-term">${art ? `<span class="note-sym">${art}</span>` : ''}${escapeHtml(t.abbr || t.term)}</span>
+            <span class="note-def">${t.abbr ? `<strong>${escapeHtml(t.term)}.</strong> ` : ''}${escapeHtml(t.def)}</span>
+          </div>`;
+          }).join('')}
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+// Re-filters GLOSSARY down to matching terms on every keystroke, keeping the
+// craft/group headers so the result stays legible instead of collapsing into
+// a flat list. Craft/group wrappers with nothing left inside are dropped.
+function filterGlossary(q) {
+  const list = document.getElementById('glossary-list');
+  if (!list) return;
+  const query = q.trim().toLowerCase();
+  if (!query) { list.innerHTML = glossaryListHtml(GLOSSARY); return; }
+  const crafts = GLOSSARY.map(c => ({
+    craft: c.craft,
+    groups: c.groups.map(g => ({
+      name: g.name,
+      terms: g.terms.filter(t =>
+        t.term.toLowerCase().includes(query) ||
+        (t.abbr && t.abbr.toLowerCase().includes(query)) ||
+        t.def.toLowerCase().includes(query))
+    })).filter(g => g.terms.length)
+  })).filter(c => c.groups.length);
+  list.innerHTML = glossaryListHtml(crafts);
+}
+
 // Picker = choose a pattern to start a new project from.
 function renderPicker() {
   leaveChartMode();
@@ -706,11 +775,16 @@ function renderHeader() {
   h.dataset.key = key;
   if (view === 'home') {
     h.innerHTML = `<div class="header-top lib-brand">${LOGO_SVG}<h1><span>Pattern</span> library</h1>` +
+      `<button class="glossary-btn" onclick="openGlossary()" aria-label="Stitch glossary" title="Stitch glossary">${GLOSSARY_SVG}</button>` +
       (typeof accountButtonHtml === 'function' ? accountButtonHtml() : '') + `</div>`;
     return;
   }
   if (view === 'picker') {
     h.innerHTML = `<div class="header-top"><h1 class="pattern-h1"><button class="lib-back" onclick="goHome()" aria-label="Back">${BACK_CHEVRON_SVG}</button>New project</h1></div>`;
+    return;
+  }
+  if (view === 'glossary') {
+    h.innerHTML = `<div class="header-top"><h1 class="pattern-h1"><button class="lib-back" onclick="goHome()" aria-label="Back">${BACK_CHEVRON_SVG}</button>Stitch glossary</h1></div>`;
     return;
   }
   const proj = activeProject();

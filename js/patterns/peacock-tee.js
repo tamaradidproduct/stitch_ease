@@ -225,16 +225,16 @@ const PEACOCK_PHASES = [
 PATTERNS.push(
   { id:'peacock-tee', name:'Peacock Tee', badge:'Size S · 97 cm', desc:'Top-down raglan · yoke chart', phases: PEACOCK_PHASES, chart: PEACOCK_CHART,
     notes: [
-      { term:'Knit', def:'K — plain knit stitch.' },
-      { term:'Purl', def:'P — purl stitch.', symbol:'<svg width="8" height="8" viewBox="0 0 8 8" style="display:block"><circle cx="4" cy="4" r="3.5" fill="currentColor"/></svg>' },
-      { term:'Yarn over', def:'YO — wrap the yarn to create a new stitch and an eyelet.', symbol:'<svg width="9" height="9" viewBox="0 0 9 9" style="display:block"><circle cx="4.5" cy="4.5" r="3.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>' },
-      { term:'k2tog', def:'Knit two stitches together (right-leaning decrease).', symbol:'<svg width="9" height="9" viewBox="0 0 9 9" style="display:block"><polygon points="0,9 9,9 9,0" fill="currentColor"/></svg>' },
-      { term:'SKPO', def:'Slip, knit, pass over (left-leaning decrease).', symbol:'<svg width="9" height="9" viewBox="0 0 9 9" style="display:block"><polygon points="0,0 0,9 9,9" fill="currentColor"/></svg>' },
-      { term:'M1', def:'Make one — pick up the strand between stitches front-to-back and knit through the back loop.', symbol:'<svg width="10" height="10" viewBox="0 0 10 10" style="display:block"><circle cx="5" cy="5" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="1.5" y1="5" x2="8.5" y2="5" stroke="currentColor" stroke-width="1.5"/></svg>' },
+      { term:'Knit' },
+      { term:'Purl', symbol:'<svg width="8" height="8" viewBox="0 0 8 8" style="display:block"><circle cx="4" cy="4" r="3.5" fill="currentColor"/></svg>' },
+      { term:'Yarn over', symbol:'<svg width="9" height="9" viewBox="0 0 9 9" style="display:block"><circle cx="4.5" cy="4.5" r="3.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>' },
+      { term:'k2tog', symbol:'<svg width="9" height="9" viewBox="0 0 9 9" style="display:block"><polygon points="0,9 9,9 9,0" fill="currentColor"/></svg>' },
+      { term:'SKPO', symbol:'<svg width="9" height="9" viewBox="0 0 9 9" style="display:block"><polygon points="0,0 0,9 9,9" fill="currentColor"/></svg>' },
+      { term:'M1', symbol:'<svg width="10" height="10" viewBox="0 0 10 10" style="display:block"><circle cx="5" cy="5" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="1.5" y1="5" x2="8.5" y2="5" stroke="currentColor" stroke-width="1.5"/></svg>' },
       { term:'No stitch', def:'E — an empty cell used to center the pattern; the stitch does not exist.' },
-      { term:'GSR', def:'German short row — after turning, slip the first st yarn-in-front, move yarn to back and tighten until 2 legs show. On the next row, knit those 2 legs together as one stitch.' },
+      { term:'GSR' },
       { term:'m1-R / m1-L', def:'Right- and left-leaning make-one increases, worked before and after the marker stitch.' },
-      { term:'SSK', def:'Slip, slip, knit (left-leaning decrease).' },
+      { term:'SSK' },
       { term:'BOR', def:'Beginning of round (mid-back on this pattern).' },
     ] }
 );

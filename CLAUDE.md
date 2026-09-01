@@ -9,6 +9,7 @@ peacock-tee-deploy/
   index.html                    ← shell + all CSS + the <script src> list
   js/vendor/supabase.js         ← vendored supabase-js UMD (pinned, works offline)
   js/core/state.js              ← globals, PATTERNS, applyPattern, activateProject
+  js/core/glossary.js           ← GLOSSARY, glossaryEntry — the stitch-description source of truth
   js/patterns/*.js              ← one file per pattern; each PATTERNS.push()es itself
   js/core/storage.js            ← pkey/save/load*/migrations/projects registry
   js/core/chart.js              ← chart tracker, zoom, scroll, changeChartRow
@@ -106,6 +107,15 @@ Patterns ship with the deploy, so **text edits reach everyone immediately** — 
 - A non-blocking **"Pattern updated · Review"** chip appears while a changed project is open. Adopting (`adoptPattern`) is an explicit tap, shows a kept/dropped summary first, and **destroys nothing**: orphaned progress keys are left in place, so a step that comes back brings its tick with it — and deleting them would fight sync, since a device that hasn't adopted would push them straight back. The one thing that must move is `cur`, a phase *index*, which is translated through the phase id it pointed at.
 - Sync: `pattern_struct_hash` always; `pattern_doc` **only once the project has diverged** from the code, since otherwise the receiving device can rebuild the snapshot from its own bundle. `applyRemotePattern` never overwrites a snapshot this device already has.
 
+### Stitch glossary — the source of truth for stitch descriptions
+`js/core/glossary.js` holds `GLOSSARY`: general craft-stitch reference, grouped by craft → group → term, independent of any one pattern. Browsable from the library home screen (the book icon next to the account button, `openGlossary()` → `renderGlossary()`) with no project open, and searchable in place (`filterGlossary`).
+
+- **This file is the source of truth for what a stitch means.** A pattern's own `notes` array (`js/patterns/*.js`) is the small set of abbreviations *that pattern* uses in its chart legend — it should defer to the glossary for the definition rather than carry its own copy.
+- To defer: a note entry gives `term` (and optionally `sym`/`symbol` for the chart-legend glyph) and **omits `def`**. `openNotes()` (`js/core/render.js`) then calls `glossaryEntry(n.term)`, which matches case-insensitively against a glossary entry's `term` or `abbr` (a `'/'`-separated `abbr` like `'SKPO / SKP'` matches either half). If nothing matches, the note falls back to rendering nothing for that row — so only defer a note once `glossaryEntry(term)` actually resolves.
+- **Not every note is a candidate.** A note whose text encodes something pattern-specific — which side of a chart a symbol falls on ("RS rows: k2tog. WS rows: p2tog."), why a chart draws two visually distinct symbols for what's otherwise the same stitch, a combined RS/WS shorthand like `m1-R / m1-L` — is not a stitch definition, it's chart-reading context. Collapsing it into the shared definition would drop the thing the note exists to say. Those keep their own `def` and are never looked up.
+- **Adding a new pattern:** for each abbreviation in its `notes`, check whether `glossaryEntry(term)` already resolves. If it does and the note is a plain definition (not chart-side context), omit `def`. If the stitch isn't in the glossary yet, **ask the user what to do** before proceeding — add it to `GLOSSARY` (source of truth grows), or leave it pattern-only with its own `def` (the fallback when a stitch is deliberately not general-purpose, e.g. Posy's "Pull up stitch"). Don't add it unasked.
+- Some patterns (Lenore, Tatted Triangle) show a compact abbreviation → one-word expansion in their notes today ('R' → 'Ring'), not a full sentence — deliberately left un-migrated, since deferring would swap that compact label for the glossary's full-sentence definition and change the sheet's character. Ask before converting those too.
+
 ### The original pattern PDF
 The tracker is a transcription — no schematics, no photos, no sizing table. The **document icon** in the section header (beside the notes book, on every section including the chart) opens the original PDF, so the answer to "what did the designer actually say" isn't "go and find the email you bought it in".
 
@@ -177,7 +187,8 @@ HTML is fetched **network-first** (fresh page on each load when online; cache fa
 ## Key JS functions
 - `render()` — dispatcher: home / picker / project view
 - `renderHome()` / `renderPicker()` / `renderHeader()` — projects list / pattern chooser / per-view header
-- `openProject(id)` / `goHome()` / `startNewProject()` / `choosePattern(id)` — view navigation
+- `openProject(id)` / `goHome()` / `startNewProject()` / `choosePattern(id)` / `openGlossary()` — view navigation
+- `glossaryEntry(term)` — looks up a stitch description in `GLOSSARY` by term or abbreviation; what a pattern's `notes` defer to instead of carrying their own `def`
 - `createProject` / `renameProject` / `deleteProject` — manage the projects list
 - `activateProject(id)` / `applyPattern(p)` — open a project: swap active-pattern pointers + load its progress
 - `structHash(p)` / `patternForProject(proj)` — which version of a pattern a project knits, and why
