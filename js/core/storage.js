@@ -17,6 +17,9 @@
 //                                 loadProjectState() when chartRows is absent,
 //                                 then superseded. Kept readable forever so
 //                                 old saved progress isn't lost.
+//   pt3_proj_<id>_midRowPos       {phaseId: colIndex} — mid-row tracker line,
+//                                 per chart phase. LOCAL-ONLY: no clock, never
+//                                 synced (a personal reading aid, not progress).
 //   pt3_proj_<id>_grows           PRE-CONVERSION row tally; the tally is now
 //                                 derived, so this is dead. Kept for purging.
 //   pt3_proj_<id>_clk             {fieldKey: epoch_ms} last local change per field
@@ -72,7 +75,7 @@ function isDeleted(projectId) {
 // `chartRow` is the superseded scalar and `chartRows` the per-phase map: both
 // are listed because a project saved before that change still has the old key
 // on disk, and purging only the new one would leave it orphaned forever.
-const PROJ_KEYS = ['state','ctrs','cur','chartRow','chartRows','grows','clk','base','phash','pattern','entries'];
+const PROJ_KEYS = ['state','ctrs','cur','chartRow','chartRows','midRowPos','grows','clk','base','phash','pattern','entries'];
 function purgeProjectData(projectId) {
   PROJ_KEYS.forEach(k => { try { localStorage.removeItem('pt3_proj_' + projectId + '_' + k); } catch(e){} });
 }
@@ -222,6 +225,9 @@ function save() {
     localStorage.setItem(pkey('entries'), JSON.stringify(entryProg));
     localStorage.setItem(pkey('cur'), cur);
     localStorage.setItem(pkey('chartRows'), JSON.stringify(chartRows));
+    // Local-only, deliberately no stampClock — a personal reading aid, not
+    // knitting progress (see the pt3_proj_<id>_midRowPos comment above).
+    localStorage.setItem(pkey('midRowPos'), JSON.stringify(midRowPos));
     // `grows` is no longer the tally — it is a mirror of the derived value,
     // kept because sync still carries `global_rows` as a field and the server
     // column is NOT NULL. Written here, in one place, instead of nudged in
@@ -268,6 +274,9 @@ function loadProjectState() {
       const chartPhase = PHASES.find(p => p.hasChart);
       if (legacy !== null && chartPhase) chartRows = { [chartPhase.id]: parseInt(legacy) || 1 };
     }
+
+    const mrp = localStorage.getItem(pkey('midRowPos'));
+    if (mrp) { try { midRowPos = JSON.parse(mrp) || {}; } catch(e) {} }
 
     // `grows` is deliberately NOT read back — the tally is recomputed from
     // the progress that was just loaded. Reading it would reintroduce the

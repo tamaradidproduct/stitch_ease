@@ -58,6 +58,15 @@ const PDF_SVG = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" ari
         <path d="M8.8 13h6.4M8.8 16.2h4.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
       </svg>`;
 
+// Recenter crosshair — scrolls the chart back to the current row. Lives in
+// the phase header's tool row on chart phases, alongside zoom; it used to
+// float as a FAB over the grid, which covered stitches on narrow charts.
+const RECENTER_SVG = `<svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+        <circle cx="9" cy="9" r="3" fill="currentColor"/>
+        <circle cx="9" cy="9" r="6.5" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M9 0.5V3M9 15v2.5M17.5 9H15M3 9H0.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>`;
+
 // App logo — a ball of yarn with a knitting needle.
 const LOGO_SVG = `<svg class="lib-logo" viewBox="0 0 40 40" width="34" height="34" fill="none" aria-hidden="true">
   <circle cx="18" cy="22" r="13" fill="var(--accent-light)" stroke="var(--accent)" stroke-width="1.7"/>
@@ -296,6 +305,11 @@ function renderPhase() {
         <div class="phase-desc">${p.desc}</div>
       </div>
       <div class="phase-head-tools">
+        ${p.hasChart ? `
+        <button class="phase-folder chart-zoom-btn" onclick="resizeChart(-2)" aria-label="Zoom out" title="Zoom out">A−</button>
+        <button class="phase-folder chart-zoom-btn" onclick="resizeChart(2)" aria-label="Zoom in" title="Zoom in">A+</button>
+        <button class="phase-folder" onclick="centerOnCurrentRow()" aria-label="Center on current row" title="Center on current row">${RECENTER_SVG}</button>
+        ` : ''}
         ${(activePattern() && activePattern().notes) ? `<button class="phase-folder" onclick="openNotes()" aria-label="Pattern notes" title="Pattern notes">${NOTES_SVG}</button>` : ''}
         <button class="phase-folder${pdfWaiting() ? ' has-dot' : ''}" onclick="openPatternPdf()"
                 aria-label="Original pattern PDF${pdfWaiting() ? ' — a copy is waiting to download' : ''}"
@@ -638,6 +652,10 @@ function leaveChartMode() {
 function renderProject() {
   renderHeader();
   renderPhase();
+  // #chart-inner exists only when renderPhase() just built a chart, and
+  // updateMidRowLine() no-ops safely otherwise — cheapest place to keep the
+  // line correctly positioned on every phase/project switch.
+  updateMidRowLine();
   renderTabs();
   renderGlobalRows();
 
