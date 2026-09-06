@@ -79,11 +79,11 @@ const POSY_CHART_1 = [
   // Row 22
   ['E','E','E','P','KTBL','P','KTBL','P','P','K','K','K','YO','K','K','K','K2A','P','SKA','K','K','K','YO','K','K','K','P','P','KTBL','P','KTBL','P','P','KTBL','P','P','P','KTBL','P','P','KTBL','P','K'],
   // Row 23
-  ['E','E','M1RP','P','KTBL','YO','TSSK','P','P','YO','K','K','K','K2A','K','K','K','P','K','K','K','SKA','K','K','K','YO','P','P','TK2TOG','YO','KTBL','P','P','TK2TOG','P','P','P','TSSK','P','P','KTBL','P','K'],
+  ['E','E','M1RP','P','KTBL','YO','TSSK','P','P','YO','K','K','K','K2A','K','K','K','P','K','K','K','SKA','K','K','K','YO','P','P','TK2TOG','YO','KTBL','P','P','TK2TOG','YO','P','YO','TSSK','P','P','KTBL','P','K'],
   // Row 24
   ['E','E','P','P','KTBL','P','KTBL','P','P','K','YO','K','K','K','K2A','K','K','P','K','K','SKA','K','K','K','YO','K','P','P','KTBL','P','KTBL','P','P','KTBL','P','P','P','KTBL','P','P','KTBL','P','K'],
   // Row 25
-  ['E','E','P','P','KTBL','YO','TSSK','P','P','K','K','YO','K','K','K','K2A','K','P','K','SKA','K','K','K','YO','K','K','P','P','TK2TOG','YO','KTBL','P','P','KTBL','P','P','P','KTBL','P','P','KTBL','YO','K'],
+  ['E','E','P','P','KTBL','YO','TSSK','P','P','K','K','YO','K','K','K','K2A','K','P','K','SKA','K','K','K','YO','K','K','P','P','TK2TOG','YO','KTBL','P','P','KTBL','P','P','P','KTBL','P','P','KTBL','P','K'],
   // Row 26
   ['E','E','P','P','KTBL','P','KTBL','P','P','K','K','K','YO','K','K','K','K2A','P','SKA','K','K','K','YO','K','K','K','P','P','KTBL','P','KTBL','P','P','KTBL','P','P','P','KTBL','P','P','KTBL','P','K'],
   // Row 27
