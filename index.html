@@ -921,6 +921,16 @@
   /* No-stitch: stays grey even in active row */
   .cc-e { background: var(--ch-empty-bg) !important; border-color: transparent !important; }
 
+  /* Combined-chart boundary — the last stitch of one source panel (Chart 5,
+     Chart 4, …) before the next begins, on charts built by concatenating
+     several of the designer's own charts side by side (see segEndCols() in
+     chart.js). A thicker, coloured right edge reads as a seam even though
+     every cell already has a thin border, and it has to win over .cc-e's
+     border-color:transparent — a no-stitch cell can fall on a boundary
+     column just like any other. */
+  .cc-seg-end { border-right-width: 2px; border-right-color: var(--ch-blue); }
+  .cc-seg-end.cc-e { border-right-color: var(--ch-blue) !important; }
+
   /* Active row overrides (all non-empty cells) */
   .crow-active .cc:not(.cc-e) {
     background: var(--ch-active-bg);
