@@ -81,14 +81,16 @@
   }
   /* Still fills whatever space is left (flex:1, as before) — a bigger
      screen shows more rows, which is fine. min-height is the floor: at
-     least ~11 rows stay visible even when the phase header/recap crowd it,
+     least ~9 rows stay visible even when the phase header/recap crowd it,
      so the current row always has real context around it rather than being
      squeezed down to a sliver. In cell-size units, not a flat px number, so
      the row count is what stays constant across zoom, not the pixel height
-     — see resizeChart(). */
+     — see resizeChart(). Kept low (was 11) so the row-recap text below has
+     real room to grow on patterns whose written instructions run long —
+     Posy's combined-chart rows in particular. */
   body.chart-page .chart-vp {
     flex: 1; height: auto;
-    min-height: calc((var(--cell-sz) + 1px) * 11);
+    min-height: calc((var(--cell-sz) + 1px) * 9);
   }
 
   .chart-overlay-top, .chart-overlay-bottom {
