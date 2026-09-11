@@ -838,6 +838,10 @@ const POSY_PHASES = [
   {
     id:'posy-back-lace', name:'Back · lace', desc:'Charts 3–6 combined · 120 sts + edges',
     hasChart: true, flatChart: true, wsFirst: true, chart: POSY_BACK_CHART,
+    // Panel widths in the order they're concatenated — Chart 5, Chart 4,
+    // Chart 3, Chart 4, Chart 3, Chart 4, Chart 6 — so the chart renderer can
+    // draw a divider where one designer chart ends and the next begins.
+    chartSegments: [15, 18, 18, 18, 18, 18, 15],
     entries:[
       {kind:'note', id:'bkl7', text:'Remove all markers between lace panels once all rows of the charts are finished.', postChart:true},
     ]
@@ -892,6 +896,8 @@ const POSY_PHASES = [
   {
     id:'posy-body-hem-lace', name:'Body · lace hem', desc:'Charts 7 & 8 combined × 13 · 234 sts',
     hasChart: true, flatChart: true, chart: POSY_BODY_HEM_CHART,
+    // (Chart 8, Chart 7) x6, then a final Chart 8 — 13 panels, 18 sts each.
+    chartSegments: [18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18],
     entries:[
       {kind:'note', id:'bhl3', text:'Remove all markers once all rows of the charts are finished.', postChart:true},
     ]

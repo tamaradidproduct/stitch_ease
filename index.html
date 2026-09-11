@@ -34,6 +34,11 @@
     --ch-active-symbol: #2563eb;
     --ch-empty-bg: #dde1e7;
     --ch-blue: #2563eb;
+    /* Distinct from --ch-blue on purpose — that's the mid-row drag marker's
+       colour (see .mid-row-line/.mid-row-handle), and a combined-chart's
+       source-panel divider (.cc-seg-end) needs to read as a different kind
+       of line at a glance, not a second copy of the marker. */
+    --ch-purple: #8b5cf6;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -81,14 +86,16 @@
   }
   /* Still fills whatever space is left (flex:1, as before) — a bigger
      screen shows more rows, which is fine. min-height is the floor: at
-     least ~11 rows stay visible even when the phase header/recap crowd it,
+     least ~9 rows stay visible even when the phase header/recap crowd it,
      so the current row always has real context around it rather than being
      squeezed down to a sliver. In cell-size units, not a flat px number, so
      the row count is what stays constant across zoom, not the pixel height
-     — see resizeChart(). */
+     — see resizeChart(). Kept low (was 11) so the row-recap text below has
+     real room to grow on patterns whose written instructions run long —
+     Posy's combined-chart rows in particular. */
   body.chart-page .chart-vp {
     flex: 1; height: auto;
-    min-height: calc((var(--cell-sz) + 1px) * 11);
+    min-height: calc((var(--cell-sz) + 1px) * 9);
   }
 
   .chart-overlay-top, .chart-overlay-bottom {
@@ -918,6 +925,19 @@
   }
   /* No-stitch: stays grey even in active row */
   .cc-e { background: var(--ch-empty-bg) !important; border-color: transparent !important; }
+
+  /* Combined-chart boundary — the last stitch of one source panel (Chart 5,
+     Chart 4, …) before the next begins, on charts built by concatenating
+     several of the designer's own charts side by side (see segEndCols() in
+     chart.js). A thicker, coloured right edge reads as a seam even though
+     every cell already has a thin border, and it has to win over .cc-e's
+     border-color:transparent — a no-stitch cell can fall on a boundary
+     column just like any other. Purple, not --ch-blue — the mid-row drag
+     marker already owns blue, and the two lines mean different things (a
+     fixed structural seam vs. a marker you move), so they need different
+     colours to tell apart at a glance. */
+  .cc-seg-end { border-right-width: 2px; border-right-color: var(--ch-purple); }
+  .cc-seg-end.cc-e { border-right-color: var(--ch-purple) !important; }
 
   /* Active row overrides (all non-empty cells) */
   .crow-active .cc:not(.cc-e) {

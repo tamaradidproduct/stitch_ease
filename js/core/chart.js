@@ -51,10 +51,28 @@ const SYMS = {
   BRP: '<svg width="100%" height="100%" viewBox="0 0 24 24" style="display:block"><path transform="matrix(1.000000,0.000000,0.000000,1.000000,4.000000,2.000000)" d="M8 0C12.4183 0 16 3.58172 16 8L16 20L14.5 20L14.5 7.9375L14.4961 7.9375C14.4098 4.42276 11.5355 1.59961 8 1.59961C4.46449 1.59961 1.59017 4.42276 1.50391 7.9375L1.5 7.9375L1.5 20L0 20L0 8C0 3.58172 3.58172 0 8 0Z" fill="currentColor" fill-rule="nonzero"/><path transform="matrix(1.000000,0.000000,0.000000,1.000000,4.000000,2.000000)" d="M4 9C4 6.79086 5.79086 5 8 5C10.2091 5 12 6.79086 12 9C12 11.2091 10.2091 13 8 13C5.79086 13 4 11.2091 4 9Z" fill="currentColor" fill-rule="nonzero"/></svg>',
 };
 
-function stitchCell(type) {
-  if (type === 'E') return '<div class="cc cc-e"></div>';
+function stitchCell(type, segEnd) {
+  const cls = 'cc' + (segEnd ? ' cc-seg-end' : '');
+  if (type === 'E') return `<div class="${cls} cc-e"></div>`;
   const sym = SYMS[type] || '';
-  return `<div class="cc">${sym ? `<span class="cc-sym">${sym}</span>` : ''}</div>`;
+  return `<div class="${cls}">${sym ? `<span class="cc-sym">${sym}</span>` : ''}</div>`;
+}
+
+// Column indices (0-based) where a combined chart's source panel ends — the
+// last stitch of Chart 5, then Chart 4, etc. Drawn as a divider so a knitter
+// can tell "that's the end of Chart 4, this next bit is Chart 3" instead of
+// the combined 120 or 234-stitch row reading as one undifferentiated blur.
+// A phase's chart is source panels concatenated column-wise (see
+// js/patterns/posy.js's POSY_BACK_CHART/POSY_BODY_HEM_CHART); chartSegments
+// is just the width of each panel in that same order. The last panel's own
+// end isn't marked — there's nothing after it to divide from.
+function segEndCols(phase) {
+  const segments = phase && phase.chartSegments;
+  if (!segments || segments.length < 2) return null;
+  const cols = new Set();
+  let acc = 0;
+  for (let i = 0; i < segments.length - 1; i++) { acc += segments[i]; cols.add(acc - 1); }
+  return cols;
 }
 
 function buildChartTracker(phaseHeaderHtml) {
@@ -74,6 +92,7 @@ function buildChartTracker(phaseHeaderHtml) {
   // Render rows top-to-bottom visually (row 44 at top, row 1 at bottom).
   // The last-worked row (44) carries the post-chart confirm step directly
   // underneath it, rather than as a separate block below the whole chart.
+  const segEnds = segEndCols(PHASES[cur]);
   for (let r = CHART_TOTAL; r >= 1; r--) {
     const rowData = CHART_B[r - 1];
     const isActive = (r === chartCurrentRow);
@@ -85,7 +104,7 @@ function buildChartTracker(phaseHeaderHtml) {
 
     html += `<div class="crow${isActive ? ' crow-active' : ''}" data-row="${r}">`;
     html += '<div class="crow-cells">';
-    for (const t of rowData) html += stitchCell(t);
+    for (let ci = 0; ci < rowData.length; ci++) html += stitchCell(rowData[ci], segEnds && segEnds.has(ci));
     html += '</div>';
     html += `<div class="${numCls}">${r}</div>`;
     html += '</div>';
