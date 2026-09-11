@@ -30,7 +30,7 @@
 // pattern's stated length at that checkpoint for S/M/L exactly.
 // ─────────────────────────────────────────────
 
-function sophieHoodCadenceUnit(prefix, n, shapingLabel, shapingText) {
+function sophieHoodCadenceUnit(prefix, n, shapingText) {
   // n-row unit: row 1 is the shaping row (WS), rows 2..n alternate RS/WS,
   // all identical plain i-cord rows.
   const rows = [{ id: `${prefix}-1`, text: `Row 1 (WS): ${shapingText}` }];
@@ -71,7 +71,7 @@ function buildSophieHoodPhases(sizeTag, cadenceN, rejoinRepeats) {
         { kind: 'note', id: P('g0'), text: `Now work increases from the WS on every ${cadenceN}th row: 1 increase row, then ${cadenceN - 1} plain rows, repeated.` },
         {
           kind: 'repeat', id: P('g1'), text: `Increase unit (every ${cadenceN}th row)`, times: 39,
-          rows: sophieHoodCadenceUnit(P('g1'), cadenceN, 'inc', 'K2, kfb, knit to the last 3 sts, slip the last 3 sts purl-wise wyif.')
+          rows: sophieHoodCadenceUnit(P('g1'), cadenceN, 'K2, kfb, knit to the last 3 sts, slip the last 3 sts purl-wise wyif.')
         },
         { kind: 'note', id: P('g2'), text: 'There are now 45 sts on the needle (or check the width incl. i-cord edges is 25cm [9¾"] — width matters more than the exact stitch count). The next row is a WS row.' },
       ]
@@ -175,7 +175,7 @@ function buildSophieHoodPhases(sizeTag, cadenceN, rejoinRepeats) {
         { kind: 'note', id: P('x0'), text: `Now work decreases from the WS on every ${cadenceN}th row: 1 decrease row, then ${cadenceN - 1} plain rows, repeated.` },
         {
           kind: 'repeat', id: P('x1'), text: `Decrease unit (every ${cadenceN}th row)`, times: 38,
-          rows: sophieHoodCadenceUnit(P('x1'), cadenceN, 'dec', 'K3, skp, knit to the last 3 sts, slip the last 3 sts purl-wise wyif.')
+          rows: sophieHoodCadenceUnit(P('x1'), cadenceN, 'K3, skp, knit to the last 3 sts, slip the last 3 sts purl-wise wyif.')
         },
         { kind: 'note', id: P('x2'), text: '7 sts left on the needle, for all sizes. The next row is a WS row.' },
       ]
