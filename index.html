@@ -34,6 +34,11 @@
     --ch-active-symbol: #2563eb;
     --ch-empty-bg: #dde1e7;
     --ch-blue: #2563eb;
+    /* Distinct from --ch-blue on purpose — that's the mid-row drag marker's
+       colour (see .mid-row-line/.mid-row-handle), and a combined-chart's
+       source-panel divider (.cc-seg-end) needs to read as a different kind
+       of line at a glance, not a second copy of the marker. */
+    --ch-purple: #8b5cf6;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -927,9 +932,12 @@
      chart.js). A thicker, coloured right edge reads as a seam even though
      every cell already has a thin border, and it has to win over .cc-e's
      border-color:transparent — a no-stitch cell can fall on a boundary
-     column just like any other. */
-  .cc-seg-end { border-right-width: 2px; border-right-color: var(--ch-blue); }
-  .cc-seg-end.cc-e { border-right-color: var(--ch-blue) !important; }
+     column just like any other. Purple, not --ch-blue — the mid-row drag
+     marker already owns blue, and the two lines mean different things (a
+     fixed structural seam vs. a marker you move), so they need different
+     colours to tell apart at a glance. */
+  .cc-seg-end { border-right-width: 2px; border-right-color: var(--ch-purple); }
+  .cc-seg-end.cc-e { border-right-color: var(--ch-purple) !important; }
 
   /* Active row overrides (all non-empty cells) */
   .crow-active .cc:not(.cc-e) {
