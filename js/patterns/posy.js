@@ -291,9 +291,9 @@ const POSY_CHART_4 = [
   // Row 25
   ['P','P','KTBL','P','KTBL','P','P','KTBL','P','P','P','KTBL','P','P','KTBL','P','KTBL','P'],
   // Row 26
-  ['K','YO','K','K','K','K2A','K','KTBL','K','PU','K','KTBL','K','SKA','K','K','K','YO'],
+  ['K','YO','K','K','K','K2A','P','KTBL','P','PU','P','KTBL','P','SKA','K','K','K','YO'],
   // Row 27
-  ['K','K','YO','K','K','K','K2A','KTBL','K','P3','K','KTBL','SKA','K','K','K','YO','K'],
+  ['K','K','YO','K','K','K','K2A','KTBL','P','P3','P','KTBL','SKA','K','K','K','YO','K'],
   // Row 28
   ['K','K','K','YO','K','K','K','K2A','P','CDD','P','SKA','K','K','K','YO','K','K'],
   // Row 29
