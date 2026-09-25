@@ -51,19 +51,22 @@ const SYMS = {
   BRP: '<svg width="100%" height="100%" viewBox="0 0 24 24" style="display:block"><path transform="matrix(1.000000,0.000000,0.000000,1.000000,4.000000,2.000000)" d="M8 0C12.4183 0 16 3.58172 16 8L16 20L14.5 20L14.5 7.9375L14.4961 7.9375C14.4098 4.42276 11.5355 1.59961 8 1.59961C4.46449 1.59961 1.59017 4.42276 1.50391 7.9375L1.5 7.9375L1.5 20L0 20L0 8C0 3.58172 3.58172 0 8 0Z" fill="currentColor" fill-rule="nonzero"/><path transform="matrix(1.000000,0.000000,0.000000,1.000000,4.000000,2.000000)" d="M4 9C4 6.79086 5.79086 5 8 5C10.2091 5 12 6.79086 12 9C12 11.2091 10.2091 13 8 13C5.79086 13 4 11.2091 4 9Z" fill="currentColor" fill-rule="nonzero"/></svg>',
 };
 
-// `color` is a yarn colour from an imported chart's chartColors grid. It is
-// re-checked here, not only at import: a pattern doc can also arrive frozen
-// or synced, and this lands in a style attribute.
-const CELL_HEX = /^#[0-9a-f]{3}([0-9a-f]{3})?$/i;
-function cellColor(c) { return typeof c === 'string' && CELL_HEX.test(c) ? c : null; }
+// `yarn` is a yarn index from an imported chart's chartColors grid. The cell
+// only names the slot (var(--yarn-N)); the actual colour is set once on
+// :root by applyYarnVars() (js/core/yarns.js), so picking a new yarn colour
+// repaints the whole chart without rebuilding a single cell. Checked as an
+// integer here, not only at import: the doc can arrive frozen or synced, and
+// this lands in a style attribute.
+function cellYarn(c) { return Number.isInteger(c) && c >= 0 && c < 32 ? c : null; }
 
-function stitchCell(type, segEnd, color) {
+function stitchCell(type, segEnd, yarn) {
   let cls = 'cc' + (segEnd ? ' cc-seg-end' : '');
   if (type === 'E') return `<div class="${cls} cc-e"></div>`;
-  const hex = cellColor(color);
-  if (hex) cls += ' cc-col';
+  const y = cellYarn(yarn);
+  if (y !== null) cls += ' cc-col';
   const sym = SYMS[type] || '';
-  return `<div class="${cls}"${hex ? ` style="--cc-bg:${hex}"` : ''}>${sym ? `<span class="cc-sym">${sym}</span>` : ''}</div>`;
+  const style = y !== null ? ` style="--cc-bg:var(--yarn-${y});--cc-fg:var(--yarn-${y}-fg)"` : '';
+  return `<div class="${cls}"${style}>${sym ? `<span class="cc-sym">${sym}</span>` : ''}</div>`;
 }
 
 // The active chart phase's per-cell colours for one row, or null.
@@ -262,17 +265,22 @@ function rowRecap(row) {
   const rs = isRSRow(row);
   const abbr = rs ? STITCH_ABBR_RS : STITCH_ABBR_WS;
   const colors = chartColorRow(row);
-  let cells = CHART_B[row - 1].map((t, i) => ({ t, c: colors ? cellColor(colors[i]) : null })).filter(x => x.t !== 'E');
+  let cells = CHART_B[row - 1].map((t, i) => ({ t, c: colors ? cellYarn(colors[i]) : null })).filter(x => x.t !== 'E');
   if (rs) cells = cells.reverse(); // RS: right → left. WS: already stored left → right.
   if (!cells.length) return '';
-  if (!cells.some(x => x.c)) return collapseRepeats(rleStitches(cells.map(x => x.t), abbr)).join(', ');
-  // Coloured chart: one run per yarn change, each led by its swatch, so a
-  // two-colour row reads "■ p5, k7 · ■ k3" rather than hiding the change.
+  if (!cells.some(x => x.c !== null)) return collapseRepeats(rleStitches(cells.map(x => x.t), abbr)).join(', ');
+  // Coloured chart: one run per yarn change, each led by its swatch and
+  // name, so a two-colour row reads "■ Front: p5, k7 · ■ Back: k3" rather
+  // than hiding the change.
+  const yarns = (PHASES[cur] && PHASES[cur].chartYarns) || [];
   const runs = [];
   for (let i = 0; i < cells.length; ) {
     let j = i;
     while (j < cells.length && cells[j].c === cells[i].c) j++;
-    const sw = cells[i].c ? `<span class="recap-swatch" style="background:${cells[i].c}"></span>` : '';
+    const c = cells[i].c;
+    const sw = c !== null
+      ? `<span class="recap-swatch" style="background:var(--yarn-${c})"></span>${yarns[c] ? escapeHtml(yarns[c].name) + ': ' : ''}`
+      : '';
     runs.push(sw + collapseRepeats(rleStitches(cells.slice(i, j).map(x => x.t), abbr)).join(', '));
     i = j;
   }

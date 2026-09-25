@@ -15,7 +15,7 @@ chart phase — stored, frozen, adopted and synced exactly like a CSV import.
 | `name` | Pattern name (editable in the preview sheet) |
 | `palette` | Stitch ids; `stitches[i][2]` indexes it. Mapped by `STITCHCHART_IDS` |
 | `stitches` | `[x, y, paletteIndex]`. **min y = row 1** (y grows upward), x left → right. Any cell inside the bounding box with no stitch is `E` (no stitch) |
-| `colors` + `colorPalette` | `[x, y, colourIndex]` → the phase's `chartColors` grid. Drawn as the cell background and as a swatch in the row recap |
+| `colors` + `colorPalette` | `[x, y, colourIndex]` → yarn slots. Each distinct colour becomes one entry in `phase.chartYarns` (order of first use from row 1), and `phase.chartColors` holds the slot index per cell. The export colour is only the default swatch: the knitter names each slot in the preview and picks the real yarn colour per project |
 | `v` | Anything above 3 is refused with "update the app" |
 
 Ignored: `referenceImage` (a base64 PNG, ~95% of the file; never stored, it would
@@ -31,7 +31,7 @@ All optional; the preview sheet asks when they're absent.
 
 - `worked`: `"flat"` | `"round"` (default flat)
 - `firstRow`: `"RS"` | `"WS"` (default RS; flat only)
-- `colorNames`: `{ "#d3f3d0": "MC", "#e4d4fb": "CC" }` — labels for the notes sheet and preview
+- `colorNames`: `{ "#d3f3d0": "Front", "#e4d4fb": "Back" }` — pre-fills the slot names in the preview
 
 ## Notation
 
