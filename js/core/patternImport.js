@@ -5,7 +5,9 @@
 // never written to a committed js/patterns/*.js file. That split is the
 // whole point: a bought/licensed pattern the deploy repo has no right to
 // redistribute can still be tracked here, because it never leaves the
-// device. See docs/pattern-csv-template.md for the column format.
+// device — unless the user signs in, when js/cloud/patternsync.js shares it
+// with their family through the private `custom_patterns` table (never the
+// public Pages repo). See docs/pattern-csv-template.md for the column format.
 //
 // A custom pattern is a plain PATTERNS entry (docs/rows-sections-model.md
 // shape) with `custom: true` added so it can be told apart from the
@@ -159,6 +161,7 @@ function importPatternCsvText(text, opts) {
     PATTERNS[existingIdx] = pattern;
   }
   saveCustomPatterns();
+  if (typeof noteCustomPatternSaved === 'function') noteCustomPatternSaved(pattern.id);
   return pattern;
 }
 
@@ -239,5 +242,7 @@ function removeCustomPattern(id) {
   if (idx === -1) return;
   PATTERNS.splice(idx, 1);
   saveCustomPatterns();
+  // A tombstone, not just an absence — see js/cloud/patternsync.js.
+  if (typeof noteCustomPatternRemoved === 'function') noteCustomPatternRemoved(id);
   render();
 }

@@ -18,7 +18,8 @@ peacock-tee-deploy/
   js/core/chartImport.js        ← on-device .stitchchart.json import → custom chart pattern
   js/core/pdf.js                ← the original pattern PDF (IndexedDB + the sheet)
   js/cloud/pdfsync.js           ← PDF sync: metadata always, bytes on demand
-  js/cloud/family.js            ← families: who a pattern PDF is shared with
+  js/cloud/family.js            ← families: who pattern PDFs and imported patterns are shared with
+  js/cloud/patternsync.js       ← custom-pattern sync: family-shared docs, LWW + tombstones
   js/cloud/auth.js              ← Supabase client, session, account sheet, claim flow
   js/cloud/sync.js              ← clocks, outbox, push, pull, three-way merge
   js/core/app.js                ← nav, SW registration, bootstrap  ← MUST BE LAST
@@ -81,6 +82,7 @@ Progress is **namespaced per project**. Keys:
 - `pt3_proj_<projectId>_phash` — the pattern structure hash the project was started on
 - `pt3_proj_<projectId>_pattern` — frozen copy of the pattern as it was then (~15KB); the only record of it once the code moves on
 - `pt3_cellSz` — chart cell-size pref (10–32px, default 16) — **global**
+- `pt3_custom_patterns` — imported pattern docs; `pt3_cpats` — their sync clocks `{patternId: {localMs, deletedMs, remoteMs}}` — **global**, see "Custom pattern sync"
 - `pt3_schema` / `pt3_outbox` / `pt3_last_sync` / `pt3_sync_cursor` / `pt3_conflicts` / `pt3_owner` / `pt3_claim_declined` / `pt3_sb_auth` — **global**, see the Cloud sync section
 
 `save()` writes the active project's keys (via `pkey(suffix)` → `pt3_proj_<id>_*`); `loadProjectState()` reads them; `loadGlobal()` loads shared prefs. Three one-time migrations run on startup, in order: `migrateLegacy()` folds the original single-pattern keys (`pt3_state`, …) into `pt3_peacock-tee_*`; `migrateToProjects()` turns any pattern-namespaced progress into a first project and writes `pt3_projects`; `migrateAddClocks()` backfills `clk`/`base` for every existing project; `migrateAddPatternHash()` backfills `phash`/`pattern`. Each has its **own** sentinel — `migrateAddClocks` gates on `pt3_schema`, **not** on `pt3_projects`, which `migrateToProjects` already claims. **Keep the `pt3_` prefix and all four migrations** — removing them breaks saved progress. `pt3_schema` is a version *number* (`SCHEMA_VERSION`), not a boolean — later migrations compare against it rather than adding a key each.
@@ -120,6 +122,17 @@ Patterns ship with the deploy, so **text edits reach everyone immediately** — 
 
 ### Importing patterns on-device
 **New project → Import pattern** takes a pattern CSV (`docs/pattern-csv-template.md`) or a chart export `.stitchchart.json` (`docs/stitchchart-import.md`); `handlePatternFileText` decides by content. Both become **custom patterns** in `pt3_custom_patterns` — never committed, so bought patterns are fine. A chart import shows a preview sheet first (name, thumbnail, stitch counts, flat/round, RS/WS row 1) and becomes one `hasChart` phase. Per-cell yarn colours live in `phase.chartColors`, a grid parallel to the chart — kept separate so nothing that reads `CHART_B` changes. The export's `referenceImage` is never stored. An unknown stitch id blocks the import: **ask before adding** to `STITCHCHART_IDS`/`GLOSSARY`.
+
+#### Custom pattern sync — shared per family
+`js/cloud/patternsync.js` + the `custom_patterns` table (`supabase/migrations/20260924120000_custom_patterns.sql`). Without it a project started from an imported pattern synced to devices that had no pattern to open it with.
+
+- **One row per (uploader, pattern), read by the family** — the model `pattern_pdfs` settled on in `20260821025013`. RLS: read = `family_id in auth_family_ids()`; write = your own row only. The family's answer for a pattern is its **newest row by `updated_ms`**, whoever wrote it (`newestCustomPatternRows`). A BEFORE UPDATE trigger drops a write carrying an older clock, so two of one account's devices can't race an older doc over a newer one.
+- **Last-write-wins, no merge.** A doc is one authored object. Structural changes are safe anyway: a project whose pattern changed keeps its frozen snapshot and gets "Pattern updated · Review".
+- **Remove is a tombstone** (`deleted_ms`, `pattern_doc` null) — `removeCustomPattern` calls `noteCustomPatternRemoved`. A remote tombstone does **not** remove the pattern where a live project on this device uses it (the project would become unopenable); it stays, tombstoned in `pt3_cpats`, so nothing pushes it back.
+- **Metadata every pull, docs only when their clock moved.** `pullCustomPatterns` runs **first** in `pull()` (own try), so `applyRemotePattern` can freeze a real snapshot for projects on it. A project that still arrives first gets its snapshot backfilled when the pattern lands (`backfillProjectSnapshots`). `cpat` ops push **first** in `pendingOps()` for the same reason.
+- **A synced doc is untrusted input.** Pattern text renders as raw HTML, and another account's doc was not escaped by this device. `sanitizeSyncedPattern` re-escapes text idempotently (`escapeHtml(unescapeBasicHtml(s))`), leaves `term`/`def` raw (escaped at render by `openNotes`), refuses ids that could break out of an `onclick`, checks chart tokens and colours, and keeps a raw `symbol` only if it is exactly `colorSwatchSvg(hex)`. A built-in pattern's id is never replaced.
+- Local imports record `localMs` (`noteCustomPatternSaved`); a downloaded doc records `localMs = remoteMs` so it isn't pushed straight back. Existing imports are backfilled with a clock on first load (`loadCustomPatternIndex`); `claimLocalProjects` → `enqueueUnsyncedCustomPatterns`; changing family → `forgetRemoteCustomPatterns` (they re-upload into the new family).
+- `js/cloud/patternsync.selftest.js` is **not shipped**; load it and call `patternSyncTest()` (phone / iPad / family member / outsider over a mock server; snapshots and restores every `pt3_*` key).
 
 ### The original pattern PDF
 The tracker is a transcription — no schematics, no photos, no sizing table. The **document icon** in the section header (beside the notes book, on every section including the chart) opens the original PDF, so the answer to "what did the designer actually say" isn't "go and find the email you bought it in".
@@ -257,6 +270,8 @@ Within a pattern, phase nav is at the bottom. On non-chart phases it's the fixed
 - Don't purge a pattern's PDF in `deleteProject` — it belongs to the pattern, and another project may still refer to it
 - Don't make the `pattern-pdfs` bucket public, and don't auto-download PDF bytes on pull — metadata syncs, bytes wait for a tap
 - Don't widen PDF reads to `authenticated` instead of the family — sign-up is open, so that publishes bought patterns to anyone who makes an account
+- Don't render a synced custom pattern doc without `sanitizeSyncedPattern` — it was written by another account's client, and pattern text is rendered as raw HTML
+- Don't let a remote tombstone remove a custom pattern that a live local project uses — the project would stop opening
 - Don't derive a PDF's storage path from the signed-in uid — the uploader may be another family member; use the row's `storage_path`
 - Don't deploy or push unless the user asks
 

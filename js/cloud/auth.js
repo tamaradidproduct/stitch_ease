@@ -176,6 +176,8 @@ function claimLocalProjects(uid) {
   // the projects above — and one may have been attached long before anyone
   // signed in, when there was no account to send it to.
   if (typeof enqueueUnsyncedPdfs === 'function') enqueueUnsyncedPdfs();
+  // Imported patterns, likewise keyed by pattern and likely imported offline.
+  if (typeof enqueueUnsyncedCustomPatterns === 'function') enqueueUnsyncedCustomPatterns();
   closeSheet();
   refreshAccountButton();
   // canSync() was false until this moment — the projects were unclaimed, so

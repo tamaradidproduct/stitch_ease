@@ -47,6 +47,13 @@ function stitchChartToken(id) {
 
 const HEX_COLOR = /^#[0-9a-f]{3}([0-9a-f]{3})?$/i;
 
+// The legend glyph for a yarn colour. One function, because a synced pattern
+// doc's `symbol` is rendered raw and patternsync.js only lets one through if it
+// is byte-for-byte what this returns for a valid hex.
+function colorSwatchSvg(hex) {
+  return `<svg width="100%" height="100%" viewBox="0 0 24 24" style="display:block"><rect x="3" y="3" width="18" height="18" rx="2" fill="${hex}" stroke="rgba(0,0,0,.25)"/></svg>`;
+}
+
 function chartSlug(s) {
   return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'chart';
 }
@@ -149,7 +156,7 @@ function buildChartPattern(draft, opts) {
     notes.push({
       term: label,
       def: 'Chart cells shaded this colour are worked in this yarn.',
-      symbol: `<svg width="100%" height="100%" viewBox="0 0 24 24" style="display:block"><rect x="3" y="3" width="18" height="18" rx="2" fill="${hex}" stroke="rgba(0,0,0,.25)"/></svg>`,
+      symbol: colorSwatchSvg(hex),
     });
   });
 
@@ -185,6 +192,7 @@ function addCustomPattern(pattern, replace) {
     PATTERNS.push(pattern);
   }
   saveCustomPatterns();
+  if (typeof noteCustomPatternSaved === 'function') noteCustomPatternSaved(pattern.id);
 }
 
 // ── Preview sheet ──
