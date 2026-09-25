@@ -7,6 +7,8 @@ can also be dropped onto the picker screen.
 
 The result is a **custom pattern** (`pt3_custom_patterns`, `custom: true`) with one
 chart phase — stored, frozen, adopted and synced exactly like a CSV import.
+Importing always adds a new pattern; to replace one, use **Update** on its tile in
+the picker (the preview sheet then starts from that pattern's name).
 
 ## What is read (v3)
 

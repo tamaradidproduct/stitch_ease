@@ -13,9 +13,7 @@
 // here. x grows left → right, matching how CHART_B rows are stored. Any
 // cell inside the bounding box with nothing placed is 'E' (no stitch),
 // which is also what gives a shaped chart (a triangle, a neckline) its
-// outline. Only finished charts are exported, so there is no "still being
-// traced" state to detect; the exporter also lists no-stitch cells
-// explicitly as `no_stitch`, which lands on the same 'E'.
+// outline.
 //
 // What is deliberately NOT kept: `referenceImage`. It is a base64 PNG and
 // typically ~95% of the file; localStorage is the progress store, and
@@ -48,6 +46,13 @@ function stitchChartToken(id) {
 }
 
 const HEX_COLOR = /^#[0-9a-f]{3}([0-9a-f]{3})?$/i;
+
+// The legend glyph for a yarn colour. One function, because a synced pattern
+// doc's `symbol` is rendered raw and patternsync.js only lets one through if it
+// is byte-for-byte what this returns for a valid hex.
+function colorSwatchSvg(hex) {
+  return `<svg width="100%" height="100%" viewBox="0 0 24 24" style="display:block"><rect x="3" y="3" width="18" height="18" rx="2" fill="${hex}" stroke="rgba(0,0,0,.25)"/></svg>`;
+}
 
 function chartSlug(s) {
   return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'chart';
@@ -88,38 +93,33 @@ function parseStitchChart(text) {
   // Colours only where a stitch actually sits — a colour on an empty cell
   // would draw a swatch on "no stitch". Kept as a parallel grid (not folded
   // into the token) so every existing reader of CHART_B stays untouched.
-  //
-  // The export's colours are the TRACING app's highlights, not the yarn: a
-  // colour here means "worked in yarn N". So the grid holds a yarn INDEX,
-  // and `yarns` lists them in order of first use from row 1 — the knitter
-  // names them in the preview and picks real yarn colours per project
-  // (js/core/yarns.js). The export colour is only the default swatch.
-  let colors = null, yarns = [];
+  let colors = null;
   if (Array.isArray(d.colors) && d.colors.length) {
     const pal = Array.isArray(d.colorPalette) ? d.colorPalette : [];
-    const hexGrid = Array.from({ length: rows }, () => Array(cols).fill(null));
+    colors = Array.from({ length: rows }, () => Array(cols).fill(null));
+    let any = false;
     for (const c of d.colors) {
       if (!Array.isArray(c) || c.length < 3) continue;
       const r = c[1] - minY, col = c[0] - minX;
       if (r < 0 || r >= rows || col < 0 || col >= cols || chart[r][col] === 'E') continue;
       const hex = typeof c[2] === 'number' ? pal[c[2]] : c[2];
-      if (typeof hex === 'string' && HEX_COLOR.test(hex)) hexGrid[r][col] = hex.toLowerCase();
+      if (typeof hex === 'string' && HEX_COLOR.test(hex)) { colors[r][col] = hex.toLowerCase(); any = true; }
     }
-    const order = [...new Set(hexGrid.flat().filter(Boolean))];
-    if (order.length) {
-      const names = (d.colorNames && typeof d.colorNames === 'object') ? d.colorNames : {};
-      yarns = order.map((hex, i) => ({ color: hex, name: String(names[hex] || `Colour ${i + 1}`).slice(0, 30) }));
-      colors = hexGrid.map(row => row.map(h => h ? order.indexOf(h) : null));
-    }
+    if (!any) colors = null;
   }
 
   const counts = {};
   chart.forEach(row => row.forEach(t => { if (t !== 'E') counts[t] = (counts[t] || 0) + 1; }));
+  const usedColors = colors ? [...new Set(colors.flat().filter(Boolean))] : [];
 
+  // Row-completeness: a traced-in-progress export has a full bounding box
+  // but mostly empty rows. Worth saying in the preview, not worth refusing.
+  const sparseRows = chart.filter(row => row.filter(t => t !== 'E').length <= 1).length;
 
   const name = String(d.name || 'Imported chart').trim().slice(0, 80) || 'Imported chart';
   return {
-    name, rows, cols, chart, colors, yarns, counts,
+    name, rows, cols, chart, colors, counts, usedColors, sparseRows,
+    colorNames: (d.colorNames && typeof d.colorNames === 'object') ? d.colorNames : {},
     // Optional hints the exporter can add; the preview sheet lets the knitter
     // override both.
     worked: d.worked === 'round' ? 'round' : 'flat',
@@ -140,11 +140,7 @@ function buildChartPattern(draft, opts) {
   };
   if (flat) phase.flatChart = true;
   if (wsFirst) phase.wsFirst = true;
-  if (draft.colors) {
-    phase.chartColors = draft.colors;
-    const names = (opts && opts.yarnNames) || [];
-    phase.chartYarns = draft.yarns.map((y, i) => ({ color: y.color, name: String(names[i] || y.name).trim().slice(0, 30) || y.name }));
-  }
+  if (draft.colors) phase.chartColors = draft.colors;
 
   // Notes defer to the glossary for what a stitch means (see CLAUDE.md);
   // 'K' is the blank cell, so it has no glyph to show.
@@ -155,13 +151,12 @@ function buildChartPattern(draft, opts) {
     if (t !== 'K') n.sym = t;
     return n;
   });
-  // The swatch fill is the project's yarn colour (a CSS variable set by
-  // applyYarnVars), falling back to the export colour.
-  (phase.chartYarns || []).forEach((y, i) => {
+  draft.usedColors.forEach((hex, i) => {
+    const label = draft.colorNames[hex] ? String(draft.colorNames[hex]) : `Colour ${i + 1}`;
     notes.push({
-      term: y.name,
+      term: label,
       def: 'Chart cells shaded this colour are worked in this yarn.',
-      symbol: `<svg width="100%" height="100%" viewBox="0 0 24 24" style="display:block"><rect x="3" y="3" width="18" height="18" rx="2" style="fill:var(--yarn-${i}, ${y.color})" stroke="rgba(0,0,0,.25)"/></svg>`,
+      symbol: colorSwatchSvg(hex),
     });
   });
 
@@ -187,18 +182,6 @@ function glossaryEntryBySym(sym) {
   return null;
 }
 
-function addCustomPattern(pattern, replace) {
-  const idx = PATTERNS.findIndex(p => p.id === pattern.id);
-  if (idx !== -1) {
-    if (!PATTERNS[idx].custom) throw new Error(`"${PATTERNS[idx].name}" is a built-in pattern and can't be replaced.`);
-    if (!replace) { const err = new Error('already-exists'); err.existingId = pattern.id; throw err; }
-    PATTERNS[idx] = pattern;
-  } else {
-    PATTERNS.push(pattern);
-  }
-  saveCustomPatterns();
-}
-
 // ── Preview sheet ──
 
 // A small canvas thumbnail, drawn not built from DOM cells: a 60×45 chart
@@ -216,8 +199,7 @@ function drawChartPreview(canvas, draft) {
     for (let c = 0; c < draft.cols; c++) {
       const t = draft.chart[r][c];
       if (t === 'E') continue;
-      const yi = draft.colors ? draft.colors[r][c] : null;
-      ctx.fillStyle = yi !== null ? draft.yarns[yi].color : '#fffefb';
+      ctx.fillStyle = (draft.colors && draft.colors[r][c]) || '#fffefb';
       ctx.fillRect(c * cell, y, cell - (cell > 3 ? 1 : 0), cell - (cell > 3 ? 1 : 0));
       if (t !== 'K' && cell >= 4) {
         ctx.fillStyle = 'rgba(42,37,32,.7)';
@@ -228,29 +210,27 @@ function drawChartPreview(canvas, draft) {
   }
 }
 
-function openChartImportPreview(draft) {
+// `updateId` present → this is the Update action on that pattern's tile: the
+// name starts as the pattern's current one, and the sheet says what replacing
+// it means. Absent → a new pattern, always (see putCustomPattern).
+function openChartImportPreview(draft, updateId) {
+  const target = updateId ? patternById(updateId) : null;
+  const startName = target ? unescapeBasicHtml(target.name) : draft.name;
   const labelFor = t => STITCH_ABBR_RS[t] || t;
   const stitchList = Object.entries(draft.counts).sort((a, b) => b[1] - a[1])
     .map(([t, n]) => `<span class="imp-chip">${t === 'K' ? '' : `<span class="imp-chip-sym">${SYMS[t] || ''}</span>`}${escapeHtml(labelFor(t))} <b>${n}</b></span>`).join('');
-  // Name each yarn here — "Front" / "Back", "MC" / "CC". The actual yarn
-  // colour is chosen per project, since two projects from one chart are
-  // usually knitted in different yarns.
-  const yarnFields = draft.yarns.length ? `
-    <div class="imp-label">Colours in this chart</div>
-    ${draft.yarns.map((y, i) => `<div class="imp-yarn">
-      <span class="imp-swatch imp-swatch-lg" style="background:${y.color}"></span>
-      <input class="sheet-input imp-yarn-name" data-yarn="${i}" value="${escapeHtml(y.name)}" maxlength="30"
-             aria-label="Name for colour ${i + 1}" autocomplete="off">
-    </div>`).join('')}
-    <p class="sheet-sub">You'll pick the actual yarn colours inside each project.</p>` : '';
+  const colorList = draft.usedColors.map((hex, i) =>
+    `<span class="imp-chip"><span class="imp-swatch" style="background:${hex}"></span>${escapeHtml(draft.colorNames[hex] || 'Colour ' + (i + 1))}</span>`).join('');
+  const sparse = draft.sparseRows > draft.rows / 2
+    ? `<p class="sheet-sub imp-warn">${draft.sparseRows} of ${draft.rows} rows have one stitch or none — this chart may not be fully traced yet.</p>` : '';
 
   const body = `
     <label class="imp-label" for="imp-name">Name</label>
-    <input class="sheet-input" id="imp-name" value="${escapeHtml(draft.name)}" maxlength="80" autocomplete="off">
+    <input class="sheet-input" id="imp-name" value="${escapeHtml(startName)}" maxlength="80" autocomplete="off">
     <div class="imp-preview"><canvas id="imp-canvas" aria-label="Chart preview"></canvas></div>
     <p class="sheet-sub imp-dims">${draft.rows} rows × ${draft.cols} stitches</p>
-    <div class="imp-chips">${stitchList}</div>
-    ${yarnFields}
+    ${sparse}
+    <div class="imp-chips">${stitchList}${colorList}</div>
     <div class="imp-label">Worked</div>
     <div class="imp-seg" role="radiogroup" aria-label="Worked">
       <button type="button" role="radio" data-worked="flat">Flat</button>
@@ -263,12 +243,13 @@ function openChartImportPreview(draft) {
         <button type="button" role="radio" data-side="WS">Wrong-side row</button>
       </div>
     </div>
+    ${target ? `<p class="sheet-sub">${updateSharedNote()}</p>` : ''}
     <div class="sheet-actions">
       <button class="sheet-btn" onclick="dismissSheet()">Cancel</button>
-      <button class="sheet-btn primary" id="imp-ok">Add to library</button>
+      <button class="sheet-btn primary" id="imp-ok">${target ? 'Update' : 'Add to library'}</button>
     </div>`;
 
-  openSheet('Import chart', body, {
+  openSheet(target ? 'Update pattern' : 'Import chart', body, {
     onOpen: el => {
       let worked = draft.worked, side = draft.wsFirst ? 'WS' : 'RS';
       const paint = () => {
@@ -284,38 +265,16 @@ function openChartImportPreview(draft) {
       const ok = el.querySelector('#imp-ok');
       nameEl.oninput = () => { ok.disabled = !nameEl.value.trim(); };
       ok.onclick = () => {
-        const yarnNames = [...el.querySelectorAll('.imp-yarn-name')].map(i => i.value);
-        const pattern = buildChartPattern(draft, { name: nameEl.value, worked, wsFirst: side === 'WS', yarnNames });
+        const pattern = buildChartPattern(draft, { name: nameEl.value, worked, wsFirst: side === 'WS' });
         closeSheet();
         try {
-          addCustomPattern(pattern, false);
-          afterPatternImport(pattern, 'Pattern imported', 'was added to the library.');
+          putCustomPattern(pattern, updateId);
+          if (updateId) afterPatternImport(pattern, 'Pattern updated', 'was updated.');
+          else afterPatternImport(pattern, 'Pattern imported', 'was added to the library.');
         } catch (e) {
-          if (e.existingId) confirmReplaceChart(pattern, nameEl.value.trim());
-          else importResultSheet('Import failed', escapeHtml(e.message || String(e)));
+          importResultSheet(updateId ? 'Update failed' : 'Import failed', escapeHtml(e.message || String(e)));
         }
       };
-    }
-  });
-}
-
-// Same reasoning as confirmReplacePattern(): re-exporting a chart you've
-// been refining is an update, but it changes what open projects knit, so
-// it's confirmed — and the freeze/adopt flow takes it from there.
-// `rawName` is the unescaped name: sheetConfirm escapes its message itself.
-function confirmReplaceChart(pattern, rawName) {
-  sheetConfirm({
-    title: 'Update pattern?',
-    message: `"${rawName}" is already in your library. Replace it with this chart?`,
-    detail: 'Existing projects keep their progress — they\'ll show "Pattern updated" so you can review what changed.',
-    confirmLabel: 'Update',
-    onConfirm: () => {
-      try {
-        addCustomPattern(pattern, true);
-        afterPatternImport(pattern, 'Pattern updated', 'was updated.');
-      } catch (e) {
-        importResultSheet('Import failed', escapeHtml(e.message || String(e)));
-      }
     }
   });
 }
@@ -326,22 +285,24 @@ function afterPatternImport(pattern, title, verb) {
   importResultSheet(title, `${pattern.name} ${verb}`);
 }
 
-function handleStitchChartText(text) {
+function handleStitchChartText(text, updateId) {
   let draft;
   try { draft = parseStitchChart(text); }
-  catch (e) { importResultSheet('Import failed', escapeHtml(e.message || String(e))); return; }
-  openChartImportPreview(draft);
+  catch (e) { importResultSheet(updateId ? 'Update failed' : 'Import failed', escapeHtml(e.message || String(e))); return; }
+  openChartImportPreview(draft, updateId);
 }
 
 // One entry point for every import format, chosen by content rather than
 // extension: iOS's Files picker often hands over a .json with a generic
-// type, and a CSV never starts with '{'.
-function handlePatternFileText(text) {
-  if (/^\s*\{/.test(text)) handleStitchChartText(text);
-  else handlePatternCsvText(text);
+// type, and a CSV never starts with '{'. Either format may update a pattern
+// of either format — the tile's Update is explicit, so it isn't second-guessed.
+function handlePatternFileText(text, updateId) {
+  if (/^\s*\{/.test(text)) handleStitchChartText(text, updateId);
+  else handlePatternCsvText(text, updateId);
 }
 
-// Desktop convenience: drop a file anywhere on the picker screen.
+// Desktop convenience: drop a file anywhere on the picker screen. Always a
+// new pattern — updating is only ever the tile's explicit action.
 function onPickerDrop(e) {
   e.preventDefault();
   const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];

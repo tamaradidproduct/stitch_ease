@@ -353,6 +353,7 @@ loadConflicts();
 loadPdfIndex();
 loadFamily();
 loadProjects();
+loadCustomPatternIndex();
 view = 'home';
 render();
 

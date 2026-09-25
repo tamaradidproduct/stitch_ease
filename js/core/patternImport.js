@@ -5,7 +5,9 @@
 // never written to a committed js/patterns/*.js file. That split is the
 // whole point: a bought/licensed pattern the deploy repo has no right to
 // redistribute can still be tracked here, because it never leaves the
-// device. See docs/pattern-csv-template.md for the column format.
+// device — unless the user signs in, when js/cloud/patternsync.js shares it
+// with their family through the private `custom_patterns` table (never the
+// public Pages repo). See docs/pattern-csv-template.md for the column format.
 //
 // A custom pattern is a plain PATTERNS entry (docs/rows-sections-model.md
 // shape) with `custom: true` added so it can be told apart from the
@@ -136,35 +138,72 @@ function buildPatternFromRows(rows) {
   return pattern;
 }
 
-// `replace: true` is the caller's confirmation that overwriting an existing
-// custom pattern is intended (see confirmReplacePattern below) — without it,
-// a same-id CSV is treated as a mistake rather than silently applied, since
-// it changes what every project on that pattern knits.
-function importPatternCsvText(text, opts) {
-  opts = opts || {};
-  const pattern = buildPatternFromRows(parseCsv(text));
-  const existingIdx = PATTERNS.findIndex(p => p.id === pattern.id);
-  if (existingIdx === -1) {
-    PATTERNS.push(pattern);
+// ── New vs. update: the file never decides ──
+//
+// A fresh import ALWAYS becomes a new pattern with its own id; it never
+// replaces anything, whatever its pattern_id or name says. Replacing is only
+// ever the explicit "Update" action on a custom pattern's tile, which carries
+// the id to replace with it.
+//
+// Matching by id used to do double duty as "is this an update?", and it was
+// too fragile for that: a chart's id is a slug of its NAME, so renaming a
+// chart in the exporter made a duplicate, and two unrelated charts both called
+// "Swatch" replaced each other. With family sync it would also have reached
+// across people — two members importing different "Swatch" charts would
+// silently overwrite one another's. A generated suffix makes every import its
+// own pattern, on every device, for everyone.
+
+// A sync-safe id for a new import: the file's own id (or name) slugged, plus a
+// random suffix. Slugging also keeps ids out of the characters that
+// patternsync.js refuses, so a hand-written CSV id can't strand a pattern on
+// one device.
+function newCustomPatternId(base) {
+  const slug = String(base || 'pattern').toLowerCase().replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '').slice(0, 40) || 'pattern';
+  let id;
+  do { id = slug + '-' + Math.random().toString(36).slice(2, 8); } while (patternById(id));
+  return id;
+}
+
+// Put a built pattern into the library. `updateId` present → replace that
+// custom pattern (the tile's Update action); absent → add as a new pattern.
+function putCustomPattern(pattern, updateId) {
+  if (updateId) {
+    const idx = PATTERNS.findIndex(p => p.id === updateId);
+    if (idx === -1 || !PATTERNS[idx].custom) throw new Error('That pattern is no longer in your library.');
+    pattern.id = updateId;
+    PATTERNS[idx] = pattern;
   } else {
-    const existing = PATTERNS[existingIdx];
-    if (!existing.custom) {
-      throw new Error(`"${existing.name}" is a built-in pattern and can't be replaced by CSV import.`);
-    }
-    if (!opts.replace) {
-      const err = new Error(`already-exists`);
-      err.existingId = pattern.id;
-      throw err;
-    }
-    PATTERNS[existingIdx] = pattern;
+    pattern.id = newCustomPatternId(pattern.id);
+    PATTERNS.push(pattern);
   }
   saveCustomPatterns();
+  if (typeof noteCustomPatternSaved === 'function') noteCustomPatternSaved(pattern.id);
   return pattern;
+}
+
+function importPatternCsvText(text, updateId) {
+  return putCustomPattern(buildPatternFromRows(parseCsv(text)), updateId);
 }
 
 // ── UI wiring (picker screen) ──
 
+// Which pattern the file picker is updating, if any. Set by the tile's Update
+// button just before it opens the picker; consumed (and cleared) when the file
+// arrives, so a later plain Import can never inherit it.
+let patternUpdateTarget = null;
+
 function triggerImportPattern() {
+  patternUpdateTarget = null;
+  const input = document.getElementById('pattern-csv-input');
+  if (input) input.click();
+}
+
+function triggerUpdatePattern(id, evt) {
+  if (evt) evt.stopPropagation();   // the tile itself starts a project
+  const pat = patternById(id);
+  if (!pat || !pat.custom) return;
+  patternUpdateTarget = id;
   const input = document.getElementById('pattern-csv-input');
   if (input) input.click();
 }
@@ -182,37 +221,41 @@ function importResultSheet(title, safeHtml) {
 // is decided from the content by handlePatternFileText() (chartImport.js).
 function handlePatternCsvFile(input) {
   const file = input.files && input.files[0];
+  const updateId = patternUpdateTarget;
+  patternUpdateTarget = null;
   input.value = ''; // allow re-importing the same filename later
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = () => handlePatternFileText(String(reader.result));
+  reader.onload = () => handlePatternFileText(String(reader.result), updateId);
   reader.onerror = () => importResultSheet('Import failed', 'Could not read that file.');
   reader.readAsText(file);
 }
 
-function handlePatternCsvText(text) {
+function handlePatternCsvText(text, updateId) {
+  if (updateId) { confirmUpdatePattern(text, updateId); return; }
   try {
     const pattern = importPatternCsvText(text);
     resetHeaderKey();
     render();
     importResultSheet('Pattern imported', `${pattern.name} was added to the library.`);
   } catch (e) {
-    if (e.existingId) confirmReplacePattern(text, e.existingId);
-    else importResultSheet('Import failed', escapeHtml(e.message || String(e)));
+    importResultSheet('Import failed', escapeHtml(e.message || String(e)));
   }
 }
 
-// A same-id CSV is an update, not a duplicate — but it's still a structural
-// change to a pattern projects may already be knitting, so it's confirmed
-// rather than applied silently. The existing patternForProject()/adoptPattern
-// flow (state.js) already handles that: a project whose progress predates the
-// change keeps working from its frozen snapshot and gets the normal
-// "Pattern updated · Review" chip, exactly as it would for a bundled pattern
-// whose code changed underneath it. Nothing project-side needed adding here.
-function confirmReplacePattern(text, id) {
+// Updating is still a structural change to a pattern projects may be
+// knitting, so it's confirmed, and parsed first so a broken file fails before
+// the question is asked. The patternForProject()/adoptPattern flow (state.js)
+// does the rest: a project whose progress predates the change keeps working
+// from its frozen snapshot and gets the "Pattern updated · Review" chip.
+function confirmUpdatePattern(text, id) {
   const existing = patternById(id);
-  const body = `<p class="sheet-msg">"${existing.name}" is already in your library. Replace it with this CSV?</p>
-    <p class="sheet-sub">Existing projects keep their progress — they'll show "Pattern updated" so you can review what changed.</p>
+  if (!existing || !existing.custom) { importResultSheet('Update failed', 'That pattern is no longer in your library.'); return; }
+  let built;
+  try { built = buildPatternFromRows(parseCsv(text)); }
+  catch (e) { importResultSheet('Update failed', escapeHtml(e.message || String(e))); return; }
+  const body = `<p class="sheet-msg">Replace "${existing.name}" with "${built.name}" from this file?</p>
+    <p class="sheet-sub">${updateSharedNote()}</p>
     <div class="sheet-actions">
       <button class="sheet-btn" onclick="dismissSheet()">Cancel</button>
       <button class="sheet-btn primary" id="pattern-replace-ok">Update</button>
@@ -222,16 +265,22 @@ function confirmReplacePattern(text, id) {
       el.querySelector('#pattern-replace-ok').onclick = () => {
         closeSheet();
         try {
-          const pattern = importPatternCsvText(text, { replace: true });
+          const pattern = putCustomPattern(built, id);
           resetHeaderKey();
           render();
           importResultSheet('Pattern updated', `${pattern.name} was updated.`);
         } catch (e) {
-          importResultSheet('Import failed', escapeHtml(e.message || String(e)));
+          importResultSheet('Update failed', escapeHtml(e.message || String(e)));
         }
       };
     }
   });
+}
+
+// Said on both update sheets (CSV and chart), so the two can't drift.
+function updateSharedNote() {
+  return 'Existing projects keep their progress — they’ll show “Pattern updated” so you can review what changed.' +
+    (typeof currentUserId === 'function' && currentUserId() ? ' The update also reaches your other devices and your family.' : '');
 }
 
 function removeCustomPattern(id) {
@@ -239,5 +288,7 @@ function removeCustomPattern(id) {
   if (idx === -1) return;
   PATTERNS.splice(idx, 1);
   saveCustomPatterns();
+  // A tombstone, not just an absence — see js/cloud/patternsync.js.
+  if (typeof noteCustomPatternRemoved === 'function') noteCustomPatternRemoved(id);
   render();
 }

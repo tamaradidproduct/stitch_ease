@@ -1,14 +1,15 @@
 // ─────────────────────────────────────────────
-// FAMILIES — who a pattern PDF is shared with
+// FAMILIES — who pattern PDFs and imported patterns are shared with
 //
 // A pattern's PDF belongs to the household, not to whoever happened to buy it
 // on their own login. One person attaches Lenore once; everyone else opens it.
 //
 // ── What a family does and does NOT cover ──
 //
-// PDFs only. Projects and progress stay per-account, deliberately: two people
-// knitting the same pattern are knitting two different garments and must not
-// share a row counter. The document is the one thing that genuinely is the
+// Pattern PDFs, and patterns imported on-device (js/cloud/patternsync.js).
+// Projects and progress stay per-account, deliberately: two people knitting the
+// same pattern are knitting two different garments and must not share a row
+// counter. The pattern and its document are the things that genuinely are the
 // same object for both of them.
 //
 // ── Why not just share a login ──
@@ -125,6 +126,10 @@ async function redeemFamilyInvite(code) {
   } else {
     logSync('warn', 'forgetRemotePdfs not available; old family PDFs not cleared');
   }
+  if (typeof forgetRemoteCustomPatterns === 'function') {
+    try { forgetRemoteCustomPatterns(); }
+    catch (e) { logSync('warn', 'could not clear old family patterns', e); }
+  }
   await refreshFamilyRoster();
   if (typeof kickSync === 'function') kickSync('family-joined');
   return data;
@@ -141,8 +146,8 @@ function familyBlockHtml() {
   const others = roster.filter(m => m.user_id !== currentUserId());
 
   const who = n <= 1
-    ? 'Just you — pattern PDFs you add stay in your account'
-    : n + ' people share pattern PDFs';
+    ? 'Just you — patterns and PDFs you add stay in your account'
+    : n + ' people share patterns and PDFs';
 
   const rows = others.map(m => `<div class="fam-row">
       <div class="fam-email">${escapeHtml(m.email || 'Member')}</div>
@@ -160,7 +165,7 @@ function familyBlockHtml() {
         <button class="sheet-btn slim" id="fam-join">Join with a code</button>
       </div>
       <div id="fam-msg"></div>
-      <p class="acct-note">Pattern PDFs are shared across your family. Projects and row counts stay yours alone.</p>
+      <p class="acct-note">Imported patterns and pattern PDFs are shared across your family. Projects and row counts stay yours alone.</p>
     </div>`;
 }
 
@@ -196,7 +201,7 @@ function showFamilyCode(code) {
       <button class="sheet-btn" onclick="dismissSheet()">Done</button>
       <button class="sheet-btn primary" id="fam-copy">Copy code</button>
     </div>
-    <p class="acct-note">They sign in on their own device, open Account, and tap “Join with a code”. They’ll see your pattern PDFs — not your projects or row counts.</p>`, {
+    <p class="acct-note">They sign in on their own device, open Account, and tap “Join with a code”. They’ll see your imported patterns and pattern PDFs — not your projects or row counts.</p>`, {
     onOpen: el => {
       el.querySelector('#fam-copy').onclick = () => {
         const btn = el.querySelector('#fam-copy');
@@ -223,7 +228,7 @@ function openJoinFamilySheet() {
       <button class="sheet-btn primary" id="fam-join-go">Join</button>
     </div>
     <div id="fam-join-msg"></div>
-    <p class="acct-note">You’ll see their pattern PDFs. Your projects and row counts stay yours, and nothing of yours is shared back.</p>`, {
+    <p class="acct-note">You’ll see their imported patterns and pattern PDFs, and they’ll see yours. Your projects and row counts stay yours.</p>`, {
     onOpen: el => {
       const input = el.querySelector('#fam-code-input');
       const go = el.querySelector('#fam-join-go');
@@ -236,7 +241,7 @@ function openJoinFamilySheet() {
         try {
           await redeemFamilyInvite(code);
           closeSheet();
-          openAccountSheet({ ok: true, text: 'Joined. Their pattern PDFs will appear as you open each pattern.' });
+          openAccountSheet({ ok: true, text: 'Joined. Their imported patterns will appear in New project, and their PDFs as you open each pattern.' });
         } catch (e) {
           // The server's own words are the useful ones here — "code expired"
           // and "code already used" need different actions from the reader.

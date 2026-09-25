@@ -8,7 +8,7 @@ No CSV importer exists in the app yet — this is the data shape to fill in by h
 
 | Column | Required on | Meaning |
 |---|---|---|
-| `pattern_id` | every row | unique slug, must match on every row of the pattern |
+| `pattern_id` | every row | slug, must match on every row of the pattern. The app adds a random suffix on import, so it never has to be globally unique — and re-importing a file never replaces anything (use **Update** on the pattern's tile for that) |
 | `pattern_name` | first row only | display name |
 | `pattern_badge` | first row only | small label, e.g. "Tatting" |
 | `pattern_desc` | first row only | one-line description |

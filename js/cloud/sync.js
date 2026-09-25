@@ -306,9 +306,10 @@ function saveOutbox() {
   try { localStorage.setItem(OUTBOX_KEY, JSON.stringify(outbox)); } catch(e) {}
 }
 
-// kind is 'project' (the registry record), 'progress' (that project's rows), or
+// kind is 'project' (the registry record), 'progress' (that project's rows),
 // 'pdf' (a pattern's original PDF — id is the PATTERN id, not a project id,
-// since the document belongs to the pattern).
+// since the document belongs to the pattern), or 'cpat' (a custom pattern's
+// doc, also keyed by pattern id — js/cloud/patternsync.js).
 function enqueue(kind, id) {
   if (!id) return;
   const key = kind + ':' + id;
@@ -333,8 +334,12 @@ function dequeue(kind, id) {
   saveOutbox();
 }
 
-// Pending ops in send order: project upserts, then progress, then PDFs, then
-// deletes.
+// Pending ops in send order: custom patterns, project upserts, then progress,
+// then PDFs, then deletes.
+//
+// A custom pattern goes before the projects that use it, so a device pulling
+// between the two never sees a project for a pattern it can't get yet. Its doc
+// is tens of KB, not megabytes, so it holds nothing up.
 //
 // Upserts first because a progress row references its project, so pushing
 // progress for a project the server has never seen would fail. Deletes last so
@@ -346,6 +351,7 @@ function dequeue(kind, id) {
 function pendingOps() {
   const ops = Object.keys(outbox).map(k => outbox[k]);
   const rank = op => {
+    if (op.k === 'cpat') return -1;
     if (op.k === 'project') return isDeleted(op.id) ? 3 : 0;
     if (op.k === 'pdf') return 2;
     return 1; // progress
@@ -1194,6 +1200,7 @@ async function flush(reason) {
         for (let attempt = 0; attempt < MAX_PUSH_ATTEMPTS && outcome === 'retry'; attempt++) {
           outcome = op.k === 'project' ? await pushProject(op.id, uid)
                   : op.k === 'pdf'     ? await pushPdf(op.id, uid)
+                  : op.k === 'cpat'    ? await pushCustomPattern(op.id, uid)
                                        : await pushProgress(op.id, uid);
         }
         if (outcome === 'retry') {
@@ -1329,7 +1336,17 @@ async function pull(reason) {
   let touchedActive = false, changed = false;
 
   try {
-    // Projects first: a progress row for a project this device has never heard
+    // Custom patterns before anything else, in their own try: a project from
+    // an imported pattern opens only once the pattern is here, and
+    // applyRemotePattern() can only freeze a real snapshot if it already is.
+    // A failure here must not cost the progress pull, so it is only logged.
+    try {
+      if (await pullCustomPatterns()) changed = true;
+    } catch (e) {
+      logSync('warn', 'custom pattern pull failed — progress sync unaffected', e);
+    }
+
+    // Projects next: a progress row for a project this device has never heard
     // of needs the registry record to exist before it can be attributed.
     let q = sb.from('projects')
       .select('id,name,pattern_id,created_ms,updated_ms,deleted_ms,server_updated_at,pattern_struct_hash,pattern_doc');
