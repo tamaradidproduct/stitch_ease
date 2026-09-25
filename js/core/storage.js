@@ -20,6 +20,9 @@
 //   pt3_proj_<id>_midRowPos       {phaseId: colIndex} — mid-row tracker line,
 //                                 per chart phase. LOCAL-ONLY: no clock, never
 //                                 synced (a personal reading aid, not progress).
+//   pt3_proj_<id>_yarns           {'<phaseId>:<i>': '#hex'} — yarn colours for an
+//                                 imported chart's colour slots. LOCAL-ONLY,
+//                                 written by setYarnColor (js/core/yarns.js).
 //   pt3_proj_<id>_grows           PRE-CONVERSION row tally; the tally is now
 //                                 derived, so this is dead. Kept for purging.
 //   pt3_proj_<id>_clk             {fieldKey: epoch_ms} last local change per field
@@ -75,7 +78,7 @@ function isDeleted(projectId) {
 // `chartRow` is the superseded scalar and `chartRows` the per-phase map: both
 // are listed because a project saved before that change still has the old key
 // on disk, and purging only the new one would leave it orphaned forever.
-const PROJ_KEYS = ['state','ctrs','cur','chartRow','chartRows','midRowPos','grows','clk','base','phash','pattern','entries'];
+const PROJ_KEYS = ['state','ctrs','cur','chartRow','chartRows','midRowPos','yarns','grows','clk','base','phash','pattern','entries'];
 function purgeProjectData(projectId) {
   PROJ_KEYS.forEach(k => { try { localStorage.removeItem('pt3_proj_' + projectId + '_' + k); } catch(e){} });
 }
@@ -274,6 +277,9 @@ function loadProjectState() {
       const chartPhase = PHASES.find(p => p.hasChart);
       if (legacy !== null && chartPhase) chartRows = { [chartPhase.id]: parseInt(legacy) || 1 };
     }
+
+    const yc = localStorage.getItem(pkey('yarns'));
+    if (yc) { try { yarnColors = JSON.parse(yc) || {}; } catch(e) { yarnColors = {}; } }
 
     const mrp = localStorage.getItem(pkey('midRowPos'));
     if (mrp) { try { midRowPos = JSON.parse(mrp) || {}; } catch(e) { logSync('warn', 'corrupted midRowPos in storage', e); } }

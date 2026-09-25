@@ -10,6 +10,7 @@ const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './ic
   './js/core/storage.js',
   './js/core/rows.js',
   './js/core/chart.js',
+  './js/core/yarns.js',
   './js/core/render.js',
   './js/core/patternImport.js',
   './js/core/chartImport.js',

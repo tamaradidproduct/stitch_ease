@@ -303,6 +303,7 @@ function renderPhase() {
           </button>
         </div>
         <div class="phase-desc">${p.desc}</div>
+        ${p.hasChart && typeof yarnChipsHtml === 'function' ? yarnChipsHtml(p) : ''}
       </div>
       <div class="phase-head-tools">
         ${p.hasChart ? `
@@ -322,6 +323,7 @@ function renderPhase() {
   let html = '';
 
   if (p.hasChart) {
+    if (typeof applyYarnVars === 'function') applyYarnVars(p);
     html += buildChartTracker(phaseHeaderHtml);
   } else {
     html += phaseHeaderHtml;

@@ -328,7 +328,6 @@
   }
   .imp-preview canvas { display: block; max-width: 100%; }
   .imp-dims { text-align: center; }
-  .imp-warn { color: #a4553f; }
   .imp-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
   .imp-chip {
     display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px;
@@ -336,7 +335,10 @@
   }
   .imp-chip b { font-weight: 600; color: var(--muted); }
   .imp-chip-sym { width: 14px; height: 14px; color: var(--text); display: inline-block; }
-  .imp-swatch { width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(0,0,0,.2); }
+  .imp-swatch { width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(0,0,0,.2); flex-shrink: 0; }
+  .imp-swatch-lg { width: 28px; height: 28px; border-radius: 6px; }
+  .imp-yarn { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .imp-yarn .sheet-input { flex: 1; margin: 0; }
   .imp-seg { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
   .imp-seg button {
     flex: 1; padding: 10px 8px; border: 0; background: var(--card); font: inherit;
@@ -979,6 +981,29 @@
      background still mark it as current. */
   .cc.cc-col { background: var(--cc-bg); }
   .crow-active .cc.cc-col:not(.cc-e) { background: var(--cc-bg); }
+  .cc.cc-col .cc-sym, .crow-active .cc.cc-col .cc-sym { color: var(--cc-fg); }
+
+  /* Yarn legend under a coloured chart's section name — tap to change. */
+  .yarn-chips {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; padding: 0;
+    border: 0; background: none; font: inherit; cursor: pointer; text-align: left;
+  }
+  .yarn-chip {
+    display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 5px;
+    border: 1px solid var(--border); border-radius: 999px; background: var(--card);
+    font-size: 12px; color: var(--text);
+  }
+  .yarn-dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0,0,0,.2); }
+  .yarn-chips:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+  .yarn-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
+  .yarn-row + .yarn-row { border-top: 1px solid var(--border); }
+  .yarn-pick {
+    position: relative; width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0;
+    border: 1px solid rgba(0,0,0,.2); cursor: pointer; overflow: hidden;
+  }
+  .yarn-pick input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
+  .yarn-pick:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .yarn-row-name { flex: 1; font-size: 15px; color: var(--text); }
   .recap-swatch {
     display: inline-block; width: 10px; height: 10px; border-radius: 2px;
     border: 1px solid rgba(0,0,0,.25); vertical-align: -1px; margin-right: 3px;
@@ -1227,6 +1252,7 @@
 <script src="js/core/storage.js"></script>
 <script src="js/core/rows.js"></script>
 <script src="js/core/chart.js"></script>
+<script src="js/core/yarns.js"></script>
 <script src="js/core/render.js"></script>
 <script src="js/core/patternImport.js"></script>
 <script src="js/core/chartImport.js"></script>
