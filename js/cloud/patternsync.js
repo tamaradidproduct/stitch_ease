@@ -147,13 +147,6 @@ const CPAT_HEX = /^#[0-9a-f]{3}([0-9a-f]{3})?$/i;
 const CPAT_RENDER_ESCAPED = { term: 1, def: 1 };
 const CPAT_MAX_DEPTH = 12;
 
-// Undo exactly what escapeHtml() does, in ONE pass, so escape(unescape(s)) is
-// idempotent on text escaped at import and neutralises any raw markup.
-function unescapeBasicHtml(s) {
-  return String(s).replace(/&(amp|lt|gt|quot|#39);/g,
-    (m, e) => ({ amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'" }[e]));
-}
-
 function swatchSymbolOk(s) {
   const m = typeof s === 'string' && /fill="([^"]*)"/.exec(s);
   return !!(m && CPAT_HEX.test(m[1]) && typeof colorSwatchSvg === 'function' && s === colorSwatchSvg(m[1]));

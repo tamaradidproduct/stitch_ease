@@ -119,52 +119,54 @@ async function patternSyncTest() {
 
   try {
     const db = makeCpatMockDb();
+    let CHART;
 
     // ── 1. Import on the phone, push ──
     use('phone', 'A', db);
-    importPatternCsvText(CSV('v1'));
-    check('import queues a cpat op', cpatOps(), ['cpat:test-shawl']);
+    const SHAWL = importPatternCsvText(CSV('v1')).id;
+    check('new import gets its own id, not the file\'s', /^test-shawl-[a-z0-9]{6}$/.test(SHAWL), true);
+    check('import queues a cpat op', cpatOps(), ['cpat:' + SHAWL]);
     await flush('test');
     const row = db.custom_patterns[0];
     check('push → one row, own owner + family, doc carried',
       row && { o: row.owner_id, f: row.family_id, id: row.pattern_id, name: row.name,
                phases: row.pattern_doc.phases.length, custom: 'custom' in row.pattern_doc, del: row.deleted_ms },
-      { o: 'A', f: 'fam-1', id: 'test-shawl', name: 'Test Shawl & Co', phases: 1, custom: false, del: null });
-    check('push → outbox drained, index synced', [cpatOps().length, cpatEntry('test-shawl').remoteMs === cpatEntry('test-shawl').localMs], [0, true]);
+      { o: 'A', f: 'fam-1', id: SHAWL, name: 'Test Shawl & Co', phases: 1, custom: false, del: null });
+    check('push → outbox drained, index synced', [cpatOps().length, cpatEntry(SHAWL).remoteMs === cpatEntry(SHAWL).localMs], [0, true]);
 
     // ── 2. The iPad pulls it ──
     use('ipad', 'A', db);
-    check('iPad has nothing before pull', has('test-shawl'), false);
+    check('iPad has nothing before pull', has(SHAWL), false);
     await pull('test');
-    check('iPad pull → pattern in library', has('test-shawl'), true);
+    check('iPad pull → pattern in library', has(SHAWL), true);
     check('iPad pull → text survives the round trip unchanged',
-      pat('test-shawl').phases[0].entries[0].text, 'Cast on 80 sts (v1)');
-    check('iPad pull → name not double-escaped', pat('test-shawl').name, 'Test Shawl &amp; Co');
+      pat(SHAWL).phases[0].entries[0].text, 'Cast on 80 sts (v1)');
+    check('iPad pull → name not double-escaped', pat(SHAWL).name, 'Test Shawl &amp; Co');
     check('iPad pull → nothing queued back up', cpatOps(), []);
-    const ipadProj = createProject('test-shawl');
+    const ipadProj = createProject(SHAWL);
     check('iPad can start a project from it', !!(ipadProj && activateProject(ipadProj.id)), true);
     activeProjectId = null; view = 'home';
 
     // ── 3. The family member pulls it ──
     use('member', 'B', db);
     await pullCustomPatterns();
-    check('family member pull → pattern in library', has('test-shawl'), true);
+    check('family member pull → pattern in library', has(SHAWL), true);
 
     // ── 4. An outsider does not ──
     use('outsider', 'C', db);
     await pullCustomPatterns();
-    check('other family → not visible', has('test-shawl'), false);
+    check('other family → not visible', has(SHAWL), false);
 
     // ── 5. Chart import (colours + swatch symbols) travels ──
     use('phone', 'A', db);
     const draft = parseStitchChart(JSON.stringify({ v: 3, name: 'Tiny Chart', palette: ['knit', 'purl'],
       stitches: [[0, 0, 0], [1, 0, 1], [0, 1, 1], [1, 1, 0]],
       colors: [[0, 0, '#d3f3d0'], [1, 1, '#e4d4fb']] }));
-    addCustomPattern(buildChartPattern(draft, {}), false);
+    CHART = putCustomPattern(buildChartPattern(draft, {})).id;
     await flush('test');
     use('member', 'B', db);
     await pullCustomPatterns();
-    const chartPat = pat('sc-tiny-chart');
+    const chartPat = pat(CHART);
     check('chart pattern arrives with its chart and colour grid',
       chartPat && [chartPat.phases[0].chart.length, chartPat.phases[0].chartColors[0][0]], [2, '#d3f3d0']);
     check('chart pattern keeps its generated swatch symbols',
@@ -172,33 +174,50 @@ async function patternSyncTest() {
 
     // ── 6. Re-import on the iPad supersedes the phone's ──
     use('ipad', 'A', db);
-    importPatternCsvText(CSV('v2'), { replace: true });
+    importPatternCsvText(CSV('v2'), SHAWL);
     await flush('test');
     use('phone', 'A', db);
     await pull('test');
-    check('re-import elsewhere → newest doc wins', pat('test-shawl').phases[0].entries[0].text, 'Cast on 80 sts (v2)');
+    check('re-import elsewhere → newest doc wins', pat(SHAWL).phases[0].entries[0].text, 'Cast on 80 sts (v2)');
+
+    check('update keeps the id → still one pattern', PATTERNS.filter(p => p.custom && p.id.indexOf('test-shawl') === 0).length, 1);
+
+    // ── 6b. Importing the same file again WITHOUT Update is a new pattern ──
+    const again = importPatternCsvText(CSV('v3')).id;
+    check('plain re-import → a second pattern, first untouched',
+      [again !== SHAWL, pat(SHAWL).phases[0].entries[0].text], [true, 'Cast on 80 sts (v2)']);
+    removeCustomPattern(again);
+    await flush('test');
+
+    // ── 6c. Two people importing same-named charts don't collide ──
+    use('member', 'B', db);
+    const theirs = putCustomPattern(buildChartPattern(draft, {})).id;
+    await flush('test');
+    use('ipad', 'A', db);
+    await pullCustomPatterns();
+    check('same-named charts from two people → two patterns', [theirs !== CHART, has(theirs), has(CHART)], [true, true, true]);
 
     // ── 7. A stale queued push takes the newer copy instead of overwriting ──
     use('member', 'B', db);
-    cpatIndex['test-shawl'] = { localMs: 5, deletedMs: 0, remoteMs: 0 };
-    enqueue('cpat', 'test-shawl');
+    cpatIndex[SHAWL] = { localMs: 5, deletedMs: 0, remoteMs: 0 };
+    enqueue('cpat', SHAWL);
     await flush('test');
-    check('stale push → no row written for B', db.custom_patterns.filter(r => r.owner_id === 'B' && r.pattern_id === 'test-shawl').length, 0);
-    check('stale push → newer doc applied locally', pat('test-shawl').phases[0].entries[0].text, 'Cast on 80 sts (v2)');
+    check('stale push → no row written for B', db.custom_patterns.filter(r => r.owner_id === 'B' && r.pattern_id === SHAWL).length, 0);
+    check('stale push → newer doc applied locally', pat(SHAWL).phases[0].entries[0].text, 'Cast on 80 sts (v2)');
 
     // ── 8. Remove on the phone → tombstone ──
     use('phone', 'A', db);
-    removeCustomPattern('test-shawl');
+    removeCustomPattern(SHAWL);
     await flush('test');
-    const tomb = db.custom_patterns.find(r => r.owner_id === 'A' && r.pattern_id === 'test-shawl');
+    const tomb = db.custom_patterns.find(r => r.owner_id === 'A' && r.pattern_id === SHAWL);
     check('remove → tombstone row, doc cleared', [!!tomb.deleted_ms, tomb.pattern_doc], [true, null]);
     use('member', 'B', db);
     await pullCustomPatterns();
-    check('tombstone → removed from an unused library', has('test-shawl'), false);
+    check('tombstone → removed from an unused library', has(SHAWL), false);
     check('tombstone → not pushed back', cpatOps(), []);
     use('ipad', 'A', db);
     await pullCustomPatterns();
-    check('tombstone → kept where a live project uses it', has('test-shawl'), true);
+    check('tombstone → kept where a live project uses it', has(SHAWL), true);
     check('tombstone kept locally → not pushed back', cpatOps(), []);
     check('tombstone kept locally → project still opens', activateProject(ipadProj.id), true);
     activeProjectId = null; view = 'home';
@@ -227,9 +246,9 @@ async function patternSyncTest() {
 
     // ── 10. A project that arrives before its pattern gets its snapshot ──
     use('ipad2', 'A', db);
-    const chartDoc = JSON.parse(JSON.stringify(db.custom_patterns.find(r => r.pattern_id === 'sc-tiny-chart').pattern_doc));
+    const chartDoc = JSON.parse(JSON.stringify(db.custom_patterns.find(r => r.pattern_id === CHART).pattern_doc));
     chartDoc.custom = true;
-    applyRemoteProject({ id: 'proj-early', name: 'Early', pattern_id: 'sc-tiny-chart', created_ms: 1, updated_ms: 1,
+    applyRemoteProject({ id: 'proj-early', name: 'Early', pattern_id: CHART, created_ms: 1, updated_ms: 1,
                          deleted_ms: null, pattern_struct_hash: structHash(chartDoc), pattern_doc: null });
     check('project before pattern → no snapshot yet', !!frozenPattern('proj-early'), false);
     await pullCustomPatterns();
@@ -239,7 +258,7 @@ async function patternSyncTest() {
 
     // ── 11. Send order: a pattern goes up before the project that uses it ──
     outbox = {};
-    enqueue('project', 'proj-early'); enqueue('cpat', 'sc-tiny-chart');
+    enqueue('project', 'proj-early'); enqueue('cpat', CHART);
     check('pendingOps → cpat first', pendingOps().map(o => o.k), ['cpat', 'project']);
     outbox = {};
   } catch (e) {

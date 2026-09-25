@@ -182,19 +182,6 @@ function glossaryEntryBySym(sym) {
   return null;
 }
 
-function addCustomPattern(pattern, replace) {
-  const idx = PATTERNS.findIndex(p => p.id === pattern.id);
-  if (idx !== -1) {
-    if (!PATTERNS[idx].custom) throw new Error(`"${PATTERNS[idx].name}" is a built-in pattern and can't be replaced.`);
-    if (!replace) { const err = new Error('already-exists'); err.existingId = pattern.id; throw err; }
-    PATTERNS[idx] = pattern;
-  } else {
-    PATTERNS.push(pattern);
-  }
-  saveCustomPatterns();
-  if (typeof noteCustomPatternSaved === 'function') noteCustomPatternSaved(pattern.id);
-}
-
 // ── Preview sheet ──
 
 // A small canvas thumbnail, drawn not built from DOM cells: a 60×45 chart
@@ -223,7 +210,12 @@ function drawChartPreview(canvas, draft) {
   }
 }
 
-function openChartImportPreview(draft) {
+// `updateId` present → this is the Update action on that pattern's tile: the
+// name starts as the pattern's current one, and the sheet says what replacing
+// it means. Absent → a new pattern, always (see putCustomPattern).
+function openChartImportPreview(draft, updateId) {
+  const target = updateId ? patternById(updateId) : null;
+  const startName = target ? unescapeBasicHtml(target.name) : draft.name;
   const labelFor = t => STITCH_ABBR_RS[t] || t;
   const stitchList = Object.entries(draft.counts).sort((a, b) => b[1] - a[1])
     .map(([t, n]) => `<span class="imp-chip">${t === 'K' ? '' : `<span class="imp-chip-sym">${SYMS[t] || ''}</span>`}${escapeHtml(labelFor(t))} <b>${n}</b></span>`).join('');
@@ -234,7 +226,7 @@ function openChartImportPreview(draft) {
 
   const body = `
     <label class="imp-label" for="imp-name">Name</label>
-    <input class="sheet-input" id="imp-name" value="${escapeHtml(draft.name)}" maxlength="80" autocomplete="off">
+    <input class="sheet-input" id="imp-name" value="${escapeHtml(startName)}" maxlength="80" autocomplete="off">
     <div class="imp-preview"><canvas id="imp-canvas" aria-label="Chart preview"></canvas></div>
     <p class="sheet-sub imp-dims">${draft.rows} rows × ${draft.cols} stitches</p>
     ${sparse}
@@ -251,12 +243,13 @@ function openChartImportPreview(draft) {
         <button type="button" role="radio" data-side="WS">Wrong-side row</button>
       </div>
     </div>
+    ${target ? `<p class="sheet-sub">${updateSharedNote()}</p>` : ''}
     <div class="sheet-actions">
       <button class="sheet-btn" onclick="dismissSheet()">Cancel</button>
-      <button class="sheet-btn primary" id="imp-ok">Add to library</button>
+      <button class="sheet-btn primary" id="imp-ok">${target ? 'Update' : 'Add to library'}</button>
     </div>`;
 
-  openSheet('Import chart', body, {
+  openSheet(target ? 'Update pattern' : 'Import chart', body, {
     onOpen: el => {
       let worked = draft.worked, side = draft.wsFirst ? 'WS' : 'RS';
       const paint = () => {
@@ -275,34 +268,13 @@ function openChartImportPreview(draft) {
         const pattern = buildChartPattern(draft, { name: nameEl.value, worked, wsFirst: side === 'WS' });
         closeSheet();
         try {
-          addCustomPattern(pattern, false);
-          afterPatternImport(pattern, 'Pattern imported', 'was added to the library.');
+          putCustomPattern(pattern, updateId);
+          if (updateId) afterPatternImport(pattern, 'Pattern updated', 'was updated.');
+          else afterPatternImport(pattern, 'Pattern imported', 'was added to the library.');
         } catch (e) {
-          if (e.existingId) confirmReplaceChart(pattern, nameEl.value.trim());
-          else importResultSheet('Import failed', escapeHtml(e.message || String(e)));
+          importResultSheet(updateId ? 'Update failed' : 'Import failed', escapeHtml(e.message || String(e)));
         }
       };
-    }
-  });
-}
-
-// Same reasoning as confirmReplacePattern(): re-exporting a chart you've
-// been refining is an update, but it changes what open projects knit, so
-// it's confirmed — and the freeze/adopt flow takes it from there.
-// `rawName` is the unescaped name: sheetConfirm escapes its message itself.
-function confirmReplaceChart(pattern, rawName) {
-  sheetConfirm({
-    title: 'Update pattern?',
-    message: `"${rawName}" is already in your library. Replace it with this chart?`,
-    detail: 'Existing projects keep their progress — they\'ll show "Pattern updated" so you can review what changed.',
-    confirmLabel: 'Update',
-    onConfirm: () => {
-      try {
-        addCustomPattern(pattern, true);
-        afterPatternImport(pattern, 'Pattern updated', 'was updated.');
-      } catch (e) {
-        importResultSheet('Import failed', escapeHtml(e.message || String(e)));
-      }
     }
   });
 }
@@ -313,22 +285,24 @@ function afterPatternImport(pattern, title, verb) {
   importResultSheet(title, `${pattern.name} ${verb}`);
 }
 
-function handleStitchChartText(text) {
+function handleStitchChartText(text, updateId) {
   let draft;
   try { draft = parseStitchChart(text); }
-  catch (e) { importResultSheet('Import failed', escapeHtml(e.message || String(e))); return; }
-  openChartImportPreview(draft);
+  catch (e) { importResultSheet(updateId ? 'Update failed' : 'Import failed', escapeHtml(e.message || String(e))); return; }
+  openChartImportPreview(draft, updateId);
 }
 
 // One entry point for every import format, chosen by content rather than
 // extension: iOS's Files picker often hands over a .json with a generic
-// type, and a CSV never starts with '{'.
-function handlePatternFileText(text) {
-  if (/^\s*\{/.test(text)) handleStitchChartText(text);
-  else handlePatternCsvText(text);
+// type, and a CSV never starts with '{'. Either format may update a pattern
+// of either format — the tile's Update is explicit, so it isn't second-guessed.
+function handlePatternFileText(text, updateId) {
+  if (/^\s*\{/.test(text)) handleStitchChartText(text, updateId);
+  else handlePatternCsvText(text, updateId);
 }
 
-// Desktop convenience: drop a file anywhere on the picker screen.
+// Desktop convenience: drop a file anywhere on the picker screen. Always a
+// new pattern — updating is only ever the tile's explicit action.
 function onPickerDrop(e) {
   e.preventDefault();
   const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];

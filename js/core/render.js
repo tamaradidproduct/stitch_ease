@@ -628,6 +628,14 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 }
 
+// Exactly the inverse of escapeHtml(), in ONE pass — so escapeHtml(unescape(s))
+// is idempotent on already-escaped text and neutralises any raw markup. Used
+// to show an escaped-at-import pattern name in an input, and by patternsync.js.
+function unescapeBasicHtml(s) {
+  return String(s).replace(/&(amp|lt|gt|quot|#39);/g,
+    (m, e) => ({ amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'" }[e]));
+}
+
 function render() {
   closeNotes(); // navigation/re-render dismisses the notes sheet
   closeFinishedScreen();
@@ -770,9 +778,17 @@ function filterGlossary(q) {
 function renderPicker() {
   leaveChartMode();
   renderHeader();
+  // Imported patterns carry an explicit Update: the only way a file replaces
+  // an existing pattern (see putCustomPattern in patternImport.js).
   const cards = PATTERNS.map(p => `<div class="lib-card proj-card" onclick="choosePattern('${p.id}')">
       <div class="lib-card-top"><span class="lib-card-name">${p.name}</span></div>
       <div class="lib-card-meta">${[p.badge, p.desc].filter(Boolean).join(' · ')}</div>
+      ${p.custom ? `<div class="lib-card-bottom">
+        <span class="lib-card-sub">Imported</span>
+        <div class="proj-actions">
+          <button class="proj-act" onclick="triggerUpdatePattern('${p.id}', event)">Update</button>
+        </div>
+      </div>` : ''}
     </div>`).join('');
   document.getElementById('phase-content').innerHTML =
     `<div class="picker-drop" ondragover="event.preventDefault()" ondrop="onPickerDrop(event)">
