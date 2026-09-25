@@ -106,6 +106,12 @@ let chartRows = {};
 // "whichever chart is current right now". Index is 0..stitchCount, marking
 // the gap BEFORE column `idx` (0 = before the first stitch).
 let midRowPos = {};
+
+// The knitter's yarn colours for an imported chart's colour slots, keyed
+// '<phaseId>:<yarnIndex>' → '#rrggbb'. Per project (two projects from one
+// chart are usually different yarns), local-only like midRowPos: a display
+// preference, not knitting progress. See js/core/yarns.js.
+let yarnColors = {};
 let midRowColIdx = 0;
 
 // Refresh CHART_B/CHART_TOTAL/chartCurrentRow for whichever phase is
@@ -211,7 +217,7 @@ function applyPattern(p) {
   // project.
   activeDoc = p;
   TOTAL_STEPS = PHASES.reduce((a, ph) => a + (ph.entries || ph.steps || []).length, 0);
-  cur = 0; chartRows = {};
+  cur = 0; chartRows = {}; yarnColors = {};
   state = {}; ctrs = {}; entryProg = {};
   clocks = {}; baseClocks = {};
   PHASES.forEach(ph => (ph.steps || []).forEach(s => { state[s.id] = false; if (s.rows) ctrs[s.id] = 0; }));

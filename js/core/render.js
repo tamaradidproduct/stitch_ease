@@ -303,6 +303,7 @@ function renderPhase() {
           </button>
         </div>
         <div class="phase-desc">${p.desc}</div>
+        ${p.hasChart && typeof yarnChipsHtml === 'function' ? yarnChipsHtml(p) : ''}
       </div>
       <div class="phase-head-tools">
         ${p.hasChart ? `
@@ -322,6 +323,7 @@ function renderPhase() {
   let html = '';
 
   if (p.hasChart) {
+    if (typeof applyYarnVars === 'function') applyYarnVars(p);
     html += buildChartTracker(phaseHeaderHtml);
   } else {
     html += phaseHeaderHtml;
@@ -775,10 +777,12 @@ function renderPicker() {
       <div class="lib-card-meta">${[p.badge, p.desc].filter(Boolean).join(' · ')}</div>
     </div>`).join('');
   document.getElementById('phase-content').innerHTML =
-    `<div class="picker-hint">Choose a pattern for your new project</div><div class="lib-list">${cards}</div>
-    <button class="picker-import-btn" onclick="triggerImportPattern()">Import pattern (CSV)</button>
-    <input type="file" id="pattern-csv-input" accept=".csv,text/csv" style="display:none"
-           onchange="handlePatternCsvFile(this)">`;
+    `<div class="picker-drop" ondragover="event.preventDefault()" ondrop="onPickerDrop(event)">
+    <div class="picker-hint">Choose a pattern for your new project</div><div class="lib-list">${cards}</div>
+    <button class="picker-import-btn" onclick="triggerImportPattern()">Import pattern</button>
+    <div class="picker-import-sub">A chart export (.stitchchart.json) or a pattern CSV</div>
+    <input type="file" id="pattern-csv-input" accept=".json,.csv,application/json,text/csv" style="display:none"
+           onchange="handlePatternCsvFile(this)"></div>`;
 }
 
 // Build the header for the current view. Only rebuilds when the view/project
