@@ -13,7 +13,9 @@
 // here. x grows left → right, matching how CHART_B rows are stored. Any
 // cell inside the bounding box with nothing placed is 'E' (no stitch),
 // which is also what gives a shaped chart (a triangle, a neckline) its
-// outline.
+// outline. Only finished charts are exported, so there is no "still being
+// traced" state to detect; the exporter also lists no-stitch cells
+// explicitly as `no_stitch`, which lands on the same 'E'.
 //
 // What is deliberately NOT kept: `referenceImage`. It is a base64 PNG and
 // typically ~95% of the file; localStorage is the progress store, and
@@ -114,13 +116,10 @@ function parseStitchChart(text) {
   const counts = {};
   chart.forEach(row => row.forEach(t => { if (t !== 'E') counts[t] = (counts[t] || 0) + 1; }));
 
-  // Row-completeness: a traced-in-progress export has a full bounding box
-  // but mostly empty rows. Worth saying in the preview, not worth refusing.
-  const sparseRows = chart.filter(row => row.filter(t => t !== 'E').length <= 1).length;
 
   const name = String(d.name || 'Imported chart').trim().slice(0, 80) || 'Imported chart';
   return {
-    name, rows, cols, chart, colors, yarns, counts, sparseRows,
+    name, rows, cols, chart, colors, yarns, counts,
     // Optional hints the exporter can add; the preview sheet lets the knitter
     // override both.
     worked: d.worked === 'round' ? 'round' : 'flat',
@@ -244,15 +243,12 @@ function openChartImportPreview(draft) {
              aria-label="Name for colour ${i + 1}" autocomplete="off">
     </div>`).join('')}
     <p class="sheet-sub">You'll pick the actual yarn colours inside each project.</p>` : '';
-  const sparse = draft.sparseRows > draft.rows / 2
-    ? `<p class="sheet-sub imp-warn">${draft.sparseRows} of ${draft.rows} rows have one stitch or none — this chart may not be fully traced yet.</p>` : '';
 
   const body = `
     <label class="imp-label" for="imp-name">Name</label>
     <input class="sheet-input" id="imp-name" value="${escapeHtml(draft.name)}" maxlength="80" autocomplete="off">
     <div class="imp-preview"><canvas id="imp-canvas" aria-label="Chart preview"></canvas></div>
     <p class="sheet-sub imp-dims">${draft.rows} rows × ${draft.cols} stitches</p>
-    ${sparse}
     <div class="imp-chips">${stitchList}</div>
     ${yarnFields}
     <div class="imp-label">Worked</div>

@@ -18,6 +18,8 @@ chart phase — stored, frozen, adopted and synced exactly like a CSV import.
 | `colors` + `colorPalette` | `[x, y, colourIndex]` → yarn slots. Each distinct colour becomes one entry in `phase.chartYarns` (order of first use from row 1), and `phase.chartColors` holds the slot index per cell. The export colour is only the default swatch: the knitter names each slot in the preview and picks the real yarn colour per project |
 | `v` | Anything above 3 is refused with "update the app" |
 
+Only **finished** charts are exported, so the importer has no "still being traced" state. The exporter fills every cell of the chart's rectangle, writing deliberate gaps as `no_stitch`, and never writes `suggested`.
+
 Ignored: `referenceImage` (a base64 PNG, ~95% of the file; never stored, it would
 spend the localStorage quota `save()` needs), `groups`, `repeats`,
 `glossaryIds`, `quickSymbolIds`, `exportedAt`.
