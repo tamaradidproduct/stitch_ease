@@ -51,11 +51,25 @@ const SYMS = {
   BRP: '<svg width="100%" height="100%" viewBox="0 0 24 24" style="display:block"><path transform="matrix(1.000000,0.000000,0.000000,1.000000,4.000000,2.000000)" d="M8 0C12.4183 0 16 3.58172 16 8L16 20L14.5 20L14.5 7.9375L14.4961 7.9375C14.4098 4.42276 11.5355 1.59961 8 1.59961C4.46449 1.59961 1.59017 4.42276 1.50391 7.9375L1.5 7.9375L1.5 20L0 20L0 8C0 3.58172 3.58172 0 8 0Z" fill="currentColor" fill-rule="nonzero"/><path transform="matrix(1.000000,0.000000,0.000000,1.000000,4.000000,2.000000)" d="M4 9C4 6.79086 5.79086 5 8 5C10.2091 5 12 6.79086 12 9C12 11.2091 10.2091 13 8 13C5.79086 13 4 11.2091 4 9Z" fill="currentColor" fill-rule="nonzero"/></svg>',
 };
 
-function stitchCell(type, segEnd) {
-  const cls = 'cc' + (segEnd ? ' cc-seg-end' : '');
+// `color` is a yarn colour from an imported chart's chartColors grid. It is
+// re-checked here, not only at import: a pattern doc can also arrive frozen
+// or synced, and this lands in a style attribute.
+const CELL_HEX = /^#[0-9a-f]{3}([0-9a-f]{3})?$/i;
+function cellColor(c) { return typeof c === 'string' && CELL_HEX.test(c) ? c : null; }
+
+function stitchCell(type, segEnd, color) {
+  let cls = 'cc' + (segEnd ? ' cc-seg-end' : '');
   if (type === 'E') return `<div class="${cls} cc-e"></div>`;
+  const hex = cellColor(color);
+  if (hex) cls += ' cc-col';
   const sym = SYMS[type] || '';
-  return `<div class="${cls}">${sym ? `<span class="cc-sym">${sym}</span>` : ''}</div>`;
+  return `<div class="${cls}"${hex ? ` style="--cc-bg:${hex}"` : ''}>${sym ? `<span class="cc-sym">${sym}</span>` : ''}</div>`;
+}
+
+// The active chart phase's per-cell colours for one row, or null.
+function chartColorRow(row) {
+  const grid = PHASES[cur] && PHASES[cur].chartColors;
+  return (grid && grid[row - 1]) || null;
 }
 
 // Column indices (0-based) where a combined chart's source panel ends — the
@@ -104,7 +118,8 @@ function buildChartTracker(phaseHeaderHtml) {
 
     html += `<div class="crow${isActive ? ' crow-active' : ''}" data-row="${r}">`;
     html += '<div class="crow-cells">';
-    for (let ci = 0; ci < rowData.length; ci++) html += stitchCell(rowData[ci], segEnds && segEnds.has(ci));
+    const rowColors = chartColorRow(r);
+    for (let ci = 0; ci < rowData.length; ci++) html += stitchCell(rowData[ci], segEnds && segEnds.has(ci), rowColors && rowColors[ci]);
     html += '</div>';
     html += `<div class="${numCls}">${r}</div>`;
     html += '</div>';
@@ -245,10 +260,23 @@ function collapseRepeats(tokens) {
 
 function rowRecap(row) {
   const rs = isRSRow(row);
-  let types = CHART_B[row - 1].filter(t => t !== 'E');
-  if (rs) types = types.reverse(); // RS: right → left. WS: already stored left → right.
-  if (!types.length) return '';
-  return collapseRepeats(rleStitches(types, rs ? STITCH_ABBR_RS : STITCH_ABBR_WS)).join(', ');
+  const abbr = rs ? STITCH_ABBR_RS : STITCH_ABBR_WS;
+  const colors = chartColorRow(row);
+  let cells = CHART_B[row - 1].map((t, i) => ({ t, c: colors ? cellColor(colors[i]) : null })).filter(x => x.t !== 'E');
+  if (rs) cells = cells.reverse(); // RS: right → left. WS: already stored left → right.
+  if (!cells.length) return '';
+  if (!cells.some(x => x.c)) return collapseRepeats(rleStitches(cells.map(x => x.t), abbr)).join(', ');
+  // Coloured chart: one run per yarn change, each led by its swatch, so a
+  // two-colour row reads "■ p5, k7 · ■ k3" rather than hiding the change.
+  const runs = [];
+  for (let i = 0; i < cells.length; ) {
+    let j = i;
+    while (j < cells.length && cells[j].c === cells[i].c) j++;
+    const sw = cells[i].c ? `<span class="recap-swatch" style="background:${cells[i].c}"></span>` : '';
+    runs.push(sw + collapseRepeats(rleStitches(cells.slice(i, j).map(x => x.t), abbr)).join(', '));
+    i = j;
+  }
+  return runs.join(' · ');
 }
 
 function recapHtml(row) {
@@ -260,7 +288,7 @@ function recapHtml(row) {
   // work out which half applies to them; just say it directly instead).
   const headText = flat
     ? `Row ${row} (${rs ? 'RS' : 'WS'}) · read ${rs ? 'right → left' : 'left → right'}, bottom to top`
-    : 'Work Chart B in the round · read right → left, bottom to top';
+    : `Work ${activePattern() && activePattern().custom ? 'the chart' : 'Chart B'} in the round · read right → left, bottom to top`;
   let html = `<div class="recap-head">${headText}</div>
     <div class="recap-body"><strong>Row ${row}:</strong> ${rowRecap(row)}</div>`;
 

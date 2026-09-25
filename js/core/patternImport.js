@@ -178,25 +178,28 @@ function importResultSheet(title, safeHtml) {
     <div class="sheet-actions"><button class="sheet-btn primary" onclick="dismissSheet()">OK</button></div>`);
 }
 
+// The file input accepts CSV and .stitchchart.json alike; which parser runs
+// is decided from the content by handlePatternFileText() (chartImport.js).
 function handlePatternCsvFile(input) {
   const file = input.files && input.files[0];
   input.value = ''; // allow re-importing the same filename later
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = () => {
-    const text = String(reader.result);
-    try {
-      const pattern = importPatternCsvText(text);
-      resetHeaderKey();
-      render();
-      importResultSheet('Pattern imported', `${pattern.name} was added to the library.`);
-    } catch (e) {
-      if (e.existingId) confirmReplacePattern(text, e.existingId);
-      else importResultSheet('Import failed', escapeHtml(e.message || String(e)));
-    }
-  };
+  reader.onload = () => handlePatternFileText(String(reader.result));
   reader.onerror = () => importResultSheet('Import failed', 'Could not read that file.');
   reader.readAsText(file);
+}
+
+function handlePatternCsvText(text) {
+  try {
+    const pattern = importPatternCsvText(text);
+    resetHeaderKey();
+    render();
+    importResultSheet('Pattern imported', `${pattern.name} was added to the library.`);
+  } catch (e) {
+    if (e.existingId) confirmReplacePattern(text, e.existingId);
+    else importResultSheet('Import failed', escapeHtml(e.message || String(e)));
+  }
 }
 
 // A same-id CSV is an update, not a duplicate — but it's still a structural

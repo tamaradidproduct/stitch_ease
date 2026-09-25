@@ -14,6 +14,8 @@ peacock-tee-deploy/
   js/core/storage.js            ← pkey/save/load*/migrations/projects registry
   js/core/chart.js              ← chart tracker, zoom, scroll, changeChartRow
   js/core/render.js             ← render*/stepHtml/openSheet/escapeHtml
+  js/core/patternImport.js      ← on-device CSV import → custom pattern (pt3_custom_patterns)
+  js/core/chartImport.js        ← on-device .stitchchart.json import → custom chart pattern
   js/core/pdf.js                ← the original pattern PDF (IndexedDB + the sheet)
   js/cloud/pdfsync.js           ← PDF sync: metadata always, bytes on demand
   js/cloud/family.js            ← families: who a pattern PDF is shared with
@@ -115,6 +117,9 @@ Patterns ship with the deploy, so **text edits reach everyone immediately** — 
 - **Not every note is a candidate.** A note whose text encodes something pattern-specific — which side of a chart a symbol falls on ("RS rows: k2tog. WS rows: p2tog."), why a chart draws two visually distinct symbols for what's otherwise the same stitch, a combined RS/WS shorthand like `m1-R / m1-L` — is not a stitch definition, it's chart-reading context. Collapsing it into the shared definition would drop the thing the note exists to say. Those keep their own `def` and are never looked up.
 - **Adding a new pattern:** for each abbreviation in its `notes`, check whether `glossaryEntry(term)` already resolves. If it does and the note is a plain definition (not chart-side context), omit `def`. If the stitch isn't in the glossary yet, **ask the user what to do** before proceeding — add it to `GLOSSARY` (source of truth grows), or leave it pattern-only with its own `def` (the fallback when a stitch is deliberately not general-purpose, e.g. Posy's "Pull up stitch"). Don't add it unasked.
 - Some patterns (Lenore, Tatted Triangle) show a compact abbreviation → one-word expansion in their notes today ('R' → 'Ring'), not a full sentence — deliberately left un-migrated, since deferring would swap that compact label for the glossary's full-sentence definition and change the sheet's character. Ask before converting those too.
+
+### Importing patterns on-device
+**New project → Import pattern** takes a pattern CSV (`docs/pattern-csv-template.md`) or a chart export `.stitchchart.json` (`docs/stitchchart-import.md`); `handlePatternFileText` decides by content. Both become **custom patterns** in `pt3_custom_patterns` — never committed, so bought patterns are fine. A chart import shows a preview sheet first (name, thumbnail, stitch counts, flat/round, RS/WS row 1) and becomes one `hasChart` phase. Per-cell yarn colours live in `phase.chartColors`, a grid parallel to the chart — kept separate so nothing that reads `CHART_B` changes. The export's `referenceImage` is never stored. An unknown stitch id blocks the import: **ask before adding** to `STITCHCHART_IDS`/`GLOSSARY`.
 
 ### The original pattern PDF
 The tracker is a transcription — no schematics, no photos, no sizing table. The **document icon** in the section header (beside the notes book, on every section including the chart) opens the original PDF, so the answer to "what did the designer actually say" isn't "go and find the email you bought it in".
