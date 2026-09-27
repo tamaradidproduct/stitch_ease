@@ -321,7 +321,11 @@ const CHART_WATL = [
 // flipping back to Section 1 for every single row.
 // ─────────────────────────────────────────────
 function watlSection1Row(row) {
-  const head = 'Section 1 · Row ' + row + ' (RS) · read right → left';
+  // Color, not RS/WS: this section has no WS row of its own to distinguish
+  // from, and the chart's own recap head names the color the same way (see
+  // rowColorName() in chart.js) — so the two stay worded consistently
+  // instead of one saying "(RS)"/"(WS)" and the other naming a color.
+  const head = 'Section 1 · Row ' + row + ' · work in ' + (rowColorName(row) || '?') + ' · read right → left';
   let body;
   if (row === 1) body = 'Ktbl, K to last st, Sl1 wyif.';
   else if (row <= 132) body = 'Ktbl, K1, M1R, K to last st, Sl1 wyif — increase 1 st.';
@@ -342,9 +346,9 @@ const WATL_PHASES = [
     ]
   },
   {
-    id: 'watl-s1', name: 'Section 1 · RS shaping', desc: 'Odd (RS) rows · written · always Background Color [BC] on odd, Foreground [FC] on even',
+    id: 'watl-s1', name: 'Section 1 · RS shaping', desc: 'The RS row of every row pair · written · color alternates every row (odd = Background, even = Foreground)',
     entries: [
-      { kind: 'note', id: 'watl-s1n1', text: 'Worked in alternation with Section 2 below: work one row here, then its matching row in the Chart phase, turn, repeat. Colors alternate every 2 rows — [BC] on rows 1–2, [FC] on rows 3–4, and so on.' },
+      { kind: 'note', id: 'watl-s1n1', text: 'Worked in alternation with Section 2 below: work one row here, then its matching row in the Chart phase, turn, repeat. Color alternates every single row — [BC] on odd rows (1, 3, 5…), [FC] on even rows (2, 4, 6…).' },
       { kind: 'note', id: 'watl-s1n2', text: 'Cast on 4 sts using [BC] (e.g. long-tail).' },
       { kind: 'row', id: 'watl-s1r1', text: 'Row 1: Ktbl, K to last st, Sl1 wyif.' },
       { kind: 'repeat', id: 'watl-s1-inc', text: 'Rows 2–132: Ktbl, K1, M1R, K to last st, Sl1 wyif — increase 1 st every row (ends at 135 sts)', times: 131, rows: [
@@ -357,7 +361,7 @@ const WATL_PHASES = [
     ]
   },
   {
-    id: 'watl-chart', name: 'Section 2 · Illusion chart', desc: 'Even (WS) rows · 135 sts × 263 rows · read top to bottom, left to right',
+    id: 'watl-chart', name: 'Section 2 · Illusion chart', desc: 'The WS row of every row pair · 135 sts × 263 rows · read top to bottom, left to right',
     hasChart: true, flatChart: true, allWS: true, chart: CHART_WATL,
     pairedRow: watlSection1Row,
     colorPalette: ['#134e4a', '#c8f3ec'],

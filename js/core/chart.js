@@ -86,6 +86,26 @@ function colorHexFor(ci) {
   return normalizeHexColor(palette && palette[ci]) || '#cccccc';
 }
 
+// The color name for a chart row, when the whole row is one color (an
+// `allWS` illusion/colorwork phase — see js/patterns/where-are-the-leaves.js
+// — never a mixed-color row like Peacock Tee's yoke chart, where this
+// would be meaningless and callers shouldn't ask). Reads the color straight
+// off the row's own cells rather than assuming an odd/even rule, so it
+// can't drift out of sync with what the chart actually stores. Returns
+// null if the row has no colorwork cells at all (a plain stitch-only
+// pattern, or an all-'E' row).
+function rowColorName(row) {
+  const cells = (CHART_B[row - 1] || []);
+  for (const c of cells) {
+    const { ci } = parseColorCell(c);
+    if (ci !== null) return (projectColors[ci] && projectColors[ci].name) || null;
+  }
+  return null;
+}
+
+// WCAG-ish relative luminance → plain black/white symbol color, so a
+// knitter can read the glyph regardless of how dark or light they picked
+// that yarn's color to be.
 function contrastText(hex) {
   const normalized = normalizeHexColor(hex);
   const m = normalized && /^#([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(normalized);
@@ -466,14 +486,23 @@ function rowRecap(row) {
 }
 
 function recapHtml(row) {
-  const flat = !!(PHASES[cur] && PHASES[cur].flatChart);
+  const phase = PHASES[cur];
+  const flat = !!(phase && phase.flatChart);
   const rs = isRSRow(row);
   // Row-specific only — state what's true for THIS row, not a general
   // rule covering both parities (flat patterns alternate RS/WS every row,
   // so a blanket "odd rows.../even rows..." statement makes the reader
   // work out which half applies to them; just say it directly instead).
+  //
+  // `allWS` charts have no real RS/WS distinction to state (every row here
+  // IS the WS row — see js/patterns/where-are-the-leaves.js) — what
+  // actually varies row to row is the yarn color, so that's what's named
+  // instead of a meaningless "(WS)" repeated on every single row.
+  const sideLabel = (phase && phase.allWS)
+    ? 'work in ' + (rowColorName(row) || '?')
+    : (rs ? 'RS' : 'WS');
   const headText = flat
-    ? `Row ${row} (${rs ? 'RS' : 'WS'}) · read ${rs ? 'right → left' : 'left → right'}, bottom to top`
+    ? `Row ${row} (${sideLabel}) · read ${rs ? 'right → left' : 'left → right'}, bottom to top`
     : `Work ${activePattern() && activePattern().custom ? 'the chart' : 'Chart B'} in the round · read right → left, bottom to top`;
   let html = `<div class="recap-head">${headText}</div>
     <div class="recap-body"><strong>Row ${row}:</strong> ${rowRecap(row)}</div>`;
