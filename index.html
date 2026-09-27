@@ -928,6 +928,12 @@
     padding: 0.5px 8px 0.5px 4px;
     height: calc(var(--cell-sz) + 1px); flex-shrink: 0;
   }
+
+  /* Spacers standing in for the rows above/below the mounted window — see
+     the ROW VIRTUALIZATION section in chart.js. Their height alone (set
+     inline per render) has to account for every unmounted row, so they must
+     never shrink. */
+  .chart-spacer-top, .chart-spacer-bottom { flex-shrink: 0; }
   .crow-active { background: var(--ch-active-bg); }
 
   .crow-cells { display: flex; gap: 1px; }
