@@ -343,9 +343,17 @@ const WATL_PHASES = [
     ]
   },
   {
-    id: 'watl-s1', name: 'Section 1 · RS shaping', desc: 'The RS row of every row pair · written · color alternates every row (odd = Background, even = Foreground)',
+    // Named for what a knitter needs on THIS page, not for what it is
+    // structurally — this is still "Section 1" (its rows are what
+    // watlSection1Row() surfaces inside the chart's recap), but that label
+    // means nothing until you already know the two-section rhythm. The
+    // general instructions used to be a checkable note entry here, reading
+    // as one more step among cast-on/rows/bind-off — they're written
+    // instructions, not something to tick off, so they live in `desc`
+    // (always visible, never a checkbox) instead.
+    id: 'watl-s1', name: 'How to work this pattern',
+    desc: 'Two sections, worked in alternation the whole way through: this page (written, RS shaping) and the Chart phase (charted, WS illusion design). Work one row here, turn, then its matching row in the chart, turn, repeat. Color alternates every row — [BC] on odd rows (1, 3, 5…), [FC] on even rows (2, 4, 6…).',
     entries: [
-      { kind: 'note', id: 'watl-s1n1', text: 'Worked in alternation with Section 2 below: work one row here, then its matching row in the Chart phase, turn, repeat. Color alternates every single row — [BC] on odd rows (1, 3, 5…), [FC] on even rows (2, 4, 6…).' },
       { kind: 'note', id: 'watl-s1n2', text: 'Cast on 4 sts using [BC] (e.g. long-tail).' },
       { kind: 'row', id: 'watl-s1r1', text: 'Row 1: Ktbl, K to last st, Sl1 wyif.' },
       { kind: 'repeat', id: 'watl-s1-inc', text: 'Rows 2–132: Ktbl, K1, M1R, K to last st, Sl1 wyif — increase 1 st every row (ends at 135 sts)', times: 131, rows: [
@@ -364,7 +372,7 @@ const WATL_PHASES = [
     colorPalette: ['#134e4a', '#c8f3ec'],
     colorNames: ['Background color', 'Foreground color'],
     entries: [
-      { kind: 'note', id: 'watl-n1', text: 'Worked in alternation with Section 1: after each RS shaping row there, turn and work the matching row here. Every row is entirely one color — odd rows [BC], even rows [FC] — tap the palette icon in the legend to name and re-pick each swatch for your own yarn.' },
+      { kind: 'note', id: 'watl-n1', text: 'Tap the palette icon in the legend to name and re-pick each swatch for your own yarn.' },
       { kind: 'note', id: 'watl-n2', text: 'Universal edge rhythm for every row: Ktbl, [work chart stitches in K or P as shown], Sl1 wyif.' },
     ]
   },

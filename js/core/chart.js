@@ -518,7 +518,7 @@ function pairedRecapHtml(row, phase, pairedText) {
       <div class="recap-body">${pairedText}</div>
     </div>
     <div class="recap-section">
-      <div class="recap-sub">Section 2</div>
+      <div class="recap-sub">Section 2 · work from the chart</div>
       <div class="recap-body">${rowRecap(row)}</div>
     </div>`;
 }
