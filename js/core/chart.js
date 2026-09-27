@@ -86,21 +86,28 @@ function colorHexFor(ci) {
   return normalizeHexColor(palette && palette[ci]) || '#cccccc';
 }
 
-// The color name for a chart row, when the whole row is one color (an
-// `allWS` illusion/colorwork phase — see js/patterns/where-are-the-leaves.js
-// — never a mixed-color row like Peacock Tee's yoke chart, where this
-// would be meaningless and callers shouldn't ask). Reads the color straight
-// off the row's own cells rather than assuming an odd/even rule, so it
-// can't drift out of sync with what the chart actually stores. Returns
-// null if the row has no colorwork cells at all (a plain stitch-only
-// pattern, or an all-'E' row).
-function rowColorName(row) {
+// The color for a chart row, when the whole row is one color (an `allWS`
+// illusion/colorwork phase — see js/patterns/where-are-the-leaves.js —
+// never a mixed-color row like Peacock Tee's yoke chart, where this would
+// be meaningless and callers shouldn't ask). Reads the color straight off
+// the row's own cells rather than assuming an odd/even rule, so it can't
+// drift out of sync with what the chart actually stores. Returns null if
+// the row has no colorwork cells at all (a plain stitch-only pattern, or
+// an all-'E' row).
+function rowColorInfo(row) {
   const cells = (CHART_B[row - 1] || []);
   for (const c of cells) {
     const { ci } = parseColorCell(c);
-    if (ci !== null) return (projectColors[ci] && projectColors[ci].name) || null;
+    if (ci !== null) {
+      const entry = projectColors[ci];
+      return entry ? { name: entry.name, hex: entry.hex } : null;
+    }
   }
   return null;
+}
+function rowColorName(row) {
+  const info = rowColorInfo(row);
+  return info ? info.name : null;
 }
 
 // WCAG-ish relative luminance → plain black/white symbol color, so a
@@ -495,9 +502,15 @@ function rowRecap(row) {
 // twice (once per section) was what read as "conflicting" rather than
 // complementary.
 function pairedRecapHtml(row, phase, pairedText) {
-  const colorName = phase.allWS ? rowColorName(row) : null;
-  const headText = colorName ? `Row ${row} · work in ${colorName}` : `Row ${row}`;
-  return `<div class="recap-head">${headText}</div>
+  const colorInfo = phase.allWS ? rowColorInfo(row) : null;
+  // The color is the one thing that actually changes what a knitter does
+  // with their hands right now (which ball of yarn to pick up) — it gets
+  // real weight here (a swatch dot + the row's biggest text), not the same
+  // small muted caps as the rest of the recap's metadata.
+  const headText = colorInfo
+    ? `<span class="recap-row-dot" style="background:${colorInfo.hex}"></span>Row ${row} · work in ${escapeHtml(colorInfo.name)}`
+    : `Row ${row}`;
+  return `<div class="recap-title">${headText}</div>
     <div class="recap-section">
       <div class="recap-sub">Section 1</div>
       <div class="recap-body">${pairedText}</div>
