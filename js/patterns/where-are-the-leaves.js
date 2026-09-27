@@ -312,11 +312,23 @@ const CHART_WATL = [
 //     this PDF existed) still applies unchanged here.
 //
 // The two sections are worked in alternation (Row Na, then Row Nb, repeat)
-// but tracked as separate phases with independent row counters — this app
-// has no single "chart phase with a companion written row" concept, and
-// Section 1 has no per-row content worth charting (same 4 lines the whole
-// way, just an increasing/decreasing count).
+// but tracked as separate phases with independent row counters — Section 1
+// has no per-row content worth charting (same 4 lines the whole way, just
+// an increasing/decreasing count), so it's a plain repeat/row-counter phase
+// rather than a second chart. watlSection1Row() below is what surfaces its
+// current line INSIDE the chart phase (via pairedRow(), a generic hook in
+// chart.js's recapHtml()) so a knitter reading the chart isn't also stuck
+// flipping back to Section 1 for every single row.
 // ─────────────────────────────────────────────
+function watlSection1Row(row) {
+  const head = 'Section 1 · Row ' + row + ' (RS) · read right → left';
+  let body;
+  if (row === 1) body = 'Ktbl, K to last st, Sl1 wyif.';
+  else if (row <= 132) body = 'Ktbl, K1, M1R, K to last st, Sl1 wyif — increase 1 st.';
+  else body = 'Ktbl, K1, SSK, K to last st, Sl1 wyif — decrease 1 st.';
+  return { head, body };
+}
+
 const WATL_PHASES = [
   {
     id: 'watl-mat', name: 'Materials', desc: 'Before you start',
@@ -347,6 +359,7 @@ const WATL_PHASES = [
   {
     id: 'watl-chart', name: 'Section 2 · Illusion chart', desc: 'Even (WS) rows · 135 sts × 263 rows · read top to bottom, left to right',
     hasChart: true, flatChart: true, allWS: true, chart: CHART_WATL,
+    pairedRow: watlSection1Row,
     colorPalette: ['#134e4a', '#c8f3ec'],
     colorNames: ['Background color', 'Foreground color'],
     entries: [

@@ -478,6 +478,21 @@ function recapHtml(row) {
   let html = `<div class="recap-head">${headText}</div>
     <div class="recap-body"><strong>Row ${row}:</strong> ${rowRecap(row)}</div>`;
 
+  // A pattern where this chart is only HALF of each row pair (e.g. Where
+  // are the Leaves' illusion knitting, where Section 1's RS shaping row has
+  // no chart of its own) can supply `pairedRow(row)` on the phase to surface
+  // that companion row right here — otherwise a knitter has to leave the
+  // chart to go find it in a different phase for every single row.
+  if (PHASES[cur] && typeof PHASES[cur].pairedRow === 'function') {
+    const paired = PHASES[cur].pairedRow(row);
+    if (paired) {
+      html += `<div class="recap-paired">
+        <div class="recap-head">${paired.head}</div>
+        <div class="recap-body">${paired.body}</div>
+      </div>`;
+    }
+  }
+
   // Post-chart confirm step — the last step of the chart phase, surfaced
   // alongside the row instructions (same "what do I do now" panel) rather
   // than as a separate block further down. Only relevant once the last row
