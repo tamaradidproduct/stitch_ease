@@ -205,9 +205,41 @@ function segEndCols(phase) {
 const CHART_BUFFER_ROWS = 12;
 let chartWinFirst = -1, chartWinLast = -1; // currently-mounted visual-index window
 
+// COLUMN CROPPING — a chart with shaping (raglan/set-in increases, etc.)
+// marks not-yet-existing stitches 'E' (no-stitch), often a long run of them
+// on either edge of every row early in the section. Those don't need real
+// DOM cells any more than an off-screen row does, so each mount also crops
+// to the columns actually in use across the rows being rendered — a couple
+// of blank columns are kept on each side for visual clarity, and the crop
+// only ever trims the OUTER edges (an 'E' gap in the middle of a row, e.g. a
+// split front/back panel, stays fully rendered since it's still between two
+// active edges). Recomputed per render (same rows as the vertical window),
+// so it widens on its own as scrolling reaches rows with more active
+// stitches — exactly the "add a column per increase row" behavior wanted.
+const CHART_COL_PAD = 2;
+let chartColStart = 0, chartColEnd = 0; // currently-rendered column range (inclusive), real indices
+
+// The widest active-stitch range across rows [rowBottom, rowTop] (inclusive,
+// real 1-based row numbers) — i.e. the same rows about to be mounted.
+function activeColRange(rowBottom, rowTop) {
+  const cols = CHART_B[0] ? CHART_B[0].length : 0;
+  let minCol = cols, maxCol = -1;
+  for (let r = rowBottom; r <= rowTop; r++) {
+    const row = CHART_B[r - 1];
+    if (!row) continue;
+    for (let ci = 0; ci < row.length; ci++) { if (row[ci] !== 'E') { if (ci < minCol) minCol = ci; break; } }
+    for (let ci = row.length - 1; ci >= 0; ci--) { if (row[ci] !== 'E') { if (ci > maxCol) maxCol = ci; break; } }
+    if (minCol === 0 && maxCol === cols - 1) break; // can't narrow further
+  }
+  if (maxCol < minCol) return { colStart: 0, colEnd: Math.max(0, cols - 1) }; // rows were all no-stitch — show as-is
+  return { colStart: Math.max(0, minCol - CHART_COL_PAD), colEnd: Math.min(cols - 1, maxCol + CHART_COL_PAD) };
+}
+
 // One row's HTML — visual index 0 is CHART_TOTAL (top), CHART_TOTAL-1 is
-// row 1 (bottom); see buildChartTracker's row-order note below.
-function chartRowHtml(r, segEnds) {
+// row 1 (bottom); see buildChartTracker's row-order note below. colStart/
+// colEnd (inclusive) are the shared crop for the whole mounted window — see
+// the COLUMN CROPPING note above.
+function chartRowHtml(r, segEnds, colStart, colEnd) {
   const rowData = CHART_B[r - 1];
   const isActive = (r === chartCurrentRow);
   const isDone   = (r < chartCurrentRow);
@@ -216,7 +248,7 @@ function chartRowHtml(r, segEnds) {
   html += rowNumCell(r, 'l', isActive, isDone);
   html += '<div class="crow-cells">';
   const rowColors = chartColorRow(r);
-  for (let ci = 0; ci < rowData.length; ci++) html += stitchCell(rowData[ci], segEnds && segEnds.has(ci), rowColors && rowColors[ci], isActive);
+  for (let ci = colStart; ci <= colEnd; ci++) html += stitchCell(rowData[ci], segEnds && segEnds.has(ci), rowColors && rowColors[ci], isActive);
   html += '</div>';
   html += rowNumCell(r, 'r', isActive, isDone);
   html += '</div>';
@@ -259,10 +291,14 @@ function initialChartRange() {
 function renderChartWindow(range) {
   const ROW_H = getRowH();
   const segEnds = segEndCols(PHASES[cur]);
-  let html = `<div class="chart-spacer-top" style="height:${range.first * ROW_H}px"></div>`;
   // Rows render top-to-bottom visually (row CHART_TOTAL at top, row 1 at
   // bottom); visIdx `first` (smallest, topmost) is the highest row number.
-  for (let r = CHART_TOTAL - range.first; r >= CHART_TOTAL - range.last; r--) html += chartRowHtml(r, segEnds);
+  const rowTop = CHART_TOTAL - range.first, rowBottom = CHART_TOTAL - range.last;
+  const colRange = activeColRange(rowBottom, rowTop);
+  chartColStart = colRange.colStart;
+  chartColEnd = colRange.colEnd;
+  let html = `<div class="chart-spacer-top" style="height:${range.first * ROW_H}px"></div>`;
+  for (let r = rowTop; r >= rowBottom; r--) html += chartRowHtml(r, segEnds, chartColStart, chartColEnd);
   html += `<div class="chart-spacer-bottom" style="height:${(CHART_TOTAL - 1 - range.last) * ROW_H}px"></div>`;
   html += '<div class="mid-row-line" id="mid-row-line"></div>';
   return html;
@@ -678,7 +714,7 @@ function midRowLeftPad() {
   return cellSz + ROWNUM_GAP;
 }
 function midRowX(colIdx) {
-  return midRowLeftPad() + colIdx * (cellSz + MID_ROW_GAP) - MID_ROW_GAP / 2;
+  return midRowLeftPad() + (colIdx - chartColStart) * (cellSz + MID_ROW_GAP) - MID_ROW_GAP / 2;
 }
 
 function updateMidRowLine() {
@@ -723,7 +759,7 @@ function startMidRowDrag(evt) {
   // x-offset without needing to add scrollLeft back in.
   const colFromEvent = e => {
     const relX = e.clientX - inner.getBoundingClientRect().left;
-    const col = Math.round((relX - midRowLeftPad() + MID_ROW_GAP / 2) / (cellSz + MID_ROW_GAP));
+    const col = chartColStart + Math.round((relX - midRowLeftPad() + MID_ROW_GAP / 2) / (cellSz + MID_ROW_GAP));
     return Math.max(0, Math.min(stitchCount, col));
   };
   // Live visual feedback every move, without writing to storage on every
