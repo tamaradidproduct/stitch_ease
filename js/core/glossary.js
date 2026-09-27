@@ -61,6 +61,7 @@ const GLOSSARY = [
         terms: [
           { term: 'Knit through the back loop', abbr: 'Ktbl', def: 'Insert the needle into the back of the stitch instead of the front, twisting it.', sym: 'KTBL' },
           { term: 'Purl through the back loop', abbr: 'Ptbl', def: 'The purl equivalent of ktbl.', sym: 'PTBL' },
+          { term: 'Slip 1, wyif', abbr: 'Sl1 wyif', def: 'Hold the yarn in front of the work and slip the next stitch purlwise, without working it.', sym: 'SL' },
           { term: 'Wrap and turn', abbr: 'W&T', def: 'Short-row technique: slip the next stitch, bring the yarn between the needles to wrap it, slip the stitch back, turn.' },
           { term: 'German short row', abbr: 'GSR', def: 'Short-row technique: after turning, slip the first stitch with yarn in front, pull the yarn to the back until two legs show on the needle. Worked together as one stitch when you reach it.' },
           { term: 'Beginning of round', abbr: 'BOR', def: 'The marked point where each round starts — not always the true start of the piece.' },
@@ -112,18 +113,30 @@ const GLOSSARY = [
 // would drop the very thing that note exists to say, so those keep their own
 // `def` and are never looked up here.
 
-// Build O(1) lookup index from term name + abbreviations to entry
+// Build O(1) lookup index from term name + abbreviations to entry.
+//
+// FIRST registration wins on a collision, never overwrites — a bare
+// single-letter abbreviation can legitimately mean two different things
+// across crafts (e.g. 'P' is Purl in knitting AND one written form of
+// Picot in tatting), and silently letting the later craft's entry shadow
+// the earlier one is how "P" once resolved to Picot's definition under a
+// knitting pattern's own note. Logged so a genuine new collision gets
+// noticed rather than quietly mis-resolving somewhere.
 const glossaryIndex = (() => {
   const idx = {};
+  const add = (key, entry) => {
+    const k = key.toLowerCase();
+    if (idx[k] && idx[k] !== entry) {
+      console.warn('[glossary] "' + key + '" already means "' + idx[k].term + '" — ignoring the same abbreviation on "' + entry.term + '"');
+      return;
+    }
+    idx[k] = entry;
+  };
   for (const c of GLOSSARY) {
     for (const g of c.groups) {
       for (const t of g.terms) {
-        idx[t.term.toLowerCase()] = t;
-        if (t.abbr) {
-          t.abbr.split('/').forEach(a => {
-            idx[a.trim().toLowerCase()] = t;
-          });
-        }
+        add(t.term, t);
+        if (t.abbr) t.abbr.split('/').forEach(a => add(a.trim(), t));
       }
     }
   }

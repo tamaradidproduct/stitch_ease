@@ -49,30 +49,130 @@ const SYMS = {
   GP: '<svg width="100%" height="100%" viewBox="0 0 24 24" style="display:block"><path transform="matrix(1.000000,0.000000,0.000000,1.000000,8.000000,8.000000)" d="M4 0C6.20914 0 8 1.79086 8 4C8 6.20914 6.20914 8 4 8C1.79086 8 0 6.20914 0 4C0 1.79086 1.79086 0 4 0ZM2.25879 6.44043C2.74999 6.79152 3.35019 7 4 7C5.65685 7 7 5.65685 7 4C7 3.35019 6.79152 2.74999 6.44043 2.25879L2.25879 6.44043ZM4 1C2.34315 1 1 2.34315 1 4C1 4.64581 1.20557 5.2429 1.55273 5.73242L5.73242 1.55273C5.2429 1.20557 4.64581 1 4 1Z" fill="currentColor" fill-rule="evenodd"/></svg>',
   BRK: '<svg width="100%" height="100%" viewBox="0 0 24 24" style="display:block"><path transform="matrix(1.000000,0.000000,0.000000,1.000000,4.000000,2.000000)" d="M8 0C12.4183 0 16 3.58172 16 8L16 20L14.5 20L14.5 7.9375L14.4961 7.9375C14.4098 4.42276 11.5355 1.59961 8 1.59961C4.46449 1.59961 1.59017 4.42276 1.50391 7.9375L1.5 7.9375L1.5 20L0 20L0 8C0 3.58172 3.58172 0 8 0Z" fill="currentColor" fill-rule="nonzero"/></svg>',
   BRP: '<svg width="100%" height="100%" viewBox="0 0 24 24" style="display:block"><path transform="matrix(1.000000,0.000000,0.000000,1.000000,4.000000,2.000000)" d="M8 0C12.4183 0 16 3.58172 16 8L16 20L14.5 20L14.5 7.9375L14.4961 7.9375C14.4098 4.42276 11.5355 1.59961 8 1.59961C4.46449 1.59961 1.59017 4.42276 1.50391 7.9375L1.5 7.9375L1.5 20L0 20L0 8C0 3.58172 3.58172 0 8 0Z" fill="currentColor" fill-rule="nonzero"/><path transform="matrix(1.000000,0.000000,0.000000,1.000000,4.000000,2.000000)" d="M4 9C4 6.79086 5.79086 5 8 5C10.2091 5 12 6.79086 12 9C12 11.2091 10.2091 13 8 13C5.79086 13 4 11.2091 4 9Z" fill="currentColor" fill-rule="nonzero"/></svg>',
+  // Slipped stitch, yarn held in front (sl_wyif) — pulled from this app's
+  // Figma stitch-glyph library (StitchEase designer library, node 12:87): a
+  // purl-style dot above a downward chevron. Added for colorwork charts
+  // imported from other tools (see the colorwork section below);
+  // pattern-neutral, not specific to any one pattern.
+  SL: '<svg width="100%" height="100%" viewBox="0 0 24 24" style="display:block"><path d="M12 4C13.6568 4.00004 15 5.34317 15 7C14.9999 8.65671 13.6567 9.99996 12 10C10.3432 10 9.00014 8.65673 9 7C9 5.34315 10.3431 4 12 4Z" fill="currentColor"/><path d="M4 7L12 20L20 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 };
 
-// `yarn` is a yarn index from an imported chart's chartColors grid. The cell
-// only names the slot (var(--yarn-N)); the actual colour is set once on
-// :root by applyYarnVars() (js/core/yarns.js), so picking a new yarn colour
-// repaints the whole chart without rebuilding a single cell. Checked as an
-// integer here, not only at import: the doc can arrive frozen or synced, and
-// this lands in a style attribute.
 function cellYarn(c) { return Number.isInteger(c) && c >= 0 && c < 32 ? c : null; }
 
-function stitchCell(type, segEnd, yarn) {
+function chartColorRow(row) {
+  const grid = PHASES[cur] && PHASES[cur].chartColors;
+  return (grid && grid[row - 1]) || null;
+}
+
+function parseColorCell(type) {
+  const i = type.indexOf(':');
+  if (i < 0) return { t: type, ci: null };
+  return { t: type.slice(0, i), ci: parseInt(type.slice(i + 1), 10) };
+}
+
+function normalizeHexColor(hex) {
+  if (typeof hex !== 'string') return null;
+  const match = /^#?([a-f\d]{3}|[a-f\d]{6})$/i.exec(hex.trim());
+  if (!match) return null;
+  const value = match[1];
+  return '#' + (value.length === 3
+    ? value.split('').map(ch => ch + ch).join('')
+    : value).toLowerCase();
+}
+
+function colorHexFor(ci) {
+  const entry = projectColors[ci];
+  const savedHex = normalizeHexColor(entry && entry.hex);
+  if (savedHex) return savedHex;
+  const palette = PHASES[cur] && PHASES[cur].colorPalette;
+  return normalizeHexColor(palette && palette[ci]) || '#cccccc';
+}
+
+// The color for a chart row, when the whole row is one color (an `allWS`
+// illusion/colorwork phase — see js/patterns/where-are-the-leaves.js —
+// never a mixed-color row like Peacock Tee's yoke chart, where this would
+// be meaningless and callers shouldn't ask). Reads the color straight off
+// the row's own cells rather than assuming an odd/even rule, so it can't
+// drift out of sync with what the chart actually stores. Returns null if
+// the row has no colorwork cells at all (a plain stitch-only pattern, or
+// an all-'E' row).
+function rowColorInfo(row) {
+  const cells = (CHART_B[row - 1] || []);
+  for (const c of cells) {
+    const { ci } = parseColorCell(c);
+    if (ci !== null) {
+      const entry = projectColors[ci];
+      return entry ? { name: entry.name, hex: colorHexFor(ci) } : null;
+    }
+  }
+  return null;
+}
+function rowColorName(row) {
+  const info = rowColorInfo(row);
+  return info ? info.name : null;
+}
+
+// WCAG-ish relative luminance → plain black/white symbol color, so a
+// knitter can read the glyph regardless of how dark or light they picked
+// that yarn's color to be.
+function contrastText(hex) {
+  const normalized = normalizeHexColor(hex);
+  const m = normalized && /^#([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(normalized);
+  if (!m) return '#000';
+  const rgb = [m[1], m[2], m[3]].map(h => parseInt(h, 16) / 255);
+  const lin = c => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  return 0.2126 * lin(rgb[0]) + 0.7152 * lin(rgb[1]) + 0.0722 * lin(rgb[2]) > 0.45 ? '#000' : '#fff';
+}
+
+const CC_TINT_AMOUNT = 0.72;
+function tintHex(hex) {
+  const normalized = normalizeHexColor(hex);
+  const m = normalized && /^#([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(normalized);
+  if (!m) return hex;
+  const mix = h => Math.round(parseInt(h, 16) + (255 - parseInt(h, 16)) * CC_TINT_AMOUNT).toString(16).padStart(2, '0');
+  return '#' + mix(m[1]) + mix(m[2]) + mix(m[3]);
+}
+
+function cellDisplayHex(ci, isActive) {
+  const hex = colorHexFor(ci);
+  return isActive ? hex : tintHex(hex);
+}
+
+function stitchCell(type, segEnd, yarn, isActive) {
   let cls = 'cc' + (segEnd ? ' cc-seg-end' : '');
   if (type === 'E') return `<div class="${cls} cc-e"></div>`;
+  const { t, ci } = parseColorCell(type);
+  const sym = SYMS[t] || '';
+  if (ci !== null) {
+    const hex = cellDisplayHex(ci, isActive);
+    const fg = contrastText(hex);
+    return `<div class="${cls}" data-ci="${ci}" style="background-color:${hex};--cc-ring:${fg}">` +
+      (sym ? `<span class="cc-sym" style="color:${fg}">${sym}</span>` : '') + `</div>`;
+  }
   const y = cellYarn(yarn);
   if (y !== null) cls += ' cc-col';
-  const sym = SYMS[type] || '';
   const style = y !== null ? ` style="--cc-bg:var(--yarn-${y});--cc-fg:var(--yarn-${y}-fg)"` : '';
   return `<div class="${cls}"${style}>${sym ? `<span class="cc-sym">${sym}</span>` : ''}</div>`;
 }
 
-// The active chart phase's per-cell colours for one row, or null.
-function chartColorRow(row) {
-  const grid = PHASES[cur] && PHASES[cur].chartColors;
-  return (grid && grid[row - 1]) || null;
+function rowNumCell(rowNum, side, isActive, isDone) {
+  let cls = 'cc cc-rownum cc-rownum-' + side;
+  if (isActive) cls += ' crow-num-active';
+  else if (isDone) cls += ' crow-num-done';
+  return `<div class="${cls}">${rowNum}</div>`;
+}
+
+function repaintRowColors(rowEl, isActive) {
+  if (!rowEl) return;
+  rowEl.querySelectorAll('.cc[data-ci]').forEach(cellEl => {
+    const ci = parseInt(cellEl.dataset.ci, 10);
+    const hex = cellDisplayHex(ci, isActive);
+    const fg = contrastText(hex);
+    cellEl.style.backgroundColor = hex;
+    cellEl.style.setProperty('--cc-ring', fg);
+    const sym = cellEl.querySelector('.cc-sym');
+    if (sym) sym.style.color = fg;
+  });
 }
 
 // Column indices (0-based) where a combined chart's source panel ends — the
@@ -112,16 +212,13 @@ function chartRowHtml(r, segEnds) {
   const isActive = (r === chartCurrentRow);
   const isDone   = (r < chartCurrentRow);
 
-  let numCls = 'crow-num';
-  if (isActive) numCls += ' crow-num-active';
-  else if (isDone) numCls += ' crow-num-done';
-
   let html = `<div class="crow${isActive ? ' crow-active' : ''}" data-row="${r}">`;
+  html += rowNumCell(r, 'l', isActive, isDone);
   html += '<div class="crow-cells">';
   const rowColors = chartColorRow(r);
-  for (let ci = 0; ci < rowData.length; ci++) html += stitchCell(rowData[ci], segEnds && segEnds.has(ci), rowColors && rowColors[ci]);
+  for (let ci = 0; ci < rowData.length; ci++) html += stitchCell(rowData[ci], segEnds && segEnds.has(ci), rowColors && rowColors[ci], isActive);
   html += '</div>';
-  html += `<div class="${numCls}">${r}</div>`;
+  html += rowNumCell(r, 'r', isActive, isDone);
   html += '</div>';
   return html;
 }
@@ -226,6 +323,20 @@ function buildChartTracker(phaseHeaderHtml) {
 
   // Bottom panel: legend (kept for the pattern-notes sheet, hidden here)
   html += `<div class="chart-overlay-bottom" id="chart-overlay-bottom">`;
+
+  // Colorwork palette — this pattern's yarn colors, editable per project
+  // (see openColorSheet() in render.js). Only present on a colorwork chart.
+  const pal = PHASES[cur] && PHASES[cur].colorPalette;
+  if (pal) {
+    html += '<div class="chart-legend chart-color-legend">';
+    pal.forEach((defHex, i) => {
+      const c = projectColors[i] || { name: 'Color ' + (i + 1), hex: defHex };
+      html += `<div class="leg"><div class="leg-cc leg-swatch" style="background:${colorHexFor(i)}"></div>${escapeHtml(c.name)}</div>`;
+    });
+    html += `<button class="phase-folder color-edit-btn" onclick="openColorSheet()" aria-label="Edit yarn colors" title="Edit yarn colors">${PALETTE_SVG}</button>`;
+    html += '</div>';
+  }
+
   html += `<div class="chart-legend">
     <div class="leg"><div class="leg-cc"></div>knit</div>
     <div class="leg"><div class="leg-cc" style="color:var(--ch-def-symbol)">${SYMS.P}</div>purl</div>
@@ -254,6 +365,7 @@ function buildChartTracker(phaseHeaderHtml) {
     <div class="leg"><div class="leg-cc" style="color:var(--ch-def-symbol)">${SYMS.GP}</div>ghost purl</div>
     <div class="leg"><div class="leg-cc" style="color:var(--ch-def-symbol)">${SYMS.BRK}</div>brioche knit</div>
     <div class="leg"><div class="leg-cc" style="color:var(--ch-def-symbol)">${SYMS.BRP}</div>brioche purl</div>
+    <div class="leg"><div class="leg-cc" style="color:var(--ch-def-symbol)">${SYMS.SL}</div>slip st, wyif</div>
   </div>`;
   html += '</div>';
 
@@ -280,6 +392,11 @@ function centerOnCurrentRow() {
 // `PHASES[cur].wsFirst` flips that parity — Posy's Chart 2 and back panel
 // are explicit about it ("this time all odd rows are on WS"), so row 1
 // there is WS, not RS. Everything else keeps the odd=RS default.
+//
+// `PHASES[cur].allWS` is a different shape entirely: every row in the
+// phase is WS, never alternating — for a pattern like Where are the Leaves,
+// where the RS (shaping) rows are a separate written phase with no chart of
+// their own, so THIS chart is only ever the WS half of each row pair.
 // ─────────────────────────────────────────────
 const STITCH_ABBR_RS = {
   K: 'k', P: 'p', YO: 'yo', K2: 'k2tog', SK: 'ssk', M1: 'm1', M1L: 'M1L', M1R: 'M1R',
@@ -289,18 +406,19 @@ const STITCH_ABBR_RS = {
   K2A: 'k2tog', SKA: 'ssk', M1LP: 'm1lp', M1RP: 'm1rp', SK2PO: 'sk2po',
   P3TOG: 'p3tog', P3: 'p3', SSP: 'ssp', P2TOG: 'p2tog', KTBL: 'ktbl', PTBL: 'ptbl',
   TK2TOG: 'tk2tog', TSSK: 'tssk', CDD: 'sl2-k1-p2sso', PU: 'pull up st',
-  GP: 'ghost purl', BRK: 'brk', BRP: 'brp',
+  GP: 'ghost purl', BRK: 'brk', BRP: 'brp', SL: 'sl1 wyif',
 };
 const STITCH_ABBR_WS = {
   K: 'p', P: 'k', YO: 'yo', K2: 'p2tog', SK: 'ssp', M1: 'm1', M1L: 'M1LP', M1R: 'M1RP',
   K2A: 'k2tog', SKA: 'ssk', M1LP: 'm1lp', M1RP: 'm1rp', SK2PO: 'sk2po',
   P3TOG: 'p3tog', P3: 'p3', SSP: 'ssp', P2TOG: 'p2tog', KTBL: 'ktbl', PTBL: 'ptbl',
   TK2TOG: 'tk2tog', TSSK: 'tssk', CDD: 'sl2-k1-p2sso', PU: 'pull up st',
-  GP: 'ghost purl', BRK: 'brk', BRP: 'brp',
+  GP: 'ghost purl', BRK: 'brk', BRP: 'brp', SL: 'sl1 wyif',
 };
 
 function isRSRow(row) {
   const phase = PHASES[cur];
+  if (phase && phase.allWS) return false;
   if (!(phase && phase.flatChart)) return true;
   const oddIsRS = !phase.wsFirst;
   return oddIsRS ? row % 2 === 1 : row % 2 === 0;
@@ -348,10 +466,13 @@ function collapseRepeats(tokens) {
 }
 
 function rowRecap(row) {
+  const phase = PHASES[cur];
   const rs = isRSRow(row);
-  const abbr = rs ? STITCH_ABBR_RS : STITCH_ABBR_WS;
+  const rowData = CHART_B[row - 1];
+  if (!rowData) return '';
+  const abbr = (phase && phase.allWS) ? STITCH_ABBR_RS : (rs ? STITCH_ABBR_RS : STITCH_ABBR_WS);
   const colors = chartColorRow(row);
-  let cells = CHART_B[row - 1].map((t, i) => ({ t, c: colors ? cellYarn(colors[i]) : null })).filter(x => x.t !== 'E');
+  let cells = rowData.map((t, i) => ({ t: parseColorCell(t).t, c: colors ? cellYarn(colors[i]) : null })).filter(x => x.t !== 'E');
   if (rs) cells = cells.reverse(); // RS: right → left. WS: already stored left → right.
   if (!cells.length) return '';
   if (!cells.some(x => x.c !== null)) return collapseRepeats(rleStitches(cells.map(x => x.t), abbr)).join(', ');
@@ -373,18 +494,56 @@ function rowRecap(row) {
   return runs.join(' · ');
 }
 
+// A pattern where this chart is only HALF of each row pair (e.g. Where are
+// the Leaves' illusion knitting, where Section 1's RS shaping row has no
+// chart of its own) supplies `pairedRow(row)` on the phase — a plain string,
+// just that companion section's instruction, no metadata of its own — and
+// gets this two-subsection layout instead of the single-section one below.
+// One shared "Row N · work in <color>" heading covers both sections, since
+// it's the same physical row number and color either way; repeating it
+// twice (once per section) was what read as "conflicting" rather than
+// complementary.
+function pairedRecapHtml(row, phase, pairedText) {
+  const colorInfo = phase.allWS ? rowColorInfo(row) : null;
+  // The color is the one thing that actually changes what a knitter does
+  // with their hands right now (which ball of yarn to pick up) — it gets
+  // real weight here (a swatch dot + the row's biggest text), not the same
+  // small muted caps as the rest of the recap's metadata.
+  const headText = colorInfo
+    ? `<span class="recap-row-dot" style="background:${colorInfo.hex}"></span>Row ${row} · work in ${escapeHtml(colorInfo.name)}`
+    : `Row ${row}`;
+  return `<div class="recap-title">${headText}</div>
+    <div class="recap-section">
+      <div class="recap-sub">Section 1</div>
+      <div class="recap-body">${pairedText}</div>
+    </div>
+    <div class="recap-section">
+      <div class="recap-sub">Section 2</div>
+      <div class="recap-body">${rowRecap(row)}</div>
+    </div>`;
+}
+
 function recapHtml(row) {
-  const flat = !!(PHASES[cur] && PHASES[cur].flatChart);
+  const phase = PHASES[cur];
+  const flat = !!(phase && phase.flatChart);
   const rs = isRSRow(row);
-  // Row-specific only — state what's true for THIS row, not a general
-  // rule covering both parities (flat patterns alternate RS/WS every row,
-  // so a blanket "odd rows.../even rows..." statement makes the reader
-  // work out which half applies to them; just say it directly instead).
-  const headText = flat
-    ? `Row ${row} (${rs ? 'RS' : 'WS'}) · read ${rs ? 'right → left' : 'left → right'}, bottom to top`
-    : `Work ${activePattern() && activePattern().custom ? 'the chart' : 'Chart B'} in the round · read right → left, bottom to top`;
-  let html = `<div class="recap-head">${headText}</div>
-    <div class="recap-body"><strong>Row ${row}:</strong> ${rowRecap(row)}</div>`;
+  const pairedText = phase && typeof phase.pairedRow === 'function' ? phase.pairedRow(row) : null;
+
+  let html;
+  if (pairedText) {
+    html = pairedRecapHtml(row, phase, pairedText);
+  } else {
+    // Row-specific only — state what's true for THIS row, not a general
+    // rule covering both parities (flat patterns alternate RS/WS every row,
+    // so a blanket "odd rows.../even rows..." statement makes the reader
+    // work out which half applies to them; just say it directly instead).
+    const sideLabel = phase && phase.allWS ? 'work in ' + (rowColorName(row) || '?') : (rs ? 'RS' : 'WS');
+    const headText = flat
+      ? `Row ${row} (${sideLabel}) · read ${rs ? 'right → left' : 'left → right'}, bottom to top`
+      : `Work ${activePattern() && activePattern().custom ? 'the chart' : 'Chart B'} in the round · read right → left, bottom to top`;
+    html = `<div class="recap-head">${headText}</div>
+      <div class="recap-body"><strong>Row ${row}:</strong> ${rowRecap(row)}</div>`;
+  }
 
   // Post-chart confirm step — the last step of the chart phase, surfaced
   // alongside the row instructions (same "what do I do now" panel) rather
@@ -503,13 +662,23 @@ function resizeChart(delta) {
 // viewport's own horizontal scroll — the one thing that can move the two
 // out of sync between renders.
 // ─────────────────────────────────────────────
-const MID_ROW_GAP = 1, MID_ROW_PAD_L = 4; // must mirror .crow-cells gap / .crow padding-left
+// .crow has NO left padding (see index.html) — the sticky left row-number
+// cell has to be flush with .crow's own edge from the first pixel of
+// scroll, or it visibly slides that padding's distance before settling
+// into its stuck position. So the only offset before the first real stitch
+// column is the row-number cell itself (border-box, so its rendered width
+// is exactly --cell-sz) plus ROWNUM_GAP, which must mirror .cc-rownum-l's
+// margin-right (index.html).
+const MID_ROW_GAP = 1, ROWNUM_GAP = 4;
 
-// Column index → pixel offset within #chart-inner. cellSz is the only one of
-// the three constants that actually varies (via resizeChart), so it's the
-// only one read live.
+// Column index → pixel offset within #chart-inner. cellSz drives both the
+// per-column spacing AND (via the sticky row-number cell) the left offset
+// itself, so the whole thing is read live rather than baked into a constant.
+function midRowLeftPad() {
+  return cellSz + ROWNUM_GAP;
+}
 function midRowX(colIdx) {
-  return MID_ROW_PAD_L + colIdx * (cellSz + MID_ROW_GAP) - MID_ROW_GAP / 2;
+  return midRowLeftPad() + colIdx * (cellSz + MID_ROW_GAP) - MID_ROW_GAP / 2;
 }
 
 function updateMidRowLine() {
@@ -554,7 +723,7 @@ function startMidRowDrag(evt) {
   // x-offset without needing to add scrollLeft back in.
   const colFromEvent = e => {
     const relX = e.clientX - inner.getBoundingClientRect().left;
-    const col = Math.round((relX - MID_ROW_PAD_L + MID_ROW_GAP / 2) / (cellSz + MID_ROW_GAP));
+    const col = Math.round((relX - midRowLeftPad() + MID_ROW_GAP / 2) / (cellSz + MID_ROW_GAP));
     return Math.max(0, Math.min(stitchCount, col));
   };
   // Live visual feedback every move, without writing to storage on every
@@ -620,15 +789,18 @@ function changeChartRow(delta) {
     newEl = document.querySelector('.crow[data-row="' + chartCurrentRow + '"]');
   } else {
     prevEl.classList.remove('crow-active');
-    const num = prevEl.querySelector('.crow-num');
-    if (num) {
+    prevEl.querySelectorAll('.cc-rownum').forEach(num => {
       num.classList.remove('crow-num-active');
       if (prevRow < chartCurrentRow) num.classList.add('crow-num-done');
       else num.classList.remove('crow-num-done');
-    }
+    });
+    repaintRowColors(prevEl, false);
     newEl.classList.add('crow-active');
-    const numNew = newEl.querySelector('.crow-num');
-    if (numNew) { numNew.classList.remove('crow-num-done'); numNew.classList.add('crow-num-active'); }
+    newEl.querySelectorAll('.cc-rownum').forEach(num => {
+      num.classList.remove('crow-num-done');
+      num.classList.add('crow-num-active');
+    });
+    repaintRowColors(newEl, true);
   }
 
   const ccur = document.getElementById('cc-cur');
@@ -639,4 +811,3 @@ function changeChartRow(delta) {
   // Smart scroll: keep active row centered once it reaches the viewport midpoint
   smartScrollChart(newEl, delta);
 }
-

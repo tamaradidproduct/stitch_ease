@@ -114,6 +114,23 @@ let midRowPos = {};
 let yarnColors = {};
 let midRowColIdx = 0;
 
+// This project's own yarn-color choices for a colorwork chart:
+// [{name, hex}], index-aligned to whichever hasChart phase declares
+// `colorPalette`. Seeded from the pattern's colorPalette/colorNames
+// defaults by defaultProjectColors() below, then overridden per project by
+// loadProjectState() (js/core/storage.js) if the knitter has edited them —
+// local-only preference, same reasoning as midRowPos: two people knitting
+// the same chart are using different yarn, so this is never synced or
+// baked into the pattern.
+let projectColors = [];
+
+function defaultProjectColors(pattern) {
+  const phase = pattern && (pattern.phases || []).find(ph => ph.colorPalette);
+  const pal = (phase && phase.colorPalette) || [];
+  const names = (phase && phase.colorNames) || [];
+  return pal.map((hex, i) => ({ name: names[i] || ('Color ' + (i + 1)), hex }));
+}
+
 // Refresh CHART_B/CHART_TOTAL/chartCurrentRow for whichever phase is
 // current. Call this whenever `cur` changes or PHASES is reassigned —
 // applyPattern(), go(), and loadProjectState() (after restoring `cur` and
@@ -220,6 +237,7 @@ function applyPattern(p) {
   cur = 0; chartRows = {}; yarnColors = {};
   state = {}; ctrs = {}; entryProg = {};
   clocks = {}; baseClocks = {};
+  projectColors = defaultProjectColors(p);
   PHASES.forEach(ph => (ph.steps || []).forEach(s => { state[s.id] = false; if (s.rows) ctrs[s.id] = 0; }));
   syncActiveChart();
 }
