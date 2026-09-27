@@ -471,12 +471,13 @@ function openColorSheet() {
   if (!pal) return;
   const rows = pal.map((defHex, i) => {
     const c = projectColors[i] || { name: 'Color ' + (i + 1), hex: defHex };
+    const hex = colorHexFor(i);
     const grid = YARN_SWATCH_GRID.map(hex =>
       `<button type="button" class="color-swatch-opt" style="background:${hex}" data-hex="${hex}" onclick="pickColorSwatch(${i},'${hex}')" aria-label="${hex}"></button>`
     ).join('');
     return `<div class="color-edit-row">
-      <button type="button" class="color-edit-swatch" id="color-preview-${i}" data-hex="${c.hex}"
-              style="background:${c.hex}" onclick="toggleColorGrid(${i})" aria-label="Choose color"></button>
+      <button type="button" class="color-edit-swatch" id="color-preview-${i}" data-hex="${hex}"
+              style="background:${hex}" onclick="toggleColorGrid(${i})" aria-label="Choose color"></button>
       <input class="sheet-input color-edit-name" type="text" id="color-name-${i}" value="${escapeHtml(c.name)}" aria-label="Color name">
     </div>
     <div class="color-grid" id="color-grid-${i}" hidden>${grid}</div>`;

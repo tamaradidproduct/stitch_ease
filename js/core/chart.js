@@ -75,7 +75,9 @@ function normalizeHexColor(hex) {
   const match = /^#?([a-f\d]{3}|[a-f\d]{6})$/i.exec(hex.trim());
   if (!match) return null;
   const value = match[1];
-  return '#' + (value.length === 3 ? value.split('').map(ch => ch + ch).join('') : value).toLowerCase();
+  return '#' + (value.length === 3
+    ? value.split('').map(ch => ch + ch).join('')
+    : value).toLowerCase();
 }
 
 function colorHexFor(ci) {
@@ -100,7 +102,7 @@ function rowColorInfo(row) {
     const { ci } = parseColorCell(c);
     if (ci !== null) {
       const entry = projectColors[ci];
-      return entry ? { name: entry.name, hex: entry.hex } : null;
+      return entry ? { name: entry.name, hex: colorHexFor(ci) } : null;
     }
   }
   return null;
@@ -329,7 +331,7 @@ function buildChartTracker(phaseHeaderHtml) {
     html += '<div class="chart-legend chart-color-legend">';
     pal.forEach((defHex, i) => {
       const c = projectColors[i] || { name: 'Color ' + (i + 1), hex: defHex };
-      html += `<div class="leg"><div class="leg-cc leg-swatch" style="background:${c.hex}"></div>${escapeHtml(c.name)}</div>`;
+      html += `<div class="leg"><div class="leg-cc leg-swatch" style="background:${colorHexFor(i)}"></div>${escapeHtml(c.name)}</div>`;
     });
     html += `<button class="phase-folder color-edit-btn" onclick="openColorSheet()" aria-label="Edit yarn colors" title="Edit yarn colors">${PALETTE_SVG}</button>`;
     html += '</div>';
