@@ -925,7 +925,13 @@
 
   .crow {
     display: flex; align-items: center;
-    padding: 0.5px 8px 0.5px 4px;
+    /* No horizontal padding: the sticky left row-number cell (.cc-rownum-l)
+       is the very first thing in the row, so its natural resting position
+       has to be flush with .crow's own edge already — otherwise it visibly
+       slides that padding's distance the moment scrolling starts, before
+       settling into its stuck position. Zero padding here means "natural"
+       and "stuck" are the same position from the first pixel of scroll. */
+    padding: 0.5px 0;
     height: calc(var(--cell-sz) + 1px); flex-shrink: 0;
   }
 
@@ -975,11 +981,26 @@
   .cc-seg-end { border-right-width: 2px; border-right-color: var(--ch-purple); }
   .cc-seg-end.cc-e { border-right-color: var(--ch-purple) !important; }
 
-  /* Active row overrides (all non-empty cells) */
+  /* Active row overrides (all non-empty cells). `background` here is a plain
+     CSS declaration, which loses to a colorwork cell's own inline
+     `background-color` (see stitchCell() in chart.js) — so a colored cell
+     keeps its assigned yarn color even on the active row, exactly as
+     intended. The box-shadow ring is what actually marks the row — but a
+     FIXED ring color would itself disappear against a similarly-hued yarn
+     (a blue ring is invisible on a blue cell), so a colorwork cell rides its
+     own contrast-computed --cc-ring custom property (black or white,
+     whichever contrasts with ITS OWN background — see stitchCell()), and
+     only a plain (non-colorwork) cell falls back to --ch-active-border. */
   .crow-active .cc:not(.cc-e) {
     background: var(--ch-active-bg);
     border-color: var(--ch-active-border);
+    box-shadow: inset 0 0 0 1.5px var(--cc-ring, var(--ch-active-border));
   }
+  /* A colorwork cell's inline style="color:…" (contrast-computed against its
+     background — see contrastText() in chart.js) already wins over this
+     without any extra rule: an inline declaration beats a class selector
+     regardless of specificity, so the symbol stays legible on the active
+     row no matter how dark or light the chosen yarn color is. */
   .crow-active .cc-sym { color: var(--ch-active-symbol); }
   /* Yarn colour from an imported chart (chartColors). The cell keeps its
      colour on the active row too — which yarn a stitch is worked in is the
@@ -1015,11 +1036,31 @@
     border: 1px solid rgba(0,0,0,.25); vertical-align: -1px; margin-right: 3px;
   }
 
-  .crow-num {
-    width: 24px; flex-shrink: 0; font-size: 10px;
-    color: var(--muted); text-align: right; font-weight: 500;
-    padding-right: 2px; margin-left: 5px;
+  /* Row-number cell — same frame as a stitch cell (.cc: same --cell-sz box,
+     border, background — it carries the .cc class itself, so it gets that
+     styling AND the .crow-active background/ring treatment above for free),
+     just showing text instead of a symbol. One at each end of the row,
+     pinned with position:sticky so at least one — in practice both — stays
+     on screen while a wide chart (e.g. a colorwork import) scrolls
+     horizontally underneath, rather than only being visible once you've
+     scrolled all the way to that edge. Needs its own opaque background
+     since cells now scroll UNDER it rather than stopping before it —
+     .cc's own background custom property handles the active-row case, and
+     the plain var(--ch-def-bg)/var(--card) here (identical in most themes)
+     covers the resting state.
+     `left`/`right: 0` stick flush to .chart-vp's own edge (no gutter, by
+     request — .chart-tracker's negative margin already bleeds its
+     background edge-to-edge, this just lets the grid itself reach the same
+     edge). The margin on each is mirrored in chart.js's
+     midRowLeftPad() — the left one's width+margin shifts where column 0
+     actually starts, which the mid-row line's position math depends on. */
+  .cc-rownum {
+    flex-shrink: 0; font-size: 10px; font-weight: 500;
+    color: var(--muted); background: var(--card);
+    z-index: 3; overflow: hidden;
   }
+  .cc-rownum-l { margin-right: 4px; position: sticky; left: 0; }
+  .cc-rownum-r { margin-left: 4px; position: sticky; right: 0; }
   .crow-num-active { color: var(--ch-blue) !important; font-weight: 700; }
   .crow-num-done { color: var(--accent) !important; }
 
@@ -1074,6 +1115,30 @@
     font-size: 9px; color: var(--ch-def-symbol); flex-shrink: 0;
   }
   .leg-cc-e { background: var(--ch-empty-bg); border-color: transparent; }
+
+  /* Colorwork palette legend + editor — see openColorSheet() in render.js */
+  .chart-color-legend { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 8px; }
+  .leg-swatch { border-color: var(--border); }
+  .color-edit-btn { margin-left: auto; }
+  .color-edit-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .color-edit-swatch {
+    width: 36px; height: 36px; flex-shrink: 0; padding: 0; cursor: pointer;
+    border: 1px solid var(--border); border-radius: 6px;
+  }
+  .color-edit-name { flex: 1; margin: 0; }
+  .color-grid {
+    display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px;
+    margin: 0 0 16px;
+  }
+  /* The `hidden` attribute alone loses to the class rule above (a class
+     selector beats the UA's attribute-implied style) — spelled out
+     explicitly so toggleColorGrid()'s hidden/shown state actually applies. */
+  .color-grid[hidden] { display: none; }
+  .color-swatch-opt {
+    width: 100%; aspect-ratio: 1; padding: 0; cursor: pointer;
+    border: 1px solid var(--border); border-radius: 6px;
+  }
+  .color-swatch-opt:active { transform: scale(0.92); }
 
   /* Chart row recap — plain-language stitches for the current row */
   .chart-recap { padding: 12px 16px 13px; }
@@ -1255,6 +1320,7 @@
 <script src="js/patterns/frost-flower.js"></script>
 <script src="js/patterns/posy.js"></script>
 <script src="js/patterns/sophie-hood.js"></script>
+<script src="js/patterns/where-are-the-leaves.js"></script>
 <script src="js/core/storage.js"></script>
 <script src="js/core/rows.js"></script>
 <script src="js/core/chart.js"></script>

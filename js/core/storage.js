@@ -78,7 +78,7 @@ function isDeleted(projectId) {
 // `chartRow` is the superseded scalar and `chartRows` the per-phase map: both
 // are listed because a project saved before that change still has the old key
 // on disk, and purging only the new one would leave it orphaned forever.
-const PROJ_KEYS = ['state','ctrs','cur','chartRow','chartRows','midRowPos','yarns','grows','clk','base','phash','pattern','entries'];
+const PROJ_KEYS = ['state','ctrs','cur','chartRow','chartRows','midRowPos','yarns','grows','clk','base','phash','pattern','entries','colors'];
 function purgeProjectData(projectId) {
   PROJ_KEYS.forEach(k => { try { localStorage.removeItem('pt3_proj_' + projectId + '_' + k); } catch(e){} });
 }
@@ -231,6 +231,10 @@ function save() {
     // Local-only, deliberately no stampClock — a personal reading aid, not
     // knitting progress (see the pt3_proj_<id>_midRowPos comment above).
     localStorage.setItem(pkey('midRowPos'), JSON.stringify(midRowPos));
+    // Also local-only, no stampClock — a colorwork chart's yarn-color
+    // choice, same reasoning as midRowPos (see js/core/state.js). Written
+    // even when empty (non-colorwork patterns) so cleanup stays trivial.
+    localStorage.setItem(pkey('colors'), JSON.stringify(projectColors));
     // `grows` is no longer the tally — it is a mirror of the derived value,
     // kept because sync still carries `global_rows` as a field and the server
     // column is NOT NULL. Written here, in one place, instead of nudged in
@@ -283,6 +287,16 @@ function loadProjectState() {
 
     const mrp = localStorage.getItem(pkey('midRowPos'));
     if (mrp) { try { midRowPos = JSON.parse(mrp) || {}; } catch(e) { logSync('warn', 'corrupted midRowPos in storage', e); } }
+
+    // Overrides the defaults applyPattern() just seeded, only if this
+    // project actually has an edited/saved palette on disk.
+    const cols = localStorage.getItem(pkey('colors'));
+    if (cols) {
+      try {
+        const parsed = JSON.parse(cols);
+        if (Array.isArray(parsed) && parsed.length) projectColors = parsed;
+      } catch(e) { logSync('warn', 'corrupted colors in storage', e); }
+    }
 
     // `grows` is deliberately NOT read back — the tally is recomputed from
     // the progress that was just loaded. Reading it would reintroduce the

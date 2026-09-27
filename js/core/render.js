@@ -67,6 +67,17 @@ const RECENTER_SVG = `<svg width="18" height="18" viewBox="0 0 18 18" fill="none
         <path d="M9 0.5V3M9 15v2.5M17.5 9H15M3 9H0.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
       </svg>`;
 
+// Paint palette — edit yarn colors for a colorwork chart. Sits in the
+// chart's color legend, next to the swatches it edits (see openColorSheet()
+// and buildChartTracker() in js/core/chart.js).
+const PALETTE_SVG = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 3.5C7.3 3.5 3.5 7.1 3.5 11.5c0 4.4 3.4 8 7.6 8 .8 0 1.4-.6 1.4-1.4 0-.4-.1-.7-.4-1-.2-.3-.4-.6-.4-1 0-.8.6-1.4 1.4-1.4h1.7c2.9 0 5.2-2.3 5.2-5.2 0-3.4-3.6-6-8-6z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+        <circle cx="7.3" cy="11" r="1.1" fill="currentColor"/>
+        <circle cx="9.5" cy="7.3" r="1.1" fill="currentColor"/>
+        <circle cx="14.2" cy="7.3" r="1.1" fill="currentColor"/>
+        <circle cx="16.5" cy="11" r="1.1" fill="currentColor"/>
+      </svg>`;
+
 // App logo — a ball of yarn with a knitting needle.
 const LOGO_SVG = `<svg class="lib-logo" viewBox="0 0 40 40" width="34" height="34" fill="none" aria-hidden="true">
   <circle cx="18" cy="22" r="13" fill="var(--accent-light)" stroke="var(--accent)" stroke-width="1.7"/>
@@ -436,6 +447,74 @@ function openNotes() {
 }
 // Kept as a name: render paths call this to dismiss the sheet on navigation.
 function closeNotes() { closeSheet(); }
+
+// A curated, yarn-relevant palette rather than the browser's native
+// <input type="color"> picker (an unbounded OS color wheel/eyedropper) — a
+// fixed grid keeps every knitter's swatch choices reproducible-looking and
+// is much faster to tap through on a phone mid-row. 4 rows x 8 columns,
+// neutrals → warm → cool/green → blue/purple, same shape as a typical OS
+// "color palettes" grid.
+const YARN_SWATCH_GRID = [
+  '#ffffff', '#f5f2ed', '#e5e0d8', '#c9c2b6', '#8a8178', '#5b544c', '#2a2520', '#000000',
+  '#fde68a', '#fbbf24', '#f59e0b', '#d97706', '#fca5a5', '#ef4444', '#b91c1c', '#7c2d12',
+  '#bbf7d0', '#4ade80', '#16a34a', '#065f46', '#a5f3fc', '#22d3ee', '#0891b2', '#164e63',
+  '#bfdbfe', '#60a5fa', '#2563eb', '#1e3a8a', '#ddd6fe', '#a78bfa', '#7c3aed', '#4c1d95',
+];
+
+// Palette icon in a colorwork chart's legend → bottom sheet to name and
+// re-pick each swatch's actual color. Per-project (js/core/storage.js):
+// two knitters on the same chart are using different yarn, so this is never
+// baked into the pattern itself.
+function openColorSheet() {
+  const phase = PHASES[cur];
+  const pal = phase && phase.colorPalette;
+  if (!pal) return;
+  const rows = pal.map((defHex, i) => {
+    const c = projectColors[i] || { name: 'Color ' + (i + 1), hex: defHex };
+    const grid = YARN_SWATCH_GRID.map(hex =>
+      `<button type="button" class="color-swatch-opt" style="background:${hex}" data-hex="${hex}" onclick="pickColorSwatch(${i},'${hex}')" aria-label="${hex}"></button>`
+    ).join('');
+    return `<div class="color-edit-row">
+      <button type="button" class="color-edit-swatch" id="color-preview-${i}" data-hex="${c.hex}"
+              style="background:${c.hex}" onclick="toggleColorGrid(${i})" aria-label="Choose color"></button>
+      <input class="sheet-input color-edit-name" type="text" id="color-name-${i}" value="${escapeHtml(c.name)}" aria-label="Color name">
+    </div>
+    <div class="color-grid" id="color-grid-${i}" hidden>${grid}</div>`;
+  }).join('');
+  const body = `${rows}
+    <div class="sheet-actions">
+      <button class="sheet-btn" onclick="dismissSheet()">Cancel</button>
+      <button class="sheet-btn primary" id="sheet-ok">Save</button>
+    </div>`;
+  openSheet('Yarn colors', body, {
+    onOpen: el => {
+      el.querySelector('#sheet-ok').onclick = () => {
+        pal.forEach((defHex, i) => {
+          const preview = el.querySelector('#color-preview-' + i);
+          const nameEl = el.querySelector('#color-name-' + i);
+          projectColors[i] = { name: nameEl.value.trim() || ('Color ' + (i + 1)), hex: (preview && preview.dataset.hex) || defHex };
+        });
+        save();
+        closeSheet();
+        render();
+      };
+    }
+  });
+}
+
+// Expand/collapse the swatch grid under one color row — collapsed by
+// default so N colors doesn't mean N grids of 32 buttons all open at once.
+function toggleColorGrid(i) {
+  const grid = document.getElementById('color-grid-' + i);
+  if (grid) grid.hidden = !grid.hidden;
+}
+
+function pickColorSwatch(i, hex) {
+  const preview = document.getElementById('color-preview-' + i);
+  if (preview) { preview.style.background = hex; preview.dataset.hex = hex; }
+  const grid = document.getElementById('color-grid-' + i);
+  if (grid) grid.hidden = true;
+}
 
 // ── confirm() / prompt() replacements ──
 //
