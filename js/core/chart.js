@@ -92,6 +92,108 @@ function segEndCols(phase) {
   return cols;
 }
 
+// ─────────────────────────────────────────────
+// ROW VIRTUALIZATION — only rows within the scrollable viewport (plus a
+// buffer) are ever real DOM nodes; everything else is spacer height. Needed
+// once a chart got big (263×135 ≈ 35,000 divs for a full render) — the
+// scrollbar and all the pixel-offset math below (scrollChartToCurrent,
+// getRowH, the mid-row line) already compute purely from row index × cellSz,
+// so they stay correct against a spacer-based layout without any changes:
+// what matters is that #chart-inner's total height still equals
+// padding + CHART_TOTAL * ROW_H, which holds for any valid spacer split.
+// ─────────────────────────────────────────────
+const CHART_BUFFER_ROWS = 12;
+let chartWinFirst = -1, chartWinLast = -1; // currently-mounted visual-index window
+
+// One row's HTML — visual index 0 is CHART_TOTAL (top), CHART_TOTAL-1 is
+// row 1 (bottom); see buildChartTracker's row-order note below.
+function chartRowHtml(r, segEnds) {
+  const rowData = CHART_B[r - 1];
+  const isActive = (r === chartCurrentRow);
+  const isDone   = (r < chartCurrentRow);
+
+  let numCls = 'crow-num';
+  if (isActive) numCls += ' crow-num-active';
+  else if (isDone) numCls += ' crow-num-done';
+
+  let html = `<div class="crow${isActive ? ' crow-active' : ''}" data-row="${r}">`;
+  html += '<div class="crow-cells">';
+  const rowColors = chartColorRow(r);
+  for (let ci = 0; ci < rowData.length; ci++) html += stitchCell(rowData[ci], segEnds && segEnds.has(ci), rowColors && rowColors[ci]);
+  html += '</div>';
+  html += `<div class="${numCls}">${r}</div>`;
+  html += '</div>';
+  return html;
+}
+
+// Which visual-index window (0-based, 0 = top = row CHART_TOTAL) should be
+// mounted, given the viewport's current scroll position. Falls back to a
+// window centered on the current row when the viewport isn't mounted yet
+// (the very first build) — see initialChartRange().
+function chartWindowRange() {
+  const vp = document.getElementById('chart-vp');
+  if (!vp) return initialChartRange();
+  const ROW_H = getRowH();
+  const padTop = parseFloat(getComputedStyle(document.getElementById('chart-inner') || vp).paddingTop) || 2;
+  const scrollTop = vp.scrollTop;
+  const vpH = vp.clientHeight || 380;
+  let first = Math.floor((scrollTop - padTop) / ROW_H) - CHART_BUFFER_ROWS;
+  let last  = Math.ceil((scrollTop + vpH - padTop) / ROW_H) + CHART_BUFFER_ROWS;
+  first = Math.max(0, first);
+  last = Math.min(CHART_TOTAL - 1, Math.max(first, last));
+  return { first, last };
+}
+
+// Used only before #chart-vp exists in the DOM (the initial buildChartTracker
+// call) — approximates the viewport with the CSS default height so the first
+// paint already brackets the current row; the real window (from actual
+// scrollTop/clientHeight) gets mounted on the very next scroll event.
+function initialChartRange() {
+  const ROW_H = getRowH();
+  const visIdx = CHART_TOTAL - chartCurrentRow;
+  const approxVisibleRows = Math.ceil(380 / ROW_H) + 2 * CHART_BUFFER_ROWS;
+  let first = visIdx - Math.floor(approxVisibleRows / 2);
+  let last = first + approxVisibleRows;
+  first = Math.max(0, first);
+  last = Math.min(CHART_TOTAL - 1, Math.max(first, last));
+  return { first, last };
+}
+
+function renderChartWindow(range) {
+  const ROW_H = getRowH();
+  const segEnds = segEndCols(PHASES[cur]);
+  let html = `<div class="chart-spacer-top" style="height:${range.first * ROW_H}px"></div>`;
+  // Rows render top-to-bottom visually (row CHART_TOTAL at top, row 1 at
+  // bottom); visIdx `first` (smallest, topmost) is the highest row number.
+  for (let r = CHART_TOTAL - range.first; r >= CHART_TOTAL - range.last; r--) html += chartRowHtml(r, segEnds);
+  html += `<div class="chart-spacer-bottom" style="height:${(CHART_TOTAL - 1 - range.last) * ROW_H}px"></div>`;
+  html += '<div class="mid-row-line" id="mid-row-line"></div>';
+  return html;
+}
+
+function mountChartWindow(range, force) {
+  if (!force && range.first === chartWinFirst && range.last === chartWinLast) return;
+  const inner = document.getElementById('chart-inner');
+  if (!inner) return;
+  chartWinFirst = range.first;
+  chartWinLast = range.last;
+  inner.innerHTML = renderChartWindow(range);
+  updateMidRowLine();
+}
+
+// Wired to #chart-vp's onscroll. Fires on every scroll tick, so the window
+// recompute is rAF-throttled — updateMidRowHandle (cheap, no DOM rebuild)
+// still runs every tick for a smooth-tracking handle.
+let chartScrollRaf = null;
+function onChartScroll() {
+  updateMidRowHandle();
+  if (chartScrollRaf) return;
+  chartScrollRaf = requestAnimationFrame(() => {
+    chartScrollRaf = null;
+    mountChartWindow(chartWindowRange());
+  });
+}
+
 function buildChartTracker(phaseHeaderHtml) {
   let html = '<div class="chart-tracker">';
 
@@ -104,31 +206,15 @@ function buildChartTracker(phaseHeaderHtml) {
 
   // Stage: the scrolling chart viewport + floating recenter/zoom buttons
   html += '<div class="chart-stage">';
-  html += '<div class="chart-vp" id="chart-vp" onscroll="updateMidRowHandle()"><div class="chart-inner" id="chart-inner">';
+  html += '<div class="chart-vp" id="chart-vp" onscroll="onChartScroll()"><div class="chart-inner" id="chart-inner">';
 
-  // Render rows top-to-bottom visually (row 44 at top, row 1 at bottom).
-  // The last-worked row (44) carries the post-chart confirm step directly
-  // underneath it, rather than as a separate block below the whole chart.
-  const segEnds = segEndCols(PHASES[cur]);
-  for (let r = CHART_TOTAL; r >= 1; r--) {
-    const rowData = CHART_B[r - 1];
-    const isActive = (r === chartCurrentRow);
-    const isDone   = (r < chartCurrentRow);
-
-    let numCls = 'crow-num';
-    if (isActive) numCls += ' crow-num-active';
-    else if (isDone) numCls += ' crow-num-done';
-
-    html += `<div class="crow${isActive ? ' crow-active' : ''}" data-row="${r}">`;
-    html += '<div class="crow-cells">';
-    const rowColors = chartColorRow(r);
-    for (let ci = 0; ci < rowData.length; ci++) html += stitchCell(rowData[ci], segEnds && segEnds.has(ci), rowColors && rowColors[ci]);
-    html += '</div>';
-    html += `<div class="${numCls}">${r}</div>`;
-    html += '</div>';
-  }
-
-  html += '<div class="mid-row-line" id="mid-row-line"></div>';
+  // Only the rows within (a buffer around) the viewport are mounted — see
+  // the ROW VIRTUALIZATION section above. The rest of the chart is spacer
+  // height, so the scrollbar and current-row math are unaffected.
+  const initRange = initialChartRange();
+  chartWinFirst = initRange.first;
+  chartWinLast = initRange.last;
+  html += renderChartWindow(initRange);
   html += '</div></div>'; // chart-inner + chart-vp
   // Drag handle for the mid-row line — lives in its own strip BELOW the
   // scrolling grid (a sibling of #chart-vp, not inside it), so it never
@@ -390,9 +476,16 @@ function smartScrollChart(rowEl, delta) {
 function resizeChart(delta) {
   cellSz = Math.max(10, Math.min(32, cellSz + delta));
   document.documentElement.style.setProperty('--cell-sz', cellSz + 'px');
+  // ROW_H (== cellSz + 1) changed, so every spacer height is now stale —
+  // remount before scrolling, since scrollChartToCurrent's maxScroll clamp
+  // reads the real #chart-inner.scrollHeight.
+  mountChartWindow(chartWindowRange(), true);
   updateMidRowLine();
   save();
-  requestAnimationFrame(scrollChartToCurrent);
+  // Not requestAnimationFrame(scrollChartToCurrent) directly — rAF calls back
+  // with a timestamp, which would land in scrollChartToCurrent's `behavior`
+  // param and throw on scrollTo (invalid ScrollBehavior).
+  requestAnimationFrame(() => scrollChartToCurrent());
 }
 
 // ─────────────────────────────────────────────
@@ -513,9 +606,19 @@ function changeChartRow(delta) {
   renderGlobalRows();
   save();
 
-  // Targeted DOM update — no full re-render
+  // Targeted DOM update — no full re-render, EXCEPT the rows are virtualized
+  // now, so the previous or new row may simply not be mounted (a tap past
+  // the edge of the rendered window, or a jump via the row counter). That's
+  // the rare case — taps move one row at a time and the active row is kept
+  // centered, so almost always both are already in the DOM and the fast
+  // path below fires. Only fall back to remounting the window when it isn't.
   const prevEl = document.querySelector('.crow[data-row="' + prevRow + '"]');
-  if (prevEl) {
+  let newEl = document.querySelector('.crow[data-row="' + chartCurrentRow + '"]');
+
+  if (!prevEl || !newEl) {
+    mountChartWindow(chartWindowRange(), true);
+    newEl = document.querySelector('.crow[data-row="' + chartCurrentRow + '"]');
+  } else {
     prevEl.classList.remove('crow-active');
     const num = prevEl.querySelector('.crow-num');
     if (num) {
@@ -523,12 +626,9 @@ function changeChartRow(delta) {
       if (prevRow < chartCurrentRow) num.classList.add('crow-num-done');
       else num.classList.remove('crow-num-done');
     }
-  }
-  const newEl = document.querySelector('.crow[data-row="' + chartCurrentRow + '"]');
-  if (newEl) {
     newEl.classList.add('crow-active');
-    const num = newEl.querySelector('.crow-num');
-    if (num) { num.classList.remove('crow-num-done'); num.classList.add('crow-num-active'); }
+    const numNew = newEl.querySelector('.crow-num');
+    if (numNew) { numNew.classList.remove('crow-num-done'); numNew.classList.add('crow-num-active'); }
   }
 
   const ccur = document.getElementById('cc-cur');
