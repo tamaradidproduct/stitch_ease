@@ -320,17 +320,14 @@ const CHART_WATL = [
 // chart.js's recapHtml()) so a knitter reading the chart isn't also stuck
 // flipping back to Section 1 for every single row.
 // ─────────────────────────────────────────────
+// Returns just the instruction — no row number, color, or read direction of
+// its own. pairedRecapHtml() (chart.js) supplies one shared "Row N · work in
+// <color>" heading for both sections, since it's the same row and color
+// either way; this only needs to say what to actually do.
 function watlSection1Row(row) {
-  // Color, not RS/WS: this section has no WS row of its own to distinguish
-  // from, and the chart's own recap head names the color the same way (see
-  // rowColorName() in chart.js) — so the two stay worded consistently
-  // instead of one saying "(RS)"/"(WS)" and the other naming a color.
-  const head = 'Section 1 · Row ' + row + ' · work in ' + (rowColorName(row) || '?') + ' · read right → left';
-  let body;
-  if (row === 1) body = 'Ktbl, K to last st, Sl1 wyif.';
-  else if (row <= 132) body = 'Ktbl, K1, M1R, K to last st, Sl1 wyif — increase 1 st.';
-  else body = 'Ktbl, K1, SSK, K to last st, Sl1 wyif — decrease 1 st.';
-  return { head, body };
+  if (row === 1) return 'Ktbl, K to last st, Sl1 wyif.';
+  if (row <= 132) return 'Ktbl, K1, M1R, K to last st, Sl1 wyif — increase 1 st.';
+  return 'Ktbl, K1, SSK, K to last st, Sl1 wyif — decrease 1 st.';
 }
 
 const WATL_PHASES = [

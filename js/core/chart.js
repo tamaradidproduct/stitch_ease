@@ -485,41 +485,49 @@ function rowRecap(row) {
   return runs.join(' · ');
 }
 
+// A pattern where this chart is only HALF of each row pair (e.g. Where are
+// the Leaves' illusion knitting, where Section 1's RS shaping row has no
+// chart of its own) supplies `pairedRow(row)` on the phase — a plain string,
+// just that companion section's instruction, no metadata of its own — and
+// gets this two-subsection layout instead of the single-section one below.
+// One shared "Row N · work in <color>" heading covers both sections, since
+// it's the same physical row number and color either way; repeating it
+// twice (once per section) was what read as "conflicting" rather than
+// complementary.
+function pairedRecapHtml(row, phase, pairedText) {
+  const colorName = phase.allWS ? rowColorName(row) : null;
+  const headText = colorName ? `Row ${row} · work in ${colorName}` : `Row ${row}`;
+  return `<div class="recap-head">${headText}</div>
+    <div class="recap-section">
+      <div class="recap-sub">Section 1</div>
+      <div class="recap-body">${pairedText}</div>
+    </div>
+    <div class="recap-section">
+      <div class="recap-sub">Section 2</div>
+      <div class="recap-body">${rowRecap(row)}</div>
+    </div>`;
+}
+
 function recapHtml(row) {
   const phase = PHASES[cur];
   const flat = !!(phase && phase.flatChart);
   const rs = isRSRow(row);
-  // Row-specific only — state what's true for THIS row, not a general
-  // rule covering both parities (flat patterns alternate RS/WS every row,
-  // so a blanket "odd rows.../even rows..." statement makes the reader
-  // work out which half applies to them; just say it directly instead).
-  //
-  // `allWS` charts have no real RS/WS distinction to state (every row here
-  // IS the WS row — see js/patterns/where-are-the-leaves.js) — what
-  // actually varies row to row is the yarn color, so that's what's named
-  // instead of a meaningless "(WS)" repeated on every single row.
-  const sideLabel = (phase && phase.allWS)
-    ? 'work in ' + (rowColorName(row) || '?')
-    : (rs ? 'RS' : 'WS');
-  const headText = flat
-    ? `Row ${row} (${sideLabel}) · read ${rs ? 'right → left' : 'left → right'}, bottom to top`
-    : `Work ${activePattern() && activePattern().custom ? 'the chart' : 'Chart B'} in the round · read right → left, bottom to top`;
-  let html = `<div class="recap-head">${headText}</div>
-    <div class="recap-body"><strong>Row ${row}:</strong> ${rowRecap(row)}</div>`;
+  const pairedText = phase && typeof phase.pairedRow === 'function' ? phase.pairedRow(row) : null;
 
-  // A pattern where this chart is only HALF of each row pair (e.g. Where
-  // are the Leaves' illusion knitting, where Section 1's RS shaping row has
-  // no chart of its own) can supply `pairedRow(row)` on the phase to surface
-  // that companion row right here — otherwise a knitter has to leave the
-  // chart to go find it in a different phase for every single row.
-  if (PHASES[cur] && typeof PHASES[cur].pairedRow === 'function') {
-    const paired = PHASES[cur].pairedRow(row);
-    if (paired) {
-      html += `<div class="recap-paired">
-        <div class="recap-head">${paired.head}</div>
-        <div class="recap-body">${paired.body}</div>
-      </div>`;
-    }
+  let html;
+  if (pairedText) {
+    html = pairedRecapHtml(row, phase, pairedText);
+  } else {
+    // Row-specific only — state what's true for THIS row, not a general
+    // rule covering both parities (flat patterns alternate RS/WS every row,
+    // so a blanket "odd rows.../even rows..." statement makes the reader
+    // work out which half applies to them; just say it directly instead).
+    const sideLabel = phase && phase.allWS ? 'work in ' + (rowColorName(row) || '?') : (rs ? 'RS' : 'WS');
+    const headText = flat
+      ? `Row ${row} (${sideLabel}) · read ${rs ? 'right → left' : 'left → right'}, bottom to top`
+      : `Work ${activePattern() && activePattern().custom ? 'the chart' : 'Chart B'} in the round · read right → left, bottom to top`;
+    html = `<div class="recap-head">${headText}</div>
+      <div class="recap-body"><strong>Row ${row}:</strong> ${rowRecap(row)}</div>`;
   }
 
   // Post-chart confirm step — the last step of the chart phase, surfaced

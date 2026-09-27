@@ -1153,10 +1153,14 @@
     font-size: 16px; line-height: 1.5; color: var(--text);
     font-variant-numeric: tabular-nums;
   }
-  /* A companion row from a different phase (see phase.pairedRow() in
-     chart.js) — visually a second recap block, set off from the chart's
-     own row so the two don't read as one instruction. */
-  .recap-paired { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
+  /* Two-section recap (see pairedRecapHtml() in chart.js) — one shared
+     .recap-head above, then a labelled block per section. The label is
+     deliberately quieter than .recap-head (no uppercase/letter-spacing):
+     it's just telling the two blocks apart, not competing with the shared
+     row/color heading for attention. */
+  .recap-section { margin-top: 10px; }
+  .recap-section + .recap-section { padding-top: 10px; border-top: 1px dashed var(--border); }
+  .recap-sub { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 2px; }
 
   /* Chart footer */
   .chart-footer {
