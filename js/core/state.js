@@ -82,7 +82,45 @@ let projects = [];                 // [{ id, patternId, name, created, updatedAt
 let view = 'home';                 // 'home' | 'picker' | 'project'
 
 function patternById(id) { return PATTERNS.find(p => p.id === id) || null; }
-function activePattern() { return patternById(activePatternId); }
+// A pattern with `sizes` + `buildPhases(sizeIndex)` is a TEMPLATE: one library
+// entry the knitter picks a size for when starting a project. A project never
+// knits the template — it knits sizedPattern(template, its size), an ordinary
+// concrete pattern doc (phases, badge, sizeIndex) that structHash / freezePattern
+// / sync treat like any other. Memoised: renderHome() resolves one per card.
+const sizedCache = {};
+function sizedPattern(tpl, i) {
+  const key = tpl.id + ':' + i;
+  if (!sizedCache[key]) {
+    const doc = Object.assign({}, tpl, { phases: tpl.buildPhases(i), sizeIndex: i, badge: tpl.sizes[i].badge });
+    delete doc.buildPhases; delete doc.sizes;
+    sizedCache[key] = doc;
+  }
+  return sizedCache[key];
+}
+// Which size a project was started in. Locally created projects carry `size`;
+// one that arrived by sync has none, so it is read back from the frozen
+// snapshot (which always travels for a sized pattern — see patternColumns()).
+function projectSize(proj) {
+  if (!proj) return null;
+  if (Number.isInteger(proj.size)) return proj.size;
+  const f = frozenPattern(proj.id);
+  if (f && Number.isInteger(f.sizeIndex)) { proj.size = f.sizeIndex; return proj.size; }
+  return null;
+}
+// The code's current version of the pattern a project knits. For a plain
+// pattern that is the registry entry; for a sized one, the entry built for the
+// project's size — or null when the size is not known yet (a synced project
+// whose snapshot has not arrived), since guessing a size would tick the wrong rows.
+function livePatternFor(proj) {
+  const t = proj && patternById(proj.patternId);
+  if (!t || !t.buildPhases) return t || null;
+  const i = projectSize(proj);
+  return (i === null || !t.sizes || !t.sizes[i]) ? null : sizedPattern(t, i);
+}
+function activePattern() {
+  const t = patternById(activePatternId);
+  return (t && t.buildPhases) ? livePatternFor(activeProject()) : t;
+}
 function activeProject() { return projects.find(p => p.id === activeProjectId) || null; }
 
 // A pattern's `chart` field is a fallback shared by every hasChart phase
@@ -279,7 +317,7 @@ function activateProject(projectId) {
 // a stored hash string against a hash of the live pattern — says it is needed.
 // renderHome() calls this once per card on every render.
 function patternForProject(proj) {
-  const live = proj && patternById(proj.patternId);
+  const live = livePatternFor(proj);
   if (!live) return { pattern: null, changed: false, frozen: false };
 
   const stored = storedHash(proj.id);
