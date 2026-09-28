@@ -413,7 +413,7 @@ function buildHatsukiPhases(z) {
   // on a note that may be several rows away. Text only — structHash is unaffected.
   // Wording set by the owner: what "following the pattern" means on each side.
   const FOLLOW_RS = 'in pattern on the RS, neck → armhole (p1 on the armhole side, [k13, p2])';
-  const FOLLOW_WS = 'in pattern on the WS, armhole → neck (k1 on the neck side, [p13, k2])';
+  const FOLLOW_WS = 'in pattern on the WS, armhole → neck (k1 on the armhole side, [p13, k2])';
   const followInline = r => {
     const side = (r.text.match(/\((RS|WS)\)/) || [])[1];
     r.text = r.text.replace(/following the pattern/g, side === 'WS' ? FOLLOW_WS : FOLLOW_RS);
