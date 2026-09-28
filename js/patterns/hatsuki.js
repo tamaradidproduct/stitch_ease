@@ -411,10 +411,9 @@ function buildHatsukiPhases(z) {
   // it governs every row that uses the phrase (the meaning is spelled out in place of the phrase), on all four shoulders, the front
   // join and the back. Repeat the meaning on each such row rather than relying
   // on a note that may be several rows away. Text only — structHash is unaffected.
-  // The rule is written as seen from the RS. A WS row meets the same stitches
-  // from the other side, so knits and purls swap and the two edges swap ends.
-  const FOLLOW_RS = 'in wide rib as seen from the RS (P1 at the armhole edge, k13 x p2, K1 at the neck edge)';
-  const FOLLOW_WS = 'in wide rib as it faces you on the WS (K1 at the armhole edge, p13 x k2, P1 at the neck edge)';
+  // Wording set by the owner: what "following the pattern" means on each side.
+  const FOLLOW_RS = 'in pattern on the RS (p1 on the armhole side, [k13, p2])';
+  const FOLLOW_WS = 'in pattern on the WS (k1 on the neck side, [p13, k2])';
   const followInline = r => {
     const side = (r.text.match(/\((RS|WS)\)/) || [])[1];
     r.text = r.text.replace(/following the pattern/g, side === 'WS' ? FOLLOW_WS : FOLLOW_RS);
