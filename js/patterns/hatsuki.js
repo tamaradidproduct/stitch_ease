@@ -407,6 +407,39 @@ function buildHatsukiPhases(z) {
     ]
   };
 
+  // The PDF states "following the pattern" once (Left front / Right back) but
+  // it governs every row that uses the phrase (the meaning is spelled out in place of the phrase), on all four shoulders, the front
+  // join and the back. Repeat the meaning on each such row rather than relying
+  // on a note that may be several rows away. Text only — structHash is unaffected.
+  // Wording set by the owner: what "following the pattern" means on each side.
+  const FOLLOW_RS = 'in pattern on the RS (p1 on the armhole side, [k13, p2])';
+  const FOLLOW_WS = 'in pattern on the WS (k1 on the neck side, [p13, k2])';
+  const followInline = r => {
+    const side = (r.text.match(/\((RS|WS)\)/) || [])[1];
+    r.text = r.text.replace(/following the pattern/g, side === 'WS' ? FOLLOW_WS : FOLLOW_RS);
+  };
+  const CO_HINT = '[Neckline increase: backward-loop cast on.] ';
+  const annotate = r => {
+    if (/\bCO \d+ sts/.test(r.text) && !/^Set-up|^With /.test(r.text)) r.text = CO_HINT + r.text;
+    followInline(r);
+  };
+  [leftFront, rightFront, rightBack, leftBack].forEach(ph => ph.entries.forEach(en => {
+    if (en.kind === 'note') return;
+    annotate(en);
+    (en.rows || []).forEach(annotate);
+  }));
+  // Front / back joins and the back section use the phrase but their CO is the
+  // neck join, not a neckline increase — follow-hint only.
+  [front, back].forEach(ph => ph.entries.forEach(en => {
+    if (en.kind === 'note') return;
+    const fix = followInline;
+    fix(en); (en.rows || []).forEach(fix);
+  }));
+
+  // The full note belongs at the top of every shoulder that uses it.
+  [rightFront, leftBack].forEach(ph => ph.entries.splice(ph === rightFront ? 2 : 1, 0,
+    n(ph.id + '-follow', HK_FOLLOW_NOTE)));
+
   return [materials, leaf, leftFront, rightFront, front, rightBack, leftBack, back, body, edgings, finishing];
 }
 
