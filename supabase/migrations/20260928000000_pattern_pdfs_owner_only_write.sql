@@ -11,9 +11,9 @@
 
 drop policy if exists family_pattern_pdfs_update on pattern_pdfs;
 create policy family_pattern_pdfs_update on pattern_pdfs for update
-  to authenticated using (owner_id = (select auth.uid()))
+  to authenticated using (family_id in (select auth_family_ids()) and owner_id = (select auth.uid()))
   with check (family_id in (select auth_family_ids()) and owner_id = (select auth.uid()));
 
 drop policy if exists family_pattern_pdfs_delete on pattern_pdfs;
 create policy family_pattern_pdfs_delete on pattern_pdfs for delete
-  to authenticated using (owner_id = (select auth.uid()));
+  to authenticated using (family_id in (select auth_family_ids()) and owner_id = (select auth.uid()));
