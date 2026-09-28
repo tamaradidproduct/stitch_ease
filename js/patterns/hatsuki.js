@@ -407,6 +407,40 @@ function buildHatsukiPhases(z) {
     ]
   };
 
+  // The PDF states "following the pattern" once (Left front / Right back) but
+  // it governs every row that uses the phrase (the meaning is spelled out in place of the phrase), on all four shoulders, the front
+  // join and the back. Repeat the meaning on each such row rather than relying
+  // on a note that may be several rows away. Text only — structHash is unaffected.
+  // The rule is written as seen from the RS. A WS row meets the same stitches
+  // from the other side, so knits and purls swap and the two edges swap ends.
+  const FOLLOW_RS = 'in wide rib as seen from the RS (P1 at the armhole edge, k13 x p2, K1 at the neck edge)';
+  const FOLLOW_WS = 'in wide rib as it faces you on the WS (K1 at the armhole edge, p13 x k2, P1 at the neck edge)';
+  const followInline = r => {
+    const side = (r.text.match(/\((RS|WS)\)/) || [])[1];
+    r.text = r.text.replace(/following the pattern/g, side === 'WS' ? FOLLOW_WS : FOLLOW_RS);
+  };
+  const CO_HINT = '[Neckline increase: backward-loop cast on.] ';
+  const annotate = r => {
+    if (/\bCO \d+ sts/.test(r.text) && !/^Set-up|^With /.test(r.text)) r.text = CO_HINT + r.text;
+    followInline(r);
+  };
+  [leftFront, rightFront, rightBack, leftBack].forEach(ph => ph.entries.forEach(en => {
+    if (en.kind === 'note') return;
+    annotate(en);
+    (en.rows || []).forEach(annotate);
+  }));
+  // Front / back joins and the back section use the phrase but their CO is the
+  // neck join, not a neckline increase — follow-hint only.
+  [front, back].forEach(ph => ph.entries.forEach(en => {
+    if (en.kind === 'note') return;
+    const fix = followInline;
+    fix(en); (en.rows || []).forEach(fix);
+  }));
+
+  // The full note belongs at the top of every shoulder that uses it.
+  [rightFront, leftBack].forEach(ph => ph.entries.splice(ph === rightFront ? 2 : 1, 0,
+    n(ph.id + '-follow', HK_FOLLOW_NOTE)));
+
   return [materials, leaf, leftFront, rightFront, front, rightBack, leftBack, back, body, edgings, finishing];
 }
 
