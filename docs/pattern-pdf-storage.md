@@ -1,7 +1,7 @@
 # The original pattern PDF — storage and sync
 
 Applied to `stitch-ease-app` (`dozzilmrtjhinoactcve`) on **2026-08-14** as migration
-`pattern_pdfs`, recorded at `supabase/migrations/20260814135536_pattern_pdfs.sql`.
+`pattern_pdfs`, recorded at `supabase/migrations/20260814135623_pattern_pdfs.sql`.
 
 ## What this is for
 

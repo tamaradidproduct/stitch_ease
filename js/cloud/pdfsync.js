@@ -2,7 +2,7 @@
 // SYNCING THE ORIGINAL PATTERN PDF
 //
 // The bytes live in a private Supabase Storage bucket; the fact of them lives
-// in `pattern_pdfs` (see supabase/migrations/20260814135536_pattern_pdfs.sql).
+// in `pattern_pdfs` (see supabase/migrations/20260814135623_pattern_pdfs.sql).
 // This file is the only thing that talks to either.
 //
 // ── METADATA SYNCS, BYTES DO NOT ──

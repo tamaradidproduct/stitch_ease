@@ -79,7 +79,7 @@ create trigger custom_patterns_touch
 alter table custom_patterns enable row level security;
 
 -- Read: the family. Uses auth_family_ids() (SECURITY DEFINER, see
--- 20260817022512_families.sql) because a direct family_members subquery would
+-- 20260817022638_families.sql) because a direct family_members subquery would
 -- recurse into that table's own policy.
 create policy family_custom_patterns_read on custom_patterns for select
   to authenticated using (family_id in (select auth_family_ids()));

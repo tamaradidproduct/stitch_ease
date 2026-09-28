@@ -1,7 +1,7 @@
 -- Take the family functions out of the anonymous API surface.
 --
 -- Applied to stitch-ease-app (dozzilmrtjhinoactcve) on 2026-08-17, immediately
--- after 20260817022512_families.sql, in response to Supabase's security
+-- after 20260817022638_families.sql, in response to Supabase's security
 -- advisor flagging all six as `anon`-executable.
 --
 -- Nothing leaked: each already refuses a signed-out caller (ensure_family,
