@@ -96,7 +96,7 @@ function createProject(patternId, size) {
   if (!pat) { console.warn('No pattern "' + patternId + '"'); return null; }
   // A sized pattern is a template: the project knits (and freezes) the version
   // built for the chosen size, never the template itself.
-  if (pat.buildPhases && !(Number.isInteger(size) && pat.sizes[size])) { console.warn('Pattern "' + patternId + '" needs a size'); return null; }
+  if (pat.buildPhases && !(Number.isInteger(size) && pat.sizes && pat.sizes[size])) { console.warn('Pattern "' + patternId + '" needs a size'); return null; }
   const proj = { id: newId(), patternId: pat.id, name: autoProjectName(pat),
                  created: Date.now(), updatedAt: syncNow() };
   if (pat.buildPhases) proj.size = size;

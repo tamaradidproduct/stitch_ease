@@ -115,7 +115,7 @@ function livePatternFor(proj) {
   const t = proj && patternById(proj.patternId);
   if (!t || !t.buildPhases) return t || null;
   const i = projectSize(proj);
-  return (i === null || !t.sizes[i]) ? null : sizedPattern(t, i);
+  return (i === null || !t.sizes || !t.sizes[i]) ? null : sizedPattern(t, i);
 }
 function activePattern() {
   const t = patternById(activePatternId);
