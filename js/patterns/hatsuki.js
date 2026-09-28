@@ -111,7 +111,7 @@ const HATSUKI_LEAF_CHART = [
 
 // Shared phrases (used verbatim many times in the PDF).
 const HK_DS_FIRST_TW = 'insert the needle into the DS like k2tog or p2tog to work as one st, work 5 sts following the pattern, TW.';
-const HK_FOLLOW_NOTE = 'When the pattern says "following the pattern", work the last stitch of the armhole side (as seen from the RS) as P1, the rest of the body area in k13 x p2 wide ribbing, continuing the wide ribbing to before the last stitch on the neck side, which is K1 as seen from the RS. For the neckline increases, use the backward-loop cast on. RS rows are worked from the neck side to the armhole side; WS rows from the armhole side to the neck side.';
+const HK_FOLLOW_NOTE = 'Working in pattern: RS rows are worked from the neck side to the armhole side: p1 on the neck side, then [k13, p2]. WS rows are worked from the armhole side to the neck side: k1 on the armhole side, then [p13, k2]. For the neckline increases, use the backward-loop cast on.';
 
 // "k8, p2, k0" style run — a zero-length stitch run is simply left out.
 function hkRun(...parts) {
