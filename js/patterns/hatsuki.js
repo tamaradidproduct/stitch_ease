@@ -111,7 +111,7 @@ const HATSUKI_LEAF_CHART = [
 
 // Shared phrases (used verbatim many times in the PDF).
 const HK_DS_FIRST_TW = 'insert the needle into the DS like k2tog or p2tog to work as one st, work 5 sts following the pattern, TW.';
-const HK_FOLLOW_NOTE = 'Working in pattern: RS rows are worked from the neck side to the armhole side: p1 on the neck side, then [k13, p2]. WS rows are worked from the armhole side to the neck side: k1 on the armhole side, then [p13, k2]. For the neckline increases, use the backward-loop cast on.';
+const HK_FOLLOW_NOTE = 'Working in pattern: RS rows are worked from the neck side to the armhole side: p1 on the neck side, then [k13, p2], and finish the row with p1. WS rows are worked from the armhole side to the neck side: k1 on the armhole side, then [p13, k2]. For the neckline increases, use the backward-loop cast on.';
 
 // "k8, p2, k0" style run — a zero-length stitch run is simply left out.
 function hkRun(...parts) {
