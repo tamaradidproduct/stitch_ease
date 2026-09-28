@@ -91,14 +91,18 @@ function autoProjectName(pattern) {
   return n === 0 ? pattern.name : pattern.name + ' ' + (n + 1);
 }
 
-function createProject(patternId) {
+function createProject(patternId, size) {
   const pat = patternById(patternId);
   if (!pat) { console.warn('No pattern "' + patternId + '"'); return null; }
+  // A sized pattern is a template: the project knits (and freezes) the version
+  // built for the chosen size, never the template itself.
+  if (pat.buildPhases && !(Number.isInteger(size) && pat.sizes[size])) { console.warn('Pattern "' + patternId + '" needs a size'); return null; }
   const proj = { id: newId(), patternId: pat.id, name: autoProjectName(pat),
                  created: Date.now(), updatedAt: syncNow() };
+  if (pat.buildPhases) proj.size = size;
   projects.push(proj);
   saveProjects();
-  freezePattern(proj.id, pat);
+  freezePattern(proj.id, pat.buildPhases ? sizedPattern(pat, size) : pat);
   enqueue('project', proj.id);
   return proj;
 }
@@ -669,7 +673,7 @@ function resetPattern() {
 // ─────────────────────────────────────────────
 function patternChangeSummary(projectId) {
   const proj = projects.find(p => p.id === projectId);
-  const live = proj && patternById(proj.patternId);
+  const live = livePatternFor(proj);
   if (!live) return null;
   const oldPat = frozenPattern(projectId) || live;
 
@@ -703,7 +707,7 @@ function patternChangeSummary(projectId) {
 
 function adoptPattern(projectId) {
   const proj = projects.find(p => p.id === projectId);
-  const live = proj && patternById(proj.patternId);
+  const live = livePatternFor(proj);
   if (!live) return false;
 
   // Translate `cur` before the snapshot is replaced — afterwards there is

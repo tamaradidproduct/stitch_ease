@@ -614,7 +614,10 @@ function applyRemotePattern(row) {
       // No doc means the sending device was still on the code's version, so
       // the pattern in this bundle IS the snapshot.
       const live = patternById(row.pattern_id);
-      if (live) localStorage.setItem('pt3_proj_' + row.id + '_pattern', JSON.stringify(live));
+      // A sized template is not a snapshot — which size this project is can
+      // only come from the doc, so with none it waits (patternColumns always
+      // sends one for a sized pattern).
+      if (live && !live.buildPhases) localStorage.setItem('pt3_proj_' + row.id + '_pattern', JSON.stringify(live));
     }
   } catch(e) { showSaveError(e); }
 }
@@ -661,8 +664,11 @@ function patternColumns(projectId) {
   const hash = storedHash(projectId);
   if (!hash) return {};
   const proj = projects.find(p => p.id === projectId);
-  const live = proj && patternById(proj.patternId);
-  const diverged = !live || structHash(live) !== hash;
+  const tpl = proj && patternById(proj.patternId);
+  const live = livePatternFor(proj);
+  // A sized pattern always sends its doc: the doc is the only place another
+  // device can learn which size this project is.
+  const diverged = !live || (tpl && tpl.buildPhases) || structHash(live) !== hash;
   return {
     pattern_struct_hash: hash,
     pattern_doc: diverged ? frozenPattern(projectId) : null
@@ -856,7 +862,7 @@ function plainText(s, max) {
 
 function conflictLabel(c) {
   const proj = projects.find(p => p.id === c.p);
-  const pat = proj && patternById(proj.patternId);
+  const pat = livePatternFor(proj);
   const phases = (pat && pat.phases) || [];
   // `|| []` because a converted section has `entries`, not `steps`. Conflict
   // labelling only ever resolves s:/c: keys, which converted sections do not

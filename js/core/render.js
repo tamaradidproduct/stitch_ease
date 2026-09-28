@@ -775,7 +775,7 @@ function renderHome() {
   } else {
     html += live.map(proj => {
       const pr = projectProgress(proj);
-      const pat = patternById(proj.patternId);
+      const pat = livePatternFor(proj);
       const meta = pat ? [pat.badge, pat.desc].filter(Boolean).join(' · ') : '';
       return `<div class="lib-card proj-card" onclick="openProject('${proj.id}')">
         <div class="lib-card-top">

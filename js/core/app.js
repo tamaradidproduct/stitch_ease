@@ -30,7 +30,23 @@ function openGlossary() {
 }
 
 function choosePattern(patternId) {
+  const pat = patternById(patternId);
+  // A sized pattern needs the size before there is anything to create — the
+  // size decides which rows the project even has.
+  if (pat && pat.sizes) { openSizeSheet(pat); return; }
   const proj = createProject(patternId);
+  if (proj) openProject(proj.id);
+}
+
+function openSizeSheet(pat) {
+  const rows = pat.sizes.map((s, i) => `<button class="sheet-btn size-opt" onclick="chooseSize('${pat.id}', ${i})">
+      <span class="size-opt-name">Size ${escapeHtml(s.name)}</span><span class="size-opt-sub">${escapeHtml(s.sub)}</span></button>`).join('');
+  openSheet('Choose a size', `<p class="sheet-sub" style="margin:0 0 12px">${escapeHtml(pat.sizeHint || 'Every stitch count in the project follows the size you pick.')}</p><div class="size-list">${rows}</div>`);
+}
+
+function chooseSize(patternId, size) {
+  closeSheet();
+  const proj = createProject(patternId, size);
   if (proj) openProject(proj.id);
 }
 
