@@ -27,7 +27,7 @@
 // extra click in front of it. A family is a closed set you are invited into.
 //
 // The whole authorisation model lives in Postgres (see
-// supabase/migrations/20260817022512_families.sql). This file is only the
+// supabase/migrations/20260817022638_families.sql). This file is only the
 // client's cache of "which family am I in" plus the account-sheet UI — nothing
 // here is a security boundary, and nothing here should ever become one.
 // ─────────────────────────────────────────────
