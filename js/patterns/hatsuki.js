@@ -115,7 +115,7 @@ const HK_DS_FIRST_TW = 'insert the needle into the DS like k2tog or p2tog to wor
 // swap sides between them (checked against the knitted fabric, not the PDF's
 // own note, which the pattern owner found unreliable/confusing).
 const HK_FOLLOW_NOTE_LEFT = 'Working in pattern: RS rows are worked from the neck side to the armhole side: p1 on the neck side, then [k13, p2], and finish the row with p1. WS rows are worked from the armhole side to the neck side: k1 on the armhole side, then [p13, k2]. For the neckline increases, use the backward-loop cast on.';
-const HK_FOLLOW_NOTE_RIGHT = 'Working in pattern: RS rows are worked from the armhole side to the neck side: p1, then [k13, p2]. WS rows are worked from the neck side to the armhole side: p2, then [k2, p13], and finish the row with k1. For the neckline increases, use the backward-loop cast on.';
+const HK_FOLLOW_NOTE_RIGHT = 'Working in pattern: RS rows are worked from the armhole side to the neck side: p1, then [k13, p2]. WS rows are worked from the neck side to the armhole side: [k2, p13], and finish the row with k1. For the neckline increases, use the backward-loop cast on.';
 
 // "k8, p2, k0" style run — a zero-length stitch run is simply left out.
 function hkRun(...parts) {
@@ -423,7 +423,7 @@ function buildHatsukiPhases(z) {
   const FOLLOW_RS_LEFT = 'in pattern on the RS, neck → armhole (p1 on the neck side, [k13, p2])';
   const FOLLOW_WS_LEFT = 'in pattern on the WS, armhole → neck (k1 on the armhole side, [p13, k2])';
   const FOLLOW_RS_RIGHT = 'in pattern on the RS, armhole → neck (p1, [k13, p2])';
-  const FOLLOW_WS_RIGHT = 'in pattern on the WS, neck → armhole (p2, [k2, p13], finish with k1)';
+  const FOLLOW_WS_RIGHT = 'in pattern on the WS, neck → armhole ([k2, p13], finish with k1)';
   const makeFollowInline = (rsText, wsText) => r => {
     const side = (r.text.match(/\((RS|WS)\)/) || [])[1];
     r.text = r.text.replace(/following the pattern/g, side === 'WS' ? wsText : rsText);
