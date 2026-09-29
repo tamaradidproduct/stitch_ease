@@ -453,8 +453,8 @@ function buildHatsukiPhases(z) {
   }));
 
   // The full note belongs at the top of every shoulder that uses it.
-  [[rightFront, HK_FOLLOW_NOTE_RIGHT], [leftBack, HK_FOLLOW_NOTE_LEFT]].forEach(([ph, note]) =>
-    ph.entries.splice(ph === rightFront ? 2 : 1, 0, n(ph.id + '-follow', note)));
+  [[rightFront, HK_FOLLOW_NOTE_RIGHT, 2], [leftBack, HK_FOLLOW_NOTE_LEFT, 1]].forEach(([ph, note, idx]) =>
+    ph.entries.splice(idx, 0, n(ph.id + '-follow', note)));
 
   return [materials, leaf, leftFront, rightFront, front, rightBack, leftBack, back, body, edgings, finishing];
 }
