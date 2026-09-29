@@ -111,7 +111,11 @@ const HATSUKI_LEAF_CHART = [
 
 // Shared phrases (used verbatim many times in the PDF).
 const HK_DS_FIRST_TW = 'insert the needle into the DS like k2tog or p2tog to work as one st, work 5 sts following the pattern, TW.';
-const HK_FOLLOW_NOTE = 'Working in pattern: RS rows are worked from the neck side to the armhole side: p1 on the neck side, then [k13, p2], and finish the row with p1. WS rows are worked from the armhole side to the neck side: k1 on the armhole side, then [p13, k2]. For the neckline increases, use the backward-loop cast on.';
+// Left and right shoulders are mirror images, so the wide-rib edge stitches
+// swap sides between them (checked against the knitted fabric, not the PDF's
+// own note, which the pattern owner found unreliable/confusing).
+const HK_FOLLOW_NOTE_LEFT = 'Working in pattern: RS rows are worked from the neck side to the armhole side: p1 on the neck side, then [k13, p2], and finish the row with p1. WS rows are worked from the armhole side to the neck side: k1 on the armhole side, then [p13, k2]. For the neckline increases, use the backward-loop cast on.';
+const HK_FOLLOW_NOTE_RIGHT = 'Working in pattern: RS rows are worked from the neck side to the armhole side: p1, then [k13, p2], and finish the row with p2. WS rows are worked from the armhole side to the neck side: p2, then [k2, p13], and finish the row with k1. For the neckline increases, use the backward-loop cast on.';
 
 // "k8, p2, k0" style run — a zero-length stitch run is simply left out.
 function hkRun(...parts) {
@@ -186,7 +190,7 @@ function buildHatsukiPhases(z) {
     entries: [
       n('hk-lf0', `With US 4 (3.5 mm) needles and the long-tail cast on, CO ${CO} sts.`),
       e('hk-lf-su', `Set-up row (WS): K1, *p13, k2* rep to ${A} sts bef end, p${A}.`),
-      n('hk-lf-n', HK_FOLLOW_NOTE),
+      n('hk-lf-n', HK_FOLLOW_NOTE_LEFT),
       e('hk-lf-1', `Row 1 (RS): ${hkRun(['K', S([8, 2, 5, 10, 2, 7])], ['p', S([0, 2, 2, 2, 2, 2])], ['k', S([0, 7, 0, 1, 7, 3])])}, TW.`),
       e('hk-lf-2', `Row 2 (WS): DS, ${hkRun(['p', S([7, 6, 0, 0, 6, 2])], ['k', S([0, 2, 1, 2, 2, 2])], ['p', S([0, 2, 5, 10, 2, 7])])}.`),
       e('hk-lf-3', `Row 3 (RS): ${lfRow3}`),
@@ -287,7 +291,7 @@ function buildHatsukiPhases(z) {
     entries: [
       e('hk-rb-pu', `With US 4 (3.5 mm) needles and the front body RS facing, pick up and k${CO} sts from the CO edge of the right shoulder.`),
       e('hk-rb-su', `Set-up row (WS): K1, *p13, k2* rep to ${A} sts bef end, p${A - 1}, pbf. 1 st inc'd.`),
-      n('hk-rb-n', HK_FOLLOW_NOTE),
+      n('hk-rb-n', HK_FOLLOW_NOTE_RIGHT),
       e('hk-rb-1', `Row 1 (RS): ${hkRun(['K', S([9, 3, 6, 11, 3, 8])], ['p', S([0, 2, 2, 2, 2, 2])], ['k', S([0, 7, 0, 1, 7, 3])])}, TW.`),
       e('hk-rb-2', rbR2Inc
         ? 'Row 2 (WS): DS, work following the pattern to end, CO 2 sts. 2 sts inc\'d.'
@@ -412,33 +416,45 @@ function buildHatsukiPhases(z) {
   // join and the back. Repeat the meaning on each such row rather than relying
   // on a note that may be several rows away. Text only — structHash is unaffected.
   // Wording set by the owner: what "following the pattern" means on each side.
-  const FOLLOW_RS = 'in pattern on the RS, neck → armhole (p1 on the neck side, [k13, p2])';
-  const FOLLOW_WS = 'in pattern on the WS, armhole → neck (k1 on the armhole side, [p13, k2])';
-  const followInline = r => {
+  // Left wording (checked against the fabric): RS neck→armhole, p1 on the
+  // neck side then [k13, p2], finishing with p1; WS armhole→neck, k1 on the
+  // armhole side then [p13, k2]. Right shoulders are the mirror image — same
+  // two directions, but the edge stitches and the "finish with" stitch swap.
+  const FOLLOW_RS_LEFT = 'in pattern on the RS, neck → armhole (p1 on the neck side, [k13, p2])';
+  const FOLLOW_WS_LEFT = 'in pattern on the WS, armhole → neck (k1 on the armhole side, [p13, k2])';
+  const FOLLOW_RS_RIGHT = 'in pattern on the RS, neck → armhole (p1, [k13, p2], finish with p2)';
+  const FOLLOW_WS_RIGHT = 'in pattern on the WS, armhole → neck (p2, [k2, p13], finish with k1)';
+  const makeFollowInline = (rsText, wsText) => r => {
     const side = (r.text.match(/\((RS|WS)\)/) || [])[1];
-    r.text = r.text.replace(/following the pattern/g, side === 'WS' ? FOLLOW_WS : FOLLOW_RS);
+    r.text = r.text.replace(/following the pattern/g, side === 'WS' ? wsText : rsText);
   };
+  const followInlineLeft = makeFollowInline(FOLLOW_RS_LEFT, FOLLOW_WS_LEFT);
+  const followInlineRight = makeFollowInline(FOLLOW_RS_RIGHT, FOLLOW_WS_RIGHT);
   const CO_HINT = '[Neckline increase: backward-loop cast on.] ';
-  const annotate = r => {
+  const annotateWith = followInline => r => {
     if (/\bCO \d+ sts/.test(r.text) && !/^Set-up|^With /.test(r.text)) r.text = CO_HINT + r.text;
     followInline(r);
   };
-  [leftFront, rightFront, rightBack, leftBack].forEach(ph => ph.entries.forEach(en => {
-    if (en.kind === 'note') return;
-    annotate(en);
-    (en.rows || []).forEach(annotate);
-  }));
+  [[leftFront, followInlineLeft], [rightFront, followInlineRight],
+   [rightBack, followInlineRight], [leftBack, followInlineLeft]].forEach(([ph, followInline]) => {
+    const annotate = annotateWith(followInline);
+    ph.entries.forEach(en => {
+      if (en.kind === 'note') return;
+      annotate(en);
+      (en.rows || []).forEach(annotate);
+    });
+  });
   // Front / back joins and the back section use the phrase but their CO is the
-  // neck join, not a neckline increase — follow-hint only.
+  // neck join, not a neckline increase — follow-hint only. Neither is
+  // shoulder-specific, so the left wording stands in as the generic default.
   [front, back].forEach(ph => ph.entries.forEach(en => {
     if (en.kind === 'note') return;
-    const fix = followInline;
-    fix(en); (en.rows || []).forEach(fix);
+    followInlineLeft(en); (en.rows || []).forEach(followInlineLeft);
   }));
 
   // The full note belongs at the top of every shoulder that uses it.
-  [rightFront, leftBack].forEach(ph => ph.entries.splice(ph === rightFront ? 2 : 1, 0,
-    n(ph.id + '-follow', HK_FOLLOW_NOTE)));
+  [[rightFront, HK_FOLLOW_NOTE_RIGHT], [leftBack, HK_FOLLOW_NOTE_LEFT]].forEach(([ph, note]) =>
+    ph.entries.splice(ph === rightFront ? 2 : 1, 0, n(ph.id + '-follow', note)));
 
   return [materials, leaf, leftFront, rightFront, front, rightBack, leftBack, back, body, edgings, finishing];
 }
