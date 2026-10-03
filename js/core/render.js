@@ -207,7 +207,7 @@ function repeatEntryHtml(e, isActive) {
     return `<li class="rep-row ${rcls}" onclick="toggleRepeatRow('${e.id}',${n})">
       <span class="rep-check">${CHECK_SVG}</span>
       <span class="rep-n">${n}</span>
-      <span class="rep-t">${r.text}${r.sub ? `<div class="step-sub">${r.sub}</div>` : ''}</span>
+      <div class="rep-t">${r.text}${r.sub ? `<div class="step-sub">${r.sub}</div>` : ''}</div>
     </li>`;
   }).join('');
 
