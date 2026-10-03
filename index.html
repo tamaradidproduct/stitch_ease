@@ -714,6 +714,12 @@
   }
   .step.done .step-bullets li { color: var(--done-text); }
   .step.done .step-bullets li::before { background: var(--accent-mid); }
+  /* A short gloss below a row's text — e.g. what "work in pattern" means for
+     this specific row — kept out of the main text so a repeated phrase
+     doesn't bloat every row it appears in. */
+  .step-sub { font-size: 13px; line-height: 1.4; color: var(--muted); margin-top: 4px; }
+  .step.done .step-sub { text-decoration: line-through; text-decoration-color: var(--muted); }
+  .rep-row.done .rep-t .step-sub { text-decoration: line-through; text-decoration-color: var(--border); }
 
   /* ── Repeat block ──
      The whole motif stays visible, with the row you are on highlighted. An

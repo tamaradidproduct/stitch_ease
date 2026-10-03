@@ -148,6 +148,7 @@ function noteOrRowEntryHtml(e, isActive) {
     <div class="step-circle">${CHECK_SVG}</div>
     <div class="step-body">
       <div class="step-text">${e.text.replace(/\n/g, '<br>')}</div>
+      ${e.sub ? `<div class="step-sub">${e.sub}</div>` : ''}
       ${bulletsHtml(e)}
     </div>
   </div>`;
@@ -206,7 +207,7 @@ function repeatEntryHtml(e, isActive) {
     return `<li class="rep-row ${rcls}" onclick="toggleRepeatRow('${e.id}',${n})">
       <span class="rep-check">${CHECK_SVG}</span>
       <span class="rep-n">${n}</span>
-      <span class="rep-t">${r.text}</span>
+      <span class="rep-t">${r.text}${r.sub ? `<div class="step-sub">${r.sub}</div>` : ''}</span>
     </li>`;
   }).join('');
 

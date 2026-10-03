@@ -114,8 +114,8 @@ const HK_DS_FIRST_TW = 'insert the needle into the DS like k2tog or p2tog to wor
 // Left and right shoulders are mirror images, so the wide-rib edge stitches
 // swap sides between them (checked against the knitted fabric, not the PDF's
 // own note, which the pattern owner found unreliable/confusing).
-const HK_FOLLOW_NOTE_LEFT = 'Working in pattern: RS rows are worked from the neck side to the armhole side: p1 on the neck side, then [k13, p2], and finish the row with p1. WS rows are worked from the armhole side to the neck side: k1 on the armhole side, then [p13, k2]. For the neckline increases, use the backward-loop cast on.';
-const HK_FOLLOW_NOTE_RIGHT = 'Working in pattern: RS rows are worked from the armhole side to the neck side: p1, then [k13, p2]. WS rows are worked from the neck side to the armhole side: [k2, p13], and finish the row with k1. For the neckline increases, use the backward-loop cast on.';
+const HK_FOLLOW_NOTE_LEFT = 'Working in pattern: RS rows are worked from the neck side to the armhole side: work [k13, p2] (may not start on the count, depending on increases) until the last stitch, which is p1. WS rows are worked from the armhole side to the neck side: k1, then work [p13, k2] until the end. For the neckline increases, use the backward-loop cast on.';
+const HK_FOLLOW_NOTE_RIGHT = 'Working in pattern: RS rows are worked from the armhole side to the neck side: p1, then work [k13, p2] until the end. WS rows are worked from the neck side to the armhole side: work [k2, p13] (may not start on the count, depending on increases) until the last stitch, which is k1. For the neckline increases, use the backward-loop cast on.';
 
 // "k8, p2, k0" style run — a zero-length stitch run is simply left out.
 function hkRun(...parts) {
@@ -420,16 +420,25 @@ function buildHatsukiPhases(z) {
   // neck side then [k13, p2], finishing with p1; WS armhole→neck, k1 on the
   // armhole side then [p13, k2]. Right shoulders are the mirror image — same
   // two directions, but the edge stitches and the "finish with" stitch swap.
-  const FOLLOW_RS_LEFT = 'in pattern on the RS, neck → armhole (p1 on the neck side, [k13, p2])';
-  const FOLLOW_WS_LEFT = 'in pattern on the WS, armhole → neck (k1 on the armhole side, [p13, k2])';
-  const FOLLOW_RS_RIGHT = 'in pattern on the RS, armhole → neck (p1, [k13, p2])';
-  const FOLLOW_WS_RIGHT = 'in pattern on the WS, neck → armhole ([k2, p13], finish with k1)';
-  const makeFollowInline = (rsText, wsText) => r => {
+  // The row text only names the direction ("in pattern neck to armhole") —
+  // the stitch-level detail goes in the row's `sub`, a smaller gloss under
+  // the checkbox, so it isn't repeated in full inside every row's own text.
+  const RS_LEFT_DETAIL = '[k13, p2] until the last stitch, p1';
+  const WS_LEFT_DETAIL = 'k1, then [p13, k2] to the end';
+  const RS_RIGHT_DETAIL = 'p1, then [k13, p2] to the end';
+  const WS_RIGHT_DETAIL = '[k2, p13] until the last stitch, k1';
+  // A row can say "following the pattern" twice (before and after a DS) — the
+  // direction only needs to land once; a second mention in the same row is
+  // just "in pattern".
+  const makeFollowInline = (rsShort, rsDetail, wsShort, wsDetail) => r => {
     const side = (r.text.match(/\((RS|WS)\)/) || [])[1];
-    r.text = r.text.replace(/following the pattern/g, side === 'WS' ? wsText : rsText);
+    const short = side === 'WS' ? wsShort : rsShort;
+    let seen = 0;
+    r.text = r.text.replace(/following the pattern/g, () => (seen++ === 0 ? short : 'in pattern'));
+    if (seen > 0 && !r.sub) r.sub = 'Working in pattern: ' + (side === 'WS' ? wsDetail : rsDetail);
   };
-  const followInlineLeft = makeFollowInline(FOLLOW_RS_LEFT, FOLLOW_WS_LEFT);
-  const followInlineRight = makeFollowInline(FOLLOW_RS_RIGHT, FOLLOW_WS_RIGHT);
+  const followInlineLeft = makeFollowInline('in pattern neck to armhole', RS_LEFT_DETAIL, 'in pattern armhole to neck', WS_LEFT_DETAIL);
+  const followInlineRight = makeFollowInline('in pattern armhole to neck', RS_RIGHT_DETAIL, 'in pattern neck to armhole', WS_RIGHT_DETAIL);
   const CO_HINT = '[Neckline increase: backward-loop cast on.] ';
   const annotateWith = followInline => r => {
     if (/\bCO \d+ sts/.test(r.text) && !/^Set-up|^With /.test(r.text)) r.text = CO_HINT + r.text;
