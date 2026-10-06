@@ -494,11 +494,10 @@ function buildHatsukiPhases(z) {
     });
     return n;
   };
-  const CO_SIZE = S([41, 48, 51, 56, 63, 68]);
-  countShoulder(leftFront, CO_SIZE);
-  countShoulder(rightFront, CO_SIZE);
-  countShoulder(rightBack, CO_SIZE);
-  countShoulder(leftBack, CO_SIZE);
+  countShoulder(leftFront, CO);
+  countShoulder(rightFront, CO);
+  countShoulder(rightBack, CO);
+  countShoulder(leftBack, CO);
   return [materials, leaf, leftFront, rightFront, front, rightBack, leftBack, back, body, edgings, finishing];
 }
 
