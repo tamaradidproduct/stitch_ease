@@ -588,8 +588,8 @@ function recapHtml(row) {
   const confirmEntry = (PHASES[cur].entries || []).find(e => e.postChart);
   if (confirmEntry && row === CHART_TOTAL) {
     const done = entryDone(confirmEntry, entryProg);
-    html += `<div class="chart-confirm-step ${done ? 'done' : ''}" onclick="toggleEntry('${confirmEntry.id}')">
-      <div class="step-circle">${CHECK_SVG}</div>
+    html += `<div class="chart-confirm-step ${done ? 'done' : ''}"${checkboxAttrs(done)} onclick="toggleEntry('${confirmEntry.id}')">
+      ${checkHtml()}
       <div class="step-text">${confirmEntry.text}</div>
     </div>`;
   }
@@ -600,13 +600,13 @@ function renderChartDock() {
   const dock = document.getElementById('chart-dock');
   let html = `<div class="chart-recap" id="chart-recap">${recapHtml(chartCurrentRow)}</div>`;
   html += `<div class="chart-footer">
-    <button class="cc-ctrl cc-minus" onclick="changeChartRow(-1)">−</button>
+    ${stepperBtnHtml({ dir: 'minus', size: 'lg', onclick: 'changeChartRow(-1)', label: 'Previous row' })}
     <div class="cc-stats">
       <span class="cc-stat-lbl">Current row</span>
       <span class="cc-cur-val" id="cc-cur">${chartCurrentRow}</span>
       <span class="cc-total-lbl">Total rows ${CHART_TOTAL}</span>
     </div>
-    <button class="cc-ctrl cc-plus" onclick="changeChartRow(1)">+</button>
+    ${stepperBtnHtml({ dir: 'plus', size: 'lg', onclick: 'changeChartRow(1)', label: 'Next row' })}
   </div>`;
 
   html += '<div class="nav-btns" id="chart-nav-btns">';

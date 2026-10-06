@@ -86,3 +86,40 @@ function rowHtml(o) {
   const slot = (name, html) => html != null && html !== '' ? `<div class="row-${name}">${html}</div>` : '';
   return `<div class="${cls}"${o.id ? ` id="${escapeHtml(o.id)}"` : ''}>${slot('lead', o.lead)}${slot('main', o.main)}${slot('trail', o.trail)}</div>`;
 }
+
+// A round ± button.
+//   dir      'minus' | 'plus'
+//   size     'sm' (quiet, inline beside a label) | 'lg' (the chart dock's, coloured by dir)
+//   onclick  developer-authored JS, trusted
+//   label    plain-text aria-label — escaped here
+function stepperBtnHtml(o) {
+  const size = o.size || 'sm';
+  const cls = 'stepper-btn stepper-btn--' + size + (size === 'lg' ? ' stepper-btn--' + o.dir : '');
+  return `<button class="${cls}" onclick="${String(o.onclick).replace(/"/g, '&quot;')}" aria-label="${escapeHtml(o.label)}">${o.dir === 'plus' ? '+' : '\u2212'}</button>`;
+}
+
+// The tick box itself. Ticked-ness is drawn from the ancestor's .done class,
+// so this carries no state of its own. Pass `sm` for the one inside repeat rows.
+// With `onclick` it is its own control and gets the checkbox role and keyboard
+// access; without, the element around it is the control (see checkboxAttrs).
+//   done / label   for the aria state and name; only used with onclick
+function checkHtml(o) {
+  o = o || {};
+  const cls = 'check' + (o.sm ? ' check--sm' : '');
+  if (!o.onclick) return `<div class="${cls}">${CHECK_SVG}</div>`;
+  return `<div class="${cls}"${checkboxAttrs(o.done)}${o.label ? ` aria-label="${escapeHtml(o.label)}"` : ''} onclick="${String(o.onclick).replace(/"/g, '&quot;')}">${CHECK_SVG}</div>`;
+}
+
+// Attributes that make a clickable element an operable checkbox: role, state,
+// and a tab stop. Spread into a tag: `<div${checkboxAttrs(done)} onclick=...>`.
+function checkboxAttrs(checked) {
+  return ` role="checkbox" aria-checked="${checked ? 'true' : 'false'}" tabindex="0"`;
+}
+
+// Enter and Space press whatever checkbox has focus. The elements are divs and
+// list items with inline onclick, so the browser does not do this on its own.
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const t = e.target;
+  if (t && t.getAttribute && t.getAttribute('role') === 'checkbox') { e.preventDefault(); t.click(); }
+});

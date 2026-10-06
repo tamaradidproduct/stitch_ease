@@ -144,8 +144,8 @@ function entryHtml(e, isActive) {
 function noteOrRowEntryHtml(e, isActive) {
   const done = entryDone(e, entryProg);
   const cls = done ? 'done' : isActive ? 'active' : '';
-  return `<div class="step ${cls}" onclick="toggleEntry('${e.id}')">
-    <div class="step-circle">${CHECK_SVG}</div>
+  return `<div class="step ${cls}"${checkboxAttrs(done)} onclick="toggleEntry('${e.id}')">
+    ${checkHtml()}
     <div class="step-body">
       <div class="step-text">${e.text.replace(/\n/g, '<br>')}</div>
       ${e.sub ? `<div class="step-sub">${e.sub}</div>` : ''}
@@ -187,7 +187,7 @@ function repeatEntryHtml(e, isActive) {
     return `<div class="step repeat-step ${cls} collapsed">
       <div class="step-body">
         <div class="repeat-head" onclick="toggleRepeatExpand('${e.id}')">
-          <div class="step-circle" onclick="toggleRepeatDone('${e.id}', event)">${CHECK_SVG}</div>
+          ${checkHtml({ done, label: 'Whole repeat done', onclick: `toggleRepeatDone('${e.id}', event)` })}
           <div class="repeat-head-text">
             <div class="repeat-head-title-row">
               <div class="step-text">${title}</div>
@@ -204,8 +204,8 @@ function repeatEntryHtml(e, isActive) {
   const rows = e.rows.map((r, i) => {
     const n = i + 1;
     const rcls = done ? 'done' : n < pos.z ? 'done' : n === pos.z ? 'now' : '';
-    return `<li class="rep-row ${rcls}" onclick="toggleRepeatRow('${e.id}',${n})">
-      <span class="rep-check">${CHECK_SVG}</span>
+    return `<li class="rep-row ${rcls}"${checkboxAttrs(rcls === 'done')} onclick="toggleRepeatRow('${e.id}',${n})">
+      ${checkHtml({ sm: true })}
       <span class="rep-n">${n}</span>
       <div class="rep-t">${r.text}${r.sub ? `<div class="step-sub">${r.sub}</div>` : ''}</div>
     </li>`;
@@ -225,19 +225,19 @@ function repeatEntryHtml(e, isActive) {
   return `<div class="step repeat-step ${cls}">
     <div class="step-body">
       <div class="repeat-head">
-        <div class="step-circle" onclick="toggleRepeatDone('${e.id}', event)">${CHECK_SVG}</div>
+        ${checkHtml({ done, label: 'Whole repeat done', onclick: `toggleRepeatDone('${e.id}', event)` })}
         <div class="repeat-head-text">
           <div class="step-text">${title}</div>
           <div class="repeat-head-sub">repeat unit</div>
         </div>
         ${collapseBtn}
         <div class="rep-pass">
-          <button class="rep-pass-btn" onclick="advanceRepeatPass('${e.id}',-1)" aria-label="Previous pass">−</button>
+          ${stepperBtnHtml({ dir: 'minus', onclick: `advanceRepeatPass('${e.id}',-1)`, label: 'Previous pass' })}
           <span class="rep-pass-lbl">${passLabel}</span>
-          <button class="rep-pass-btn" onclick="advanceRepeatPass('${e.id}',1)" aria-label="Next pass">+</button>
+          ${stepperBtnHtml({ dir: 'plus', onclick: `advanceRepeatPass('${e.id}',1)`, label: 'Next pass' })}
         </div>
       </div>
-      <ul class="rep-rows">${rows}</ul>
+      <ul class="rep-rows" role="group">${rows}</ul>
     </div>
   </div>`;
 }
