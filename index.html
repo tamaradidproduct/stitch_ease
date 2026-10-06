@@ -192,7 +192,18 @@
   }
   .glossary-btn:active { background: var(--card); }
 
-  .acct-row { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+  /* ── Row ── lead · main · trail (see rowHtml in js/core/ui.js).
+     --sm tightens the gap, --baseline aligns on text, --divided adds the
+     padding and the rule between stacked rows. Text styles stay with the
+     caller (.acct-email, .yarn-row-name, …) until the type scale is tokenised. */
+  .row { display: flex; align-items: center; gap: 12px; }
+  .row--sm { gap: 10px; }
+  .row--baseline { align-items: baseline; }
+  .row--divided { padding: 8px 0; }
+  .row--divided + .row--divided { border-top: 1px solid var(--border); }
+  .row-lead, .row-trail { flex-shrink: 0; }
+  .row-main { flex: 1; min-width: 0; }
+  .acct-row { margin-bottom: 4px; }
   .acct-avatar {
     width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
     background: var(--accent); color: var(--on-accent);
@@ -566,7 +577,6 @@
   }
   .acct-family-count { font-size: 12px; color: var(--muted); text-align: right; }
   .fam-list { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
-  .fam-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
   .fam-email { font-size: 13px; color: var(--text); word-break: break-all; }
   .fam-role { font-size: 12px; color: var(--muted); flex-shrink: 0; }
   .acct-family .sheet-actions { margin-top: 12px; }
@@ -595,8 +605,6 @@
   .acct-pdfs-head .chevron { transition: transform 0.2s ease; }
   .acct-pdfs-head.open .chevron { transform: rotate(180deg); }
   .acct-pdfs-list { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
-  .acct-pdf-row { display: flex; align-items: center; gap: 10px; }
-  .acct-pdf-main { flex: 1; min-width: 0; }
   .acct-pdf-name { font-size: 13px; color: var(--text); }
   .acct-pdf-sub { font-size: 12px; color: var(--muted); word-break: break-all; }
   .acct-pdf-del {
@@ -604,7 +612,6 @@
     font-family: inherit; font-size: 12px; color: var(--danger); cursor: pointer;
   }
   .note-row {
-    display: flex; align-items: baseline; gap: 12px;
     padding: 10px 0;
     border-bottom: 1px dashed var(--border);
   }
@@ -1048,15 +1055,13 @@
   }
   .yarn-dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0,0,0,.2); }
   .yarn-chips:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-xs); }
-  .yarn-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
-  .yarn-row + .yarn-row { border-top: 1px solid var(--border); }
   .yarn-pick {
     position: relative; width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0;
     border: 1px solid rgba(0,0,0,.2); cursor: pointer; overflow: hidden;
   }
   .yarn-pick input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
   .yarn-pick:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .yarn-row-name { flex: 1; font-size: 15px; color: var(--text); }
+  .yarn-row-name { font-size: 15px; color: var(--text); }
   .recap-swatch {
     display: inline-block; width: 10px; height: 10px; border-radius: 2px;
     border: 1px solid rgba(0,0,0,.25); vertical-align: -1px; margin-right: 3px;
@@ -1158,7 +1163,7 @@
     transition: background 0.15s, border-color 0.15s;
   }
   .color-edit-btn:active { background: var(--border); }
-  .color-edit-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .color-edit-row { margin-bottom: 10px; }
   .color-edit-swatch {
     width: 36px; height: 36px; flex-shrink: 0; padding: 0; cursor: pointer;
     border: 1px solid var(--border); border-radius: var(--radius-xs);

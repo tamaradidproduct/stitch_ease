@@ -439,7 +439,7 @@ function openNotes() {
     // pattern-only note keeps working exactly as before.
     const glossary = n.def ? null : (typeof glossaryEntry === 'function' ? glossaryEntry(n.term) : null);
     const def = n.def || (glossary && glossary.def) || '';
-    return `<div class="note-row">
+    return `<div class="row row--baseline note-row">
       <span class="note-term">${art ? `<span class="note-sym">${art}</span>` : ''}${n.term ? escapeHtml(n.term) : ''}</span>
       <span class="note-def">${escapeHtml(def)}</span>
     </div>`;
@@ -476,7 +476,7 @@ function openColorSheet() {
     const grid = YARN_SWATCH_GRID.map(hex =>
       `<button type="button" class="color-swatch-opt" style="background:${hex}" data-hex="${hex}" onclick="pickColorSwatch(${i},'${hex}')" aria-label="${hex}"></button>`
     ).join('');
-    return `<div class="color-edit-row">
+    return `<div class="row row--sm color-edit-row">
       <button type="button" class="color-edit-swatch" id="color-preview-${i}" data-hex="${hex}"
               style="background:${hex}" onclick="toggleColorGrid(${i})" aria-label="Choose color"></button>
       <input class="sheet-input color-edit-name" type="text" id="color-name-${i}" value="${escapeHtml(c.name)}" aria-label="Color name">
@@ -827,7 +827,7 @@ function glossaryListHtml(crafts) {
           <div class="glossary-group-name">${escapeHtml(g.name)}</div>
           ${g.terms.map(t => {
             const art = t.sym ? SYMS[t.sym] : null;
-            return `<div class="note-row">
+            return `<div class="row row--baseline note-row">
             <span class="note-term">${art ? `<span class="note-sym">${art}</span>` : ''}${escapeHtml(t.abbr || t.term)}</span>
             <span class="note-def">${t.abbr ? `<strong>${escapeHtml(t.term)}.</strong> ` : ''}${escapeHtml(t.def)}</span>
           </div>`;

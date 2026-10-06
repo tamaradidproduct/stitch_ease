@@ -74,3 +74,15 @@ function sheetBodyHtml(o) {
     note != null ? msgHtml({ kind: 'note', html: note }) : '',
   ].filter(Boolean).join('\n    ');
 }
+
+// A horizontal row: something leading, the main content, something trailing.
+// Every slot is TRUSTED markup — the caller escapes whatever it interpolates.
+//
+//   lead / main / trail   markup for each slot; an empty slot is left out
+//   variant               'sm' | 'baseline' | 'divided', string or array
+//   cls, id               extra classes / element id
+function rowHtml(o) {
+  const cls = ['row'].concat([].concat(o.variant || []).filter(Boolean).map(v => 'row--' + v), o.cls || []).join(' ');
+  const slot = (name, html) => html != null && html !== '' ? `<div class="row-${name}">${html}</div>` : '';
+  return `<div class="${cls}"${o.id ? ` id="${escapeHtml(o.id)}"` : ''}>${slot('lead', o.lead)}${slot('main', o.main)}${slot('trail', o.trail)}</div>`;
+}

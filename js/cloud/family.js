@@ -149,10 +149,11 @@ function familyBlockHtml() {
     ? 'Just you — patterns and PDFs you add stay in your account'
     : n + ' people share patterns and PDFs';
 
-  const rows = others.map(m => `<div class="fam-row">
-      <div class="fam-email">${escapeHtml(m.email || 'Member')}</div>
-      <div class="fam-role">${escapeHtml(m.role === 'owner' ? 'started the family' : 'member')}</div>
-    </div>`).join('');
+  const rows = others.map(m => rowHtml({
+    variant: ['sm', 'baseline'],
+    main: `<div class="fam-email">${escapeHtml(m.email || 'Member')}</div>`,
+    trail: `<div class="fam-role">${escapeHtml(m.role === 'owner' ? 'started the family' : 'member')}</div>`,
+  })).join('');
 
   return `<div class="acct-family">
       <div class="acct-family-head">

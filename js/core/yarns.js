@@ -73,13 +73,14 @@ function setYarnColor(phase, i, hex) {
 function openYarnSheet() {
   const phase = PHASES[cur];
   if (!phase || !phase.chartYarns) return;
-  const rows = phase.chartYarns.map((y, i) => `<div class="yarn-row">
-      <label class="yarn-pick" style="background:var(--yarn-${i})">
+  const rows = phase.chartYarns.map((y, i) => rowHtml({
+    variant: 'divided',
+    lead: `<label class="yarn-pick" style="background:var(--yarn-${i})">
         <input type="color" data-yarn="${i}" value="${fullHex(yarnColorFor(phase, i))}" aria-label="Colour for ${escapeHtml(y.name)}">
-      </label>
-      <div class="yarn-row-name">${escapeHtml(y.name)}</div>
-      <button class="btn btn--slim" data-reset="${i}">Reset</button>
-    </div>`).join('');
+      </label>`,
+    main: `<div class="yarn-row-name">${escapeHtml(y.name)}</div>`,
+    trail: `<button class="btn btn--slim" data-reset="${i}">Reset</button>`,
+  })).join('');
   openSheet('Yarn colours', `${rows}
     <p class="sheet-sub">Tap a swatch to match your yarn. Only this project changes.</p>
     <div class="sheet-actions"><button class="btn btn--primary" onclick="dismissSheet()">Done</button></div>`, {

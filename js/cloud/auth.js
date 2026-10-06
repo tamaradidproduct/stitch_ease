@@ -308,15 +308,14 @@ function openAccountSheet(msg) {
 
   // signed-in / offline
   const email = (session.user && session.user.email) || 'Signed in';
-  body = `<div class="acct-row">
-      <div class="acct-avatar">${acctInitial()}</div>
-      <div>
-        <div class="acct-email">${escapeHtml(email)}</div>
+  body = `${rowHtml({
+      cls: 'acct-row',
+      lead: `<div class="acct-avatar">${acctInitial()}</div>`,
+      main: `<div class="acct-email">${escapeHtml(email)}</div>
         <div class="acct-status">${st === 'offline'
           ? 'Offline — your work will sync when you’re back'
-          : 'Signed in'}</div>
-      </div>
-    </div>
+          : 'Signed in'}</div>`,
+    })}
     ${msg ? msgHtml({ kind: msg.ok ? 'ok' : 'error', text: msg.text }) : ''}
     ${syncBlockHtml()}
     ${familyBlockHtml()}
@@ -364,13 +363,12 @@ function pdfStorageBlockHtml() {
   const files = pdfStorageList();
   if (!files.length) return '';
 
-  const rows = files.map(f => `<div class="acct-pdf-row">
-      <div class="acct-pdf-main">
-        <div class="acct-pdf-name">${escapeHtml(f.name)}</div>
-        <div class="acct-pdf-sub">${escapeHtml(f.fileName || '')} · ${escapeHtml(formatBytes(f.size))}</div>
-      </div>
-      <button class="acct-pdf-del" data-pdf-del="${escapeHtml(f.patternId)}">Remove</button>
-    </div>`).join('');
+  const rows = files.map(f => rowHtml({
+    variant: 'sm',
+    main: `<div class="acct-pdf-name">${escapeHtml(f.name)}</div>
+        <div class="acct-pdf-sub">${escapeHtml(f.fileName || '')} · ${escapeHtml(formatBytes(f.size))}</div>`,
+    trail: `<button class="acct-pdf-del" data-pdf-del="${escapeHtml(f.patternId)}">Remove</button>`,
+  })).join('');
 
   return `<div class="acct-pdfs">
       <button class="acct-pdfs-head" id="acct-pdfs-toggle" aria-expanded="false">
