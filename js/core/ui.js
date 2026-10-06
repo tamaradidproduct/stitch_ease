@@ -2,6 +2,11 @@
 // onclick-and-innerHTML style the rest of the app uses. Function declarations
 // only — nothing here runs at load, so order against other scripts is free.
 
+// Tick mark used by checkbox-style controls.
+const CHECK_SVG = `<svg width="12" height="10" viewBox="0 0 11 9" fill="none">
+        <path d="M1 4L4 7.5L10 1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`;
+
 // A button. `.btn` is the one component. Hand-written markup elsewhere uses the
 // same classes directly (class="btn btn--primary"); this is for new code.
 //
@@ -22,7 +27,7 @@ function btnHtml(o) {
     (o.disabled ? ' disabled' : '') +
     (o.attrs ? ' ' + o.attrs : '');
   const inner = o.labelHtml != null ? o.labelHtml : escapeHtml(o.label == null ? '' : o.label);
-  if (o.href) {
+  if (o.href && !o.disabled) {
     return `<a class="${cls}" href="${escapeHtml(o.href)}" target="_blank" rel="noopener"${attr}>${inner}</a>`;
   }
   return `<button class="${cls}"${attr}>${inner}</button>`;
@@ -95,7 +100,8 @@ function rowHtml(o) {
 function stepperBtnHtml(o) {
   const size = o.size || 'sm';
   const cls = 'stepper-btn stepper-btn--' + size + (size === 'lg' ? ' stepper-btn--' + o.dir : '');
-  return `<button class="${cls}" onclick="${String(o.onclick).replace(/"/g, '&quot;')}" aria-label="${escapeHtml(o.label)}">${o.dir === 'plus' ? '+' : '\u2212'}</button>`;
+  const clickAttr = o.onclick ? ` onclick="${String(o.onclick).replace(/"/g, '&quot;')}"` : '';
+  return `<button class="${cls}"${clickAttr} aria-label="${escapeHtml(o.label)}">${o.dir === 'plus' ? '+' : '\u2212'}</button>`;
 }
 
 // The tick box itself. Ticked-ness is drawn from the ancestor's .done class,

@@ -28,10 +28,6 @@ function togglePhaseNav() {
   renderTabs();
 }
 
-const CHECK_SVG = `<svg width="12" height="10" viewBox="0 0 11 9" fill="none">
-        <path d="M1 4L4 7.5L10 1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>`;
-
 // Back chevron — same stroke weight/shape as the phase-switch chevron so the
 // two circular icon buttons look like one family.
 const BACK_CHEVRON_SVG = `<svg class="chevron" width="6" height="10" viewBox="0 0 6 10" fill="none" aria-hidden="true">
