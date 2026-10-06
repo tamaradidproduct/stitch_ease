@@ -161,8 +161,8 @@ function familyBlockHtml() {
       </div>
       ${rows ? `<div class="fam-list">${rows}</div>` : ''}
       <div class="sheet-actions">
-        <button class="sheet-btn slim" id="fam-invite">Invite someone</button>
-        <button class="sheet-btn slim" id="fam-join">Join with a code</button>
+        <button class="btn btn--slim" id="fam-invite">Invite someone</button>
+        <button class="btn btn--slim" id="fam-join">Join with a code</button>
       </div>
       <div id="fam-msg"></div>
       <p class="acct-note">Imported patterns and pattern PDFs are shared across your family. Projects and row counts stay yours alone.</p>
@@ -198,8 +198,8 @@ function showFamilyCode(code) {
     <p class="sheet-msg">Give them this code. It works once, and expires in 7 days.</p>
     <div class="fam-code" id="fam-code">${escapeHtml(code)}</div>
     <div class="sheet-actions">
-      <button class="sheet-btn" onclick="dismissSheet()">Done</button>
-      <button class="sheet-btn primary" id="fam-copy">Copy code</button>
+      <button class="btn" onclick="dismissSheet()">Done</button>
+      <button class="btn btn--primary" id="fam-copy">Copy code</button>
     </div>
     <p class="acct-note">They sign in on their own device, open Account, and tap “Join with a code”. They’ll see your imported patterns and pattern PDFs — not your projects or row counts.</p>`, {
     onOpen: el => {
@@ -224,8 +224,8 @@ function openJoinFamilySheet() {
            autocapitalize="characters" autocomplete="off" spellcheck="false"
            placeholder="ABCD2345" aria-label="Invite code">
     <div class="sheet-actions">
-      <button class="sheet-btn" onclick="dismissSheet()">Cancel</button>
-      <button class="sheet-btn primary" id="fam-join-go">Join</button>
+      <button class="btn" onclick="dismissSheet()">Cancel</button>
+      <button class="btn btn--primary" id="fam-join-go">Join</button>
     </div>
     <div id="fam-join-msg"></div>
     <p class="acct-note">You’ll see their imported patterns and pattern PDFs, and they’ll see yours. Your projects and row counts stay yours.</p>`, {

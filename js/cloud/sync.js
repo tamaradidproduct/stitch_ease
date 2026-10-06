@@ -1125,8 +1125,8 @@ function openConflictSheet() {
     `<p class="sheet-msg">These were changed in both places. Everything else has already been merged.</p>
      ${groups}
      <div class="sheet-actions">
-       <button class="sheet-btn" id="cfl-mine">Keep this device</button>
-       <button class="sheet-btn" id="cfl-theirs">Use the other</button>
+       <button class="btn" id="cfl-mine">Keep this device</button>
+       <button class="btn" id="cfl-theirs">Use the other</button>
      </div>
      <p class="acct-note">Closing this keeps what's on this device — nothing is lost either way.</p>`,
     {

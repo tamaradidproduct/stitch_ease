@@ -245,8 +245,8 @@ function openChartImportPreview(draft, updateId) {
     </div>
     ${target ? `<p class="sheet-sub">${updateSharedNote()}</p>` : ''}
     <div class="sheet-actions">
-      <button class="sheet-btn" onclick="dismissSheet()">Cancel</button>
-      <button class="sheet-btn primary" id="imp-ok">${target ? 'Update' : 'Add to library'}</button>
+      <button class="btn" onclick="dismissSheet()">Cancel</button>
+      <button class="btn btn--primary" id="imp-ok">${target ? 'Update' : 'Add to library'}</button>
     </div>`;
 
   openSheet(target ? 'Update pattern' : 'Import chart', body, {

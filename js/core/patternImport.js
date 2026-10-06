@@ -214,7 +214,7 @@ function triggerUpdatePattern(id, evt) {
 // escaping it again here.
 function importResultSheet(title, safeHtml) {
   openSheet(title, `<p class="sheet-msg">${safeHtml}</p>
-    <div class="sheet-actions"><button class="sheet-btn primary" onclick="dismissSheet()">OK</button></div>`);
+    <div class="sheet-actions"><button class="btn btn--primary" onclick="dismissSheet()">OK</button></div>`);
 }
 
 // The file input accepts CSV and .stitchchart.json alike; which parser runs
@@ -257,8 +257,8 @@ function confirmUpdatePattern(text, id) {
   const body = `<p class="sheet-msg">Replace "${existing.name}" with "${built.name}" from this file?</p>
     <p class="sheet-sub">${updateSharedNote()}</p>
     <div class="sheet-actions">
-      <button class="sheet-btn" onclick="dismissSheet()">Cancel</button>
-      <button class="sheet-btn primary" id="pattern-replace-ok">Update</button>
+      <button class="btn" onclick="dismissSheet()">Cancel</button>
+      <button class="btn btn--primary" id="pattern-replace-ok">Update</button>
     </div>`;
   openSheet('Update pattern?', body, {
     onOpen: el => {

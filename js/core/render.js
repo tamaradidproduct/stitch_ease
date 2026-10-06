@@ -986,8 +986,8 @@ function openPatternUpdateSheet() {
     </div>
     ${lostNote}
     <div class="sheet-actions">
-      <button class="sheet-btn" onclick="dismissSheet()">Not now</button>
-      <button class="sheet-btn primary" id="pu-adopt">Use the new version</button>
+      <button class="btn" onclick="dismissSheet()">Not now</button>
+      <button class="btn btn--primary" id="pu-adopt">Use the new version</button>
     </div>
     <p class="acct-note">Until you take it, this project keeps the version you started on. Nothing is deleted either way.</p>`,
     {

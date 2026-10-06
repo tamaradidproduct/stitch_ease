@@ -2,8 +2,8 @@
 // onclick-and-innerHTML style the rest of the app uses. Function declarations
 // only — nothing here runs at load, so order against other scripts is free.
 
-// A button. `.btn` is the one component; .sheet-btn / .nav-btn / .finished-btn /
-// .picker-import-btn are aliases in index.html until every call site has moved.
+// A button. `.btn` is the one component. Hand-written markup elsewhere uses the
+// same classes directly (class="btn btn--primary"); this is for new code.
 //
 //   label       plain text — escaped here
 //   labelHtml   trusted markup (an inline SVG, say) — NOT escaped; use instead of label

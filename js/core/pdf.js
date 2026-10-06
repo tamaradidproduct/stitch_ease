@@ -247,15 +247,15 @@ function pdfRemoteHtml(pat, src) {
         e.remoteName ? ' (' + escapeHtml(e.remoteName) + (size ? ', ' + size : '') + ')' : ''}</div>` : ''}
     </div>
     ${src ? `<div class="sheet-actions">
-      <a class="sheet-btn primary" href="${escapeHtml(src.url)}" target="_blank" rel="noopener" id="pdf-open">Open${hasLocal ? ' this copy' : ''}</a>
+      <a class="btn btn--primary" href="${escapeHtml(src.url)}" target="_blank" rel="noopener" id="pdf-open">Open${hasLocal ? ' this copy' : ''}</a>
     </div>` : ''}
     <div class="sheet-actions">
-      <button class="sheet-btn ${src ? '' : 'primary'}" id="pdf-download" ${downloading ? 'disabled' : ''}>${
+      <button class="btn ${src ? '' : 'btn--primary'}" id="pdf-download" ${downloading ? 'disabled' : ''}>${
         downloading ? 'Downloading…' : (hasLocal ? 'Get the newer copy' : 'Download to this device')}</button>
     </div>
     ${busy.failed === 'download' ? `<p class="acct-err">Couldn’t download it just now. Check your connection and try again — nothing was lost.</p>` : ''}
     <div class="sheet-actions">
-      <button class="sheet-btn" id="pdf-replace">Use a different file</button>
+      <button class="btn" id="pdf-replace">Use a different file</button>
     </div>
     <p class="acct-note">Downloaded once and kept on this device, so it opens offline afterwards.</p>`;
 }
@@ -287,7 +287,7 @@ function pdfUploadErrorHtml(patternId) {
   if (pdfActivityFor(patternId).failed !== 'upload') return '';
   return `<div class="pdf-retry">
       <p class="acct-err">Couldn’t back this up to your account. It’s still safe on this device.</p>
-      <div class="sheet-actions"><button class="sheet-btn slim" id="pdf-retry-upload">Try again</button></div>
+      <div class="sheet-actions"><button class="btn btn--slim" id="pdf-retry-upload">Try again</button></div>
     </div>`;
 }
 
@@ -313,13 +313,13 @@ function pdfViewHtml(pat, src, state) {
       ${src.kind === 'attached' ? pdfCloudLine(pat.id, state) : ''}
     </div>
     <div class="sheet-actions">
-      <a class="sheet-btn primary" href="${escapeHtml(src.url)}" target="_blank" rel="noopener"
+      <a class="btn btn--primary" href="${escapeHtml(src.url)}" target="_blank" rel="noopener"
          id="pdf-open">Open</a>
     </div>
     ${src.kind === 'attached' ? pdfUploadErrorHtml(pat.id) : ''}
     <div class="sheet-actions">
-      <button class="sheet-btn" id="pdf-replace">${src.kind === 'attached' ? 'Replace' : 'Use my own file'}</button>
-      ${src.kind === 'attached' ? '<button class="sheet-btn" id="pdf-remove">Remove</button>' : ''}
+      <button class="btn" id="pdf-replace">${src.kind === 'attached' ? 'Replace' : 'Use my own file'}</button>
+      ${src.kind === 'attached' ? '<button class="btn" id="pdf-remove">Remove</button>' : ''}
     </div>
     <p class="acct-note">${pdfFooterNote(pat.id, src)}</p>`;
 }
@@ -351,7 +351,7 @@ function pdfEmptyHtml(pat) {
     <p class="sheet-msg" id="pdf-empty">No original pattern saved for ${escapeHtml(pat.name)}.</p>
     <p class="sheet-sub">Add the PDF you bought it in, and it’ll be one tap away from any section — including offline.</p>
     <div class="sheet-actions">
-      <button class="sheet-btn primary" id="pdf-replace">Choose a PDF</button>
+      <button class="btn btn--primary" id="pdf-replace">Choose a PDF</button>
     </div>
     <p class="acct-note">${signedIn
       ? 'Saved to your account, so your other devices can download it too.'
@@ -461,8 +461,8 @@ function pdfError(message, detail) {
     <p class="sheet-msg">${escapeHtml(message)}</p>
     <p class="sheet-sub">${escapeHtml(detail)}</p>
     <div class="sheet-actions">
-      <button class="sheet-btn" onclick="dismissSheet()">Close</button>
-      <button class="sheet-btn primary" id="pdf-retry">Pick another file</button>
+      <button class="btn" onclick="dismissSheet()">Close</button>
+      <button class="btn btn--primary" id="pdf-retry">Pick another file</button>
     </div>`, {
     onOpen: el => {
       const pat = activePattern();

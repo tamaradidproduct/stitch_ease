@@ -213,8 +213,6 @@
     margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);
   }
   .acct-sync-when { font-size: 13px; color: var(--text); }
-  /* .sheet-btn is flex:1 for the paired full-width rows; here it sits beside a
-     line of text and has to be content-width instead. */
 
   .acct-err {
     font-size: 13px; line-height: 1.45; color: var(--danger-text);
@@ -498,41 +496,42 @@
   .size-opt { flex: none; display: flex; justify-content: space-between; align-items: baseline; text-align: left; }
   .size-opt-sub { font-size: 12px; color: var(--muted); font-weight: 400; }
   .sheet-actions { display: flex; gap: 10px; margin-top: 18px; }
-  /* ── Button ── one component; the older names are aliases until every call
-     site has moved to .btn (see btnHtml in js/core/ui.js).
+  /* ── Button ── one component (see btnHtml in js/core/ui.js).
      Variants: --primary (dark), --accent (green), --danger, --slim, --lg, --block.
+     .nav-btn and .picker-import-btn are no longer styles, only hooks for
+     context rules (.chart-dock .nav-btn).
      Position matters: this sits where .sheet-btn used to, so it still beats
      .google-btn and .size-opt on the cascade exactly as before. */
-  .btn, .sheet-btn, .nav-btn, .finished-btn, .picker-import-btn {
+  .btn {
     flex: 1; padding: 13px; border-radius: var(--radius);
     border: 1px solid var(--border); background: var(--card);
     font-family: inherit; font-size: 14px; font-weight: 500;
     color: var(--text); cursor: pointer; transition: background 0.15s;
   }
-  .btn:active, .sheet-btn:active, .nav-btn:active, .finished-btn:active, .picker-import-btn:active { background: var(--bg); }
-  .btn--lg, .nav-btn { padding: 14px; }
-  .btn--block, .picker-import-btn { width: 100%; }
+  .btn:active { background: var(--bg); }
+  .btn--lg { padding: 14px; }
+  .btn--block { width: 100%; }
   .picker-import-btn { margin-top: 16px; }
-  .btn--primary, .sheet-btn.primary, .nav-btn.primary {
+  .btn--primary {
     background: var(--text); color: var(--on-accent); border-color: var(--text);
   }
-  .btn--primary:active, .sheet-btn.primary:active, .nav-btn.primary:active { background: var(--text-pressed); }
-  .btn--accent, .finished-btn.primary {
+  .btn--primary:active { background: var(--text-pressed); }
+  .btn--accent {
     background: var(--accent); color: var(--on-accent); border-color: var(--accent);
   }
-  .btn--accent:active, .finished-btn.primary:active { background: var(--accent-pressed); }
-  .btn--danger, .sheet-btn.danger {
+  .btn--accent:active { background: var(--accent-pressed); }
+  .btn--danger {
     background: var(--danger); color: var(--on-accent); border-color: var(--danger);
   }
-  .btn--danger:active, .sheet-btn.danger:active { background: var(--danger-pressed); }
-  .btn:disabled, .sheet-btn:disabled { opacity: 0.45; cursor: default; }
+  .btn--danger:active { background: var(--danger-pressed); }
+  .btn:disabled { opacity: 0.45; cursor: default; }
   /* .btn is flex:1 for the paired full-width rows; --slim sits beside a line of
      text and has to be content-width instead. */
-  .btn--slim, .sheet-btn.slim { flex: 0 0 auto; margin: 0; padding: 9px 16px; font-size: 13px; }
+  .btn--slim { flex: 0 0 auto; margin: 0; padding: 9px 16px; font-size: 13px; }
   /* The PDF "Open" is a real <a> — a user-gesture anchor click is the one path
      no popup blocker touches, and on Android Chrome it's what hands a blob:
      URL to the system viewer. It has to be dressed as the button it replaces. */
-  a.btn, a.sheet-btn { display: flex; align-items: center; justify-content: center; }
+  a.btn { display: flex; align-items: center; justify-content: center; }
   /* The PDF "Open" is a real <a> — a user-gesture anchor click is the one path
      no popup blocker touches, and on Android Chrome it's what hands a blob:
      URL to the system viewer. It has to be dressed as the button it replaces. */

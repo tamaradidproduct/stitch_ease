@@ -78,11 +78,11 @@ function openYarnSheet() {
         <input type="color" data-yarn="${i}" value="${fullHex(yarnColorFor(phase, i))}" aria-label="Colour for ${escapeHtml(y.name)}">
       </label>
       <div class="yarn-row-name">${escapeHtml(y.name)}</div>
-      <button class="sheet-btn slim" data-reset="${i}">Reset</button>
+      <button class="btn btn--slim" data-reset="${i}">Reset</button>
     </div>`).join('');
   openSheet('Yarn colours', `${rows}
     <p class="sheet-sub">Tap a swatch to match your yarn. Only this project changes.</p>
-    <div class="sheet-actions"><button class="sheet-btn primary" onclick="dismissSheet()">Done</button></div>`, {
+    <div class="sheet-actions"><button class="btn btn--primary" onclick="dismissSheet()">Done</button></div>`, {
     onOpen: el => {
       el.querySelectorAll('input[type=color]').forEach(inp => {
         inp.oninput = () => setYarnColor(phase, +inp.dataset.yarn, inp.value.toLowerCase());

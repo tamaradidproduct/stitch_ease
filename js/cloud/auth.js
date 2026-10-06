@@ -195,8 +195,8 @@ function openClaimSheet(n, kind, uid) {
 
   openSheet(kind === 'unclaimed' ? 'Back up your projects' : 'Projects already here',
     body + `<div class="sheet-actions">
-      <button class="sheet-btn" id="claim-no">Not now</button>
-      <button class="sheet-btn primary" id="claim-yes">${kind === 'unclaimed' ? 'Add to my account' : 'They’re mine'}</button>
+      <button class="btn" id="claim-no">Not now</button>
+      <button class="btn btn--primary" id="claim-yes">${kind === 'unclaimed' ? 'Add to my account' : 'They’re mine'}</button>
     </div>`,
     {
       // Dismissing is the same as "not now" — never a claim by accident.
@@ -277,14 +277,14 @@ function openAccountSheet(msg) {
 
   if (st === 'signed-out') {
     body = `<p class="sheet-msg">Sign in to keep your projects on all your devices.</p>
-      <button class="sheet-btn google-btn" id="acct-google">${GOOGLE_G_SVG}Continue with Google</button>
+      <button class="btn google-btn" id="acct-google">${GOOGLE_G_SVG}Continue with Google</button>
       <div class="acct-or"><span>or</span></div>
       <p class="acct-sub sheet-sub">We’ll email you a link — no password to remember.</p>
       <input class="sheet-input" id="acct-email" type="email" inputmode="email"
              autocomplete="email" placeholder="you@example.com" aria-label="Email address">
       <div class="sheet-actions">
-        <button class="sheet-btn" onclick="dismissSheet()">Not now</button>
-        <button class="sheet-btn primary" id="acct-send">Email me a link</button>
+        <button class="btn" onclick="dismissSheet()">Not now</button>
+        <button class="btn btn--primary" id="acct-send">Email me a link</button>
       </div>
       ${msg ? msgHtml(msg) : ''}
       <p class="acct-note">Your projects stay on this device either way. Signing in only adds a copy in the cloud.</p>`;
@@ -325,10 +325,10 @@ function openAccountSheet(msg) {
         ? 'A project on this device isn’t in your account yet.'
         : liveProjects().length + ' projects on this device aren’t in your account yet.'}
       </p>
-      <div class="sheet-actions"><button class="sheet-btn primary" id="acct-claim">Add them to my account</button></div>` : ''}
+      <div class="sheet-actions"><button class="btn btn--primary" id="acct-claim">Add them to my account</button></div>` : ''}
     <div class="sheet-actions">
-      <button class="sheet-btn" onclick="dismissSheet()">Done</button>
-      <button class="sheet-btn" id="acct-signout">Sign out</button>
+      <button class="btn" onclick="dismissSheet()">Done</button>
+      <button class="btn" id="acct-signout">Sign out</button>
     </div>
     <p class="acct-note">Signing out leaves your projects on this device. Nothing is deleted.</p>`;
   openSheet('Account', body, {
@@ -427,7 +427,7 @@ function syncBlockHtml() {
         <div class="acct-sync-when">${escapeHtml(syncStatusText())}</div>
         ${pending ? `<div class="acct-status">${escapeHtml(pending)}</div>` : ''}
       </div>
-      <button class="sheet-btn slim" id="acct-sync">Sync now</button>
+      <button class="btn btn--slim" id="acct-sync">Sync now</button>
     </div>
     ${err ? `<p class="acct-err">${escapeHtml(err)}</p>` : ''}`;
 }
