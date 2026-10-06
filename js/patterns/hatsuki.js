@@ -483,14 +483,14 @@ function buildHatsukiPhases(z) {
         e.rows.forEach(r => {
           per += incOf(r.text);
           n += incOf(r.text);
-          r.text += ` — ${n} sts`;
+          if (!/\b\d+ sts\.?$/.test(r.text)) r.text += ` — ${n} sts`;
         });
         n += per * (e.times - 1);
         e.text += ` — ${n} sts after all passes`;
         return;
       }
       n += incOf(e.text);
-      e.text += ` — ${n} sts`;
+      if (!/\b\d+ sts\.?$/.test(e.text)) e.text += ` — ${n} sts`;
     });
     return n;
   };
