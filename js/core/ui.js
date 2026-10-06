@@ -118,10 +118,22 @@ function checkboxAttrs(checked) {
 
 // Enter and Space press whatever checkbox has focus. The elements are divs and
 // list items with inline onclick, so the browser does not do this on its own.
+//
+// Every toggle re-renders, which replaces the element that had focus and drops
+// focus to <body>. The inline onclick string is unique per checkbox (it names the
+// entry), so it finds the new copy and puts focus back — without scrolling, since
+// the toggle handlers already scroll the active entry into view themselves.
 document.addEventListener('keydown', e => {
   if (e.key !== 'Enter' && e.key !== ' ') return;
   const t = e.target;
-  if (t && t.getAttribute && t.getAttribute('role') === 'checkbox') { e.preventDefault(); t.click(); }
+  if (!t || !t.getAttribute || t.getAttribute('role') !== 'checkbox') return;
+  e.preventDefault();
+  const key = t.getAttribute('onclick');
+  t.click();
+  if (!key || document.contains(t)) return;
+  const next = Array.from(document.querySelectorAll('[role="checkbox"]'))
+    .find(el => el.getAttribute('onclick') === key);
+  if (next) next.focus({ preventScroll: true });
 });
 
 // A colour sample.
