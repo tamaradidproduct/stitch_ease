@@ -197,7 +197,7 @@ function buildHatsukiPhases(z) {
       e('hk-lf-4', 'Row 4 (WS): DS, work following the pattern to 1 st bef end, pbf. 1 st inc\'d.'),
       e('hk-lf-5', `Row 5 (RS): ${lfRow3}`),
       e('hk-lf-6', 'Row 6 (WS): DS, work following the pattern to 1 st bef end, pbf. 1 st inc\'d.'),
-      rep('hk-lf-a', `Rows 7–${lfR}: rep rows 5–6, ${lfTimes} more times — row 6 (WS) is pbf, 1 st inc'd each pass (${lfTimes} sts)`, lfTimes, [
+      rep('hk-lf-a', `Rows 7–${lfR}: rep rows 5–6, ${lfTimes} more times — row 6 (WS) is pbf, 1 st inc'd each pass (${lfTimes} sts inc'd)`, lfTimes, [
         { id: 'hk-lf-a-1', text: `Row 5 (RS): ${lfRow3}` },
         { id: 'hk-lf-a-2', text: 'Row 6 (WS): DS, work following the pattern to 1 st bef end, pbf. 1 st inc\'d.' },
       ]),
