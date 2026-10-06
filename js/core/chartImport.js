@@ -218,9 +218,9 @@ function openChartImportPreview(draft, updateId) {
   const startName = target ? unescapeBasicHtml(target.name) : draft.name;
   const labelFor = t => STITCH_ABBR_RS[t] || t;
   const stitchList = Object.entries(draft.counts).sort((a, b) => b[1] - a[1])
-    .map(([t, n]) => `<span class="imp-chip">${t === 'K' ? '' : `<span class="imp-chip-sym">${SYMS[t] || ''}</span>`}${escapeHtml(labelFor(t))} <b>${n}</b></span>`).join('');
+    .map(([t, n]) => chipHtml({ html: `${t === 'K' ? '' : `<span class="imp-chip-sym">${SYMS[t] || ''}</span>`}${escapeHtml(labelFor(t))} <b>${n}</b>` })).join('');
   const colorList = draft.usedColors.map((hex, i) =>
-    `<span class="imp-chip"><span class="imp-swatch" style="background:${hex}"></span>${escapeHtml(draft.colorNames[hex] || 'Colour ' + (i + 1))}</span>`).join('');
+    chipHtml({ html: swatchHtml({ color: hex, size: 'sm' }) + escapeHtml(draft.colorNames[hex] || 'Colour ' + (i + 1)) })).join('');
   const sparse = draft.sparseRows > draft.rows / 2
     ? `<p class="sheet-sub imp-warn">${draft.sparseRows} of ${draft.rows} rows have one stitch or none — this chart may not be fully traced yet.</p>` : '';
 
@@ -245,8 +245,8 @@ function openChartImportPreview(draft, updateId) {
     </div>
     ${target ? `<p class="sheet-sub">${updateSharedNote()}</p>` : ''}
     <div class="sheet-actions">
-      <button class="sheet-btn" onclick="dismissSheet()">Cancel</button>
-      <button class="sheet-btn primary" id="imp-ok">${target ? 'Update' : 'Add to library'}</button>
+      <button class="btn" onclick="dismissSheet()">Cancel</button>
+      <button class="btn btn--primary" id="imp-ok">${target ? 'Update' : 'Add to library'}</button>
     </div>`;
 
   openSheet(target ? 'Update pattern' : 'Import chart', body, {

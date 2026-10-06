@@ -213,8 +213,10 @@ function triggerUpdatePattern(id, evt) {
 // at import time (see buildPatternFromRows) and would be double-escaped by
 // escaping it again here.
 function importResultSheet(title, safeHtml) {
-  openSheet(title, `<p class="sheet-msg">${safeHtml}</p>
-    <div class="sheet-actions"><button class="sheet-btn primary" onclick="dismissSheet()">OK</button></div>`);
+  openSheet(title, sheetBodyHtml({
+    messageHtml: safeHtml,
+    actions: [btnHtml({ label: 'OK', variant: 'primary', onclick: 'dismissSheet()' })],
+  }));
 }
 
 // The file input accepts CSV and .stitchchart.json alike; which parser runs
@@ -254,12 +256,14 @@ function confirmUpdatePattern(text, id) {
   let built;
   try { built = buildPatternFromRows(parseCsv(text)); }
   catch (e) { importResultSheet('Update failed', escapeHtml(e.message || String(e))); return; }
-  const body = `<p class="sheet-msg">Replace "${existing.name}" with "${built.name}" from this file?</p>
-    <p class="sheet-sub">${updateSharedNote()}</p>
-    <div class="sheet-actions">
-      <button class="sheet-btn" onclick="dismissSheet()">Cancel</button>
-      <button class="sheet-btn primary" id="pattern-replace-ok">Update</button>
-    </div>`;
+  const body = sheetBodyHtml({
+    messageHtml: `Replace "${existing.name}" with "${built.name}" from this file?`,
+    detail: updateSharedNote(),
+    actions: [
+      btnHtml({ label: 'Cancel', onclick: 'dismissSheet()' }),
+      btnHtml({ label: 'Update', variant: 'primary', id: 'pattern-replace-ok' }),
+    ],
+  });
   openSheet('Update pattern?', body, {
     onOpen: el => {
       el.querySelector('#pattern-replace-ok').onclick = () => {

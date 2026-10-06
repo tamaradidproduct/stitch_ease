@@ -522,7 +522,7 @@ function rowRecap(row) {
     while (j < cells.length && cells[j].c === cells[i].c) j++;
     const c = cells[i].c;
     const sw = c !== null
-      ? `<span class="recap-swatch" style="background:var(--yarn-${c})"></span>${yarns[c] ? escapeHtml(yarns[c].name) + ': ' : ''}`
+      ? `${swatchHtml({ color: `var(--yarn-${c})`, size: 'xs', cls: 'recap-swatch' })}${yarns[c] ? escapeHtml(yarns[c].name) + ': ' : ''}`
       : '';
     runs.push(sw + collapseRepeats(rleStitches(cells.slice(i, j).map(x => x.t), abbr)).join(', '));
     i = j;
@@ -546,7 +546,7 @@ function pairedRecapHtml(row, phase, pairedText) {
   // real weight here (a swatch dot + the row's biggest text), not the same
   // small muted caps as the rest of the recap's metadata.
   const headText = colorInfo
-    ? `<span class="recap-row-dot" style="background:${colorInfo.hex}"></span>Row ${row} · work in ${escapeHtml(colorInfo.name)}`
+    ? `${swatchHtml({ color: colorInfo.hex, round: true })}Row ${row} · work in ${escapeHtml(colorInfo.name)}`
     : `Row ${row}`;
   return `<div class="recap-title">${headText}</div>
     <div class="recap-section">
@@ -588,8 +588,8 @@ function recapHtml(row) {
   const confirmEntry = (PHASES[cur].entries || []).find(e => e.postChart);
   if (confirmEntry && row === CHART_TOTAL) {
     const done = entryDone(confirmEntry, entryProg);
-    html += `<div class="chart-confirm-step ${done ? 'done' : ''}" onclick="toggleEntry('${confirmEntry.id}')">
-      <div class="step-circle">${CHECK_SVG}</div>
+    html += `<div class="chart-confirm-step ${done ? 'done' : ''}"${checkboxAttrs(done)} onclick="toggleEntry('${confirmEntry.id}')">
+      ${checkHtml()}
       <div class="step-text">${confirmEntry.text}</div>
     </div>`;
   }
@@ -600,19 +600,19 @@ function renderChartDock() {
   const dock = document.getElementById('chart-dock');
   let html = `<div class="chart-recap" id="chart-recap">${recapHtml(chartCurrentRow)}</div>`;
   html += `<div class="chart-footer">
-    <button class="cc-ctrl cc-minus" onclick="changeChartRow(-1)">−</button>
+    ${stepperBtnHtml({ dir: 'minus', size: 'lg', onclick: 'changeChartRow(-1)', label: 'Previous row' })}
     <div class="cc-stats">
       <span class="cc-stat-lbl">Current row</span>
       <span class="cc-cur-val" id="cc-cur">${chartCurrentRow}</span>
       <span class="cc-total-lbl">Total rows ${CHART_TOTAL}</span>
     </div>
-    <button class="cc-ctrl cc-plus" onclick="changeChartRow(1)">+</button>
+    ${stepperBtnHtml({ dir: 'plus', size: 'lg', onclick: 'changeChartRow(1)', label: 'Next row' })}
   </div>`;
 
   html += '<div class="nav-btns" id="chart-nav-btns">';
-  if (cur > 0) html += `<button class="nav-btn" onclick="go(${cur - 1})">← Back</button>`;
-  if (cur < PHASES.length - 1) html += `<button class="nav-btn primary" onclick="go(${cur + 1})">Next →</button>`;
-  else html += `<button class="nav-btn primary" onclick="showFinishedScreen()">Finished! 🎉</button>`;
+  if (cur > 0) html += btnHtml({ label: '← Back', variant: 'lg', cls: 'nav-btn', onclick: `go(${cur - 1})` });
+  if (cur < PHASES.length - 1) html += btnHtml({ label: 'Next →', variant: ['primary', 'lg'], cls: 'nav-btn', onclick: `go(${cur + 1})` });
+  else html += btnHtml({ label: 'Finished! 🎉', variant: ['primary', 'lg'], cls: 'nav-btn', onclick: 'showFinishedScreen()' });
   html += '</div>';
 
   dock.innerHTML = html;
