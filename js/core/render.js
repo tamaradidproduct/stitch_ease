@@ -348,9 +348,9 @@ function renderPhase() {
       '</div></div></div>';
 
     html += '<div class="nav-btns">';
-    if (cur > 0) html += `<button class="nav-btn" onclick="go(${cur - 1})">← Back</button>`;
-    if (cur < PHASES.length - 1) html += `<button class="nav-btn primary" onclick="go(${cur + 1})">Next →</button>`;
-    else html += `<button class="nav-btn primary" onclick="showFinishedScreen()">Finished! 🎉</button>`;
+    if (cur > 0) html += btnHtml({ label: '← Back', variant: 'lg', cls: 'nav-btn', onclick: `go(${cur - 1})` });
+    if (cur < PHASES.length - 1) html += btnHtml({ label: 'Next →', variant: ['primary', 'lg'], cls: 'nav-btn', onclick: `go(${cur + 1})` });
+    else html += btnHtml({ label: 'Finished! 🎉', variant: ['primary', 'lg'], cls: 'nav-btn', onclick: 'showFinishedScreen()' });
     html += '</div>';
   }
 
@@ -485,8 +485,8 @@ function openColorSheet() {
   }).join('');
   const body = `${rows}
     <div class="sheet-actions">
-      <button class="sheet-btn" onclick="dismissSheet()">Cancel</button>
-      <button class="sheet-btn primary" id="sheet-ok">Save</button>
+      ${btnHtml({ label: 'Cancel', onclick: 'dismissSheet()' })}
+      ${btnHtml({ label: 'Save', variant: 'primary', id: 'sheet-ok' })}
     </div>`;
   openSheet('Yarn colors', body, {
     onOpen: el => {
@@ -527,8 +527,8 @@ function sheetConfirm(o) {
   const body = `<p class="sheet-msg">${escapeHtml(o.message)}</p>
     ${o.detail ? `<p class="sheet-sub">${escapeHtml(o.detail)}</p>` : ''}
     <div class="sheet-actions">
-      <button class="sheet-btn" onclick="dismissSheet()">${escapeHtml(o.cancelLabel || 'Cancel')}</button>
-      <button class="sheet-btn ${o.danger ? 'danger' : 'primary'}" id="sheet-ok">${escapeHtml(o.confirmLabel || 'OK')}</button>
+      ${btnHtml({ label: o.cancelLabel || 'Cancel', onclick: 'dismissSheet()' })}
+      ${btnHtml({ label: o.confirmLabel || 'OK', variant: o.danger ? 'danger' : 'primary', id: 'sheet-ok' })}
     </div>`;
   openSheet(o.title, body, {
     onDismiss: o.onCancel,
@@ -543,8 +543,8 @@ function sheetPrompt(o) {
     <input class="sheet-input" id="sheet-input" type="text"
            value="${escapeHtml(o.value || '')}" aria-label="${escapeHtml(o.title)}">
     <div class="sheet-actions">
-      <button class="sheet-btn" onclick="dismissSheet()">Cancel</button>
-      <button class="sheet-btn primary" id="sheet-ok">${escapeHtml(o.confirmLabel || 'Save')}</button>
+      ${btnHtml({ label: 'Cancel', onclick: 'dismissSheet()' })}
+      ${btnHtml({ label: o.confirmLabel || 'Save', variant: 'primary', id: 'sheet-ok' })}
     </div>`;
   openSheet(o.title, body, {
     onDismiss: o.onCancel,
@@ -668,8 +668,8 @@ function showFinishedScreen() {
       <div class="finished-title">${proj ? escapeHtml(proj.name) : 'Your project'} is finished!</div>
       <div class="finished-sub">Every step of ${pat ? escapeHtml(pat.name) : 'the pattern'} is complete — nice work.</div>
       <div class="finished-actions">
-        <button class="finished-btn primary" onclick="closeFinishedScreen(); goHome();">Back to library</button>
-        <button class="finished-btn" onclick="closeFinishedScreen()">Keep reviewing</button>
+        ${btnHtml({ label: 'Back to library', variant: 'accent', onclick: 'closeFinishedScreen(); goHome();' })}
+        ${btnHtml({ label: 'Keep reviewing', onclick: 'closeFinishedScreen()' })}
       </div>
     </div>`;
   document.body.appendChild(scrim);
@@ -876,7 +876,7 @@ function renderPicker() {
   document.getElementById('phase-content').innerHTML =
     `<div class="picker-drop" ondragover="event.preventDefault()" ondrop="onPickerDrop(event)">
     <div class="picker-hint">Choose a pattern for your new project</div><div class="lib-list">${cards}</div>
-    <button class="picker-import-btn" onclick="triggerImportPattern()">Import pattern</button>
+    ${btnHtml({ label: 'Import pattern', variant: 'block', cls: 'picker-import-btn', onclick: 'triggerImportPattern()' })}
     <div class="picker-import-sub">A chart export (.stitchchart.json) or a pattern CSV</div>
     <input type="file" id="pattern-csv-input" accept=".json,.csv,application/json,text/csv" style="display:none"
            onchange="handlePatternCsvFile(this)"></div>`;

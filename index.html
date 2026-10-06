@@ -39,6 +39,30 @@
        source-panel divider (.cc-seg-end) needs to read as a different kind
        of line at a glance, not a second copy of the marker. */
     --ch-purple: #8b5cf6;
+    /* semantic + pressed colours (were hardcoded hex across the file) */
+    --on-accent: #fff;
+    --text-pressed: #444;
+    --accent-pressed: #3c5a4b;
+    --ch-blue-pressed: #1d4ed8;
+    --danger: #a4553f;
+    --danger-pressed: #8e4634;
+    --danger-text: #8e4634;
+    --danger-bg: #f7ece8;
+    --danger-border: #e4c7bd;
+    --danger-strong: #8a3b32;
+    --warn: #a97c22;
+    --warn-border: #c99a3f;
+    --warn-strong: #8a6417;
+    /* elevation */
+    --shadow-xs: 0 1px 3px rgba(0,0,0,0.25);
+    --shadow-fab: 0 4px 14px rgba(0,0,0,0.22);
+    --shadow-menu: 0 4px 16px rgba(0,0,0,0.15);
+    --shadow-float: 0 4px 16px rgba(0,0,0,0.18);
+    --shadow-toast: 0 4px 16px rgba(0,0,0,0.12);
+    /* radii beyond --radius / --radius-sm */
+    --radius-xs: 6px;
+    --radius-lg: 20px;
+    --radius-pill: 999px;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -120,7 +144,7 @@
     width: 22px; height: 22px; margin-left: -11px; transform: translateY(-50%);
     border-radius: 50%;
     background: var(--ch-blue); border: 2px solid var(--card);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    box-shadow: var(--shadow-xs);
     cursor: grab; touch-action: none;
   }
   .mid-row-handle:active { cursor: grabbing; }
@@ -153,10 +177,10 @@
   }
   /* Signed in: the accent fill is the whole status indicator, so it reads at a
      glance without a label competing with the app title. */
-  .acct-btn.in { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .acct-btn.in { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
   /* Signed in but unreachable — amber ring, not an error colour: nothing is
      wrong, the work is just not backed up yet. */
-  .acct-btn.off { border-color: #c99a3f; color: #a97c22; }
+  .acct-btn.off { border-color: var(--warn-border); color: var(--warn); }
 
   /* Glossary button — same circular icon-button family as .acct-btn, sits
      just before it so the two read as a row of header utilities. */
@@ -171,7 +195,7 @@
   .acct-row { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
   .acct-avatar {
     width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
-    background: var(--accent); color: #fff;
+    background: var(--accent); color: var(--on-accent);
     display: flex; align-items: center; justify-content: center;
     font-size: 15px; font-weight: 600;
   }
@@ -191,11 +215,10 @@
   .acct-sync-when { font-size: 13px; color: var(--text); }
   /* .sheet-btn is flex:1 for the paired full-width rows; here it sits beside a
      line of text and has to be content-width instead. */
-  .sheet-btn.slim { flex: 0 0 auto; margin: 0; padding: 9px 16px; font-size: 13px; }
 
   .acct-err {
-    font-size: 13px; line-height: 1.45; color: #8e4634;
-    background: #f7ece8; border: 1px solid #e4c7bd; border-radius: var(--radius);
+    font-size: 13px; line-height: 1.45; color: var(--danger-text);
+    background: var(--danger-bg); border: 1px solid var(--danger-border); border-radius: var(--radius);
     padding: 10px 12px; margin-top: 12px;
   }
   .acct-ok {
@@ -251,7 +274,7 @@
   .header h1 span { font-style: italic; color: var(--accent); }
   .header-badge {
     font-size: 11px; font-weight: 500; color: var(--accent);
-    background: var(--accent-light); padding: 3px 8px; border-radius: 20px;
+    background: var(--accent-light); padding: 3px 8px; border-radius: var(--radius-lg);
   }
 
   /* ── Pattern-title header (back to library) ── */
@@ -291,32 +314,25 @@
   .proj-actions { display: flex; gap: 4px; flex-shrink: 0; }
   .proj-act {
     font-size: 11px; color: var(--muted); background: none;
-    border: 1px solid var(--border); border-radius: 6px;
+    border: 1px solid var(--border); border-radius: var(--radius-xs);
     padding: 3px 9px; cursor: pointer; font-family: inherit;
   }
   .proj-act:active { background: var(--bg); }
-  .proj-del { color: #a4553f; border-color: #e4c7bd; }
+  .proj-del { color: var(--danger); border-color: var(--danger-border); }
 
   /* New-project floating action button + empty/picker states */
   .fab-new {
     position: fixed; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom));
     z-index: 60; width: 56px; height: 56px; border-radius: 50%;
-    background: var(--accent); color: #fff; border: none;
+    background: var(--accent); color: var(--on-accent); border: none;
     font-size: 30px; font-weight: 300; line-height: 1; padding-bottom: 3px;
     display: flex; align-items: center; justify-content: center;
-    cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,0.22);
+    cursor: pointer; box-shadow: var(--shadow-fab);
     transition: background 0.15s, transform 0.12s;
   }
-  .fab-new:active { background: #3c5a4b; transform: scale(0.94); }
+  .fab-new:active { background: var(--accent-pressed); transform: scale(0.94); }
   .home-empty { text-align: center; color: var(--muted); font-size: 14px; line-height: 1.6; padding: 24px 12px; }
   .picker-hint { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
-  .picker-import-btn {
-    width: 100%; margin-top: 16px; padding: 13px; border-radius: var(--radius);
-    border: 1px solid var(--border); background: var(--card);
-    font-family: inherit; font-size: 14px; font-weight: 500;
-    color: var(--text); cursor: pointer;
-  }
-  .picker-import-btn:active { background: var(--bg); }
   .picker-import-sub { font-size: 12px; color: var(--muted); text-align: center; margin-top: 6px; }
 
   /* ── Chart import preview sheet ── */
@@ -331,12 +347,12 @@
   .imp-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
   .imp-chip {
     display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px;
-    border: 1px solid var(--border); border-radius: 999px; font-size: 12px; color: var(--text);
+    border: 1px solid var(--border); border-radius: var(--radius-pill); font-size: 12px; color: var(--text);
   }
   .imp-chip b { font-weight: 600; color: var(--muted); }
   .imp-chip-sym { width: 14px; height: 14px; color: var(--text); display: inline-block; }
   .imp-swatch { width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(0,0,0,.2); flex-shrink: 0; }
-  .imp-swatch-lg { width: 28px; height: 28px; border-radius: 6px; }
+  .imp-swatch-lg { width: 28px; height: 28px; border-radius: var(--radius-xs); }
   .imp-yarn { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
   .imp-yarn .sheet-input { flex: 1; margin: 0; }
   .imp-seg { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
@@ -345,7 +361,7 @@
     font-size: 13px; color: var(--text); cursor: pointer;
   }
   .imp-seg button + button { border-left: 1px solid var(--border); }
-  .imp-seg button[aria-checked="true"] { background: var(--text); color: #fff; }
+  .imp-seg button[aria-checked="true"] { background: var(--text); color: var(--on-accent); }
   .imp-seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
   /* ── Phase switch control + tabs ── */
@@ -369,11 +385,11 @@
   .phase-scroll::-webkit-scrollbar { display: none; }
   .phase-tab {
     white-space: nowrap; font-size: 12px; font-weight: 500; padding: 6px 13px;
-    border-radius: 20px; border: 1px solid var(--border); background: transparent;
+    border-radius: var(--radius-lg); border: 1px solid var(--border); background: transparent;
     color: var(--muted); cursor: pointer; transition: all 0.15s;
     display: flex; align-items: center; gap: 5px;
   }
-  .phase-tab.active { background: var(--text); color: #fff; border-color: var(--text); }
+  .phase-tab.active { background: var(--text); color: var(--on-accent); border-color: var(--text); }
   .phase-tab.complete { background: var(--done-bg); color: var(--done-text); border-color: transparent; }
   .phase-tab .check-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--done-text); display: none; }
   .phase-tab.complete .check-dot { display: block; }
@@ -411,7 +427,7 @@
   .reset-menu {
     position: fixed; z-index: 250;
     background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    box-shadow: var(--shadow-menu);
     display: flex; flex-direction: column;
     min-width: 200px; overflow: hidden;
   }
@@ -482,24 +498,44 @@
   .size-opt { flex: none; display: flex; justify-content: space-between; align-items: baseline; text-align: left; }
   .size-opt-sub { font-size: 12px; color: var(--muted); font-weight: 400; }
   .sheet-actions { display: flex; gap: 10px; margin-top: 18px; }
-  .sheet-btn {
+  /* ── Button ── one component; the older names are aliases until every call
+     site has moved to .btn (see btnHtml in js/core/ui.js).
+     Variants: --primary (dark), --accent (green), --danger, --slim, --lg, --block.
+     Position matters: this sits where .sheet-btn used to, so it still beats
+     .google-btn and .size-opt on the cascade exactly as before. */
+  .btn, .sheet-btn, .nav-btn, .finished-btn, .picker-import-btn {
     flex: 1; padding: 13px; border-radius: var(--radius);
     border: 1px solid var(--border); background: var(--card);
     font-family: inherit; font-size: 14px; font-weight: 500;
     color: var(--text); cursor: pointer; transition: background 0.15s;
   }
-  .sheet-btn.primary { background: var(--text); color: #fff; border-color: var(--text); }
-  .sheet-btn.primary:active { background: #444; }
-  .sheet-btn.danger { background: #a4553f; color: #fff; border-color: #a4553f; }
-  .sheet-btn.danger:active { background: #8e4634; }
-  .sheet-btn:disabled { opacity: 0.45; cursor: default; }
+  .btn:active, .sheet-btn:active, .nav-btn:active, .finished-btn:active, .picker-import-btn:active { background: var(--bg); }
+  .btn--lg, .nav-btn { padding: 14px; }
+  .btn--block, .picker-import-btn { width: 100%; }
+  .picker-import-btn { margin-top: 16px; }
+  .btn--primary, .sheet-btn.primary, .nav-btn.primary {
+    background: var(--text); color: var(--on-accent); border-color: var(--text);
+  }
+  .btn--primary:active, .sheet-btn.primary:active, .nav-btn.primary:active { background: var(--text-pressed); }
+  .btn--accent, .finished-btn.primary {
+    background: var(--accent); color: var(--on-accent); border-color: var(--accent);
+  }
+  .btn--accent:active, .finished-btn.primary:active { background: var(--accent-pressed); }
+  .btn--danger, .sheet-btn.danger {
+    background: var(--danger); color: var(--on-accent); border-color: var(--danger);
+  }
+  .btn--danger:active, .sheet-btn.danger:active { background: var(--danger-pressed); }
+  .btn:disabled, .sheet-btn:disabled { opacity: 0.45; cursor: default; }
+  /* .btn is flex:1 for the paired full-width rows; --slim sits beside a line of
+     text and has to be content-width instead. */
+  .btn--slim, .sheet-btn.slim { flex: 0 0 auto; margin: 0; padding: 9px 16px; font-size: 13px; }
   /* The PDF "Open" is a real <a> — a user-gesture anchor click is the one path
      no popup blocker touches, and on Android Chrome it's what hands a blob:
      URL to the system viewer. It has to be dressed as the button it replaces. */
-  a.sheet-btn {
-    display: flex; align-items: center; justify-content: center;
-    text-decoration: none; box-sizing: border-box;
-  }
+  a.btn, a.sheet-btn { display: flex; align-items: center; justify-content: center; }
+  /* The PDF "Open" is a real <a> — a user-gesture anchor click is the one path
+     no popup blocker touches, and on Android Chrome it's what hands a blob:
+     URL to the system viewer. It has to be dressed as the button it replaces. */
 
   /* ── Original pattern PDF (js/core/pdf.js) ── */
   .pdf-file {
@@ -512,7 +548,7 @@
   /* Where this file stands relative to the account. Accent = safe, amber =
      still only here — matching the account button's own two states. */
   .pdf-file-cloud { font-size: 12px; color: var(--accent); margin-top: 2px; }
-  .pdf-file-cloud.pending { color: #a97c22; }
+  .pdf-file-cloud.pending { color: var(--warn); }
   .pdf-retry { margin-top: 12px; }
   .pdf-retry .sheet-actions { margin-top: 8px; }
 
@@ -568,7 +604,7 @@
   .acct-pdf-sub { font-size: 12px; color: var(--muted); word-break: break-all; }
   .acct-pdf-del {
     flex-shrink: 0; background: none; border: none; padding: 4px 2px;
-    font-family: inherit; font-size: 12px; color: #a4553f; cursor: pointer;
+    font-family: inherit; font-size: 12px; color: var(--danger); cursor: pointer;
   }
   .note-row {
     display: flex; align-items: baseline; gap: 12px;
@@ -615,7 +651,7 @@
   .finished-card {
     position: relative; z-index: 1;
     width: 100%; max-width: 340px;
-    background: var(--card); border-radius: 20px;
+    background: var(--card); border-radius: var(--radius-lg);
     padding: 36px 28px 28px;
     text-align: center;
     box-shadow: 0 12px 40px rgba(0,0,0,0.22);
@@ -635,14 +671,6 @@
   .finished-title { font-family: Georgia, serif; font-size: 1.35rem; color: var(--text); margin: 14px 0 6px; }
   .finished-sub { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 24px; }
   .finished-actions { display: flex; flex-direction: column; gap: 10px; }
-  .finished-btn {
-    padding: 13px; border-radius: var(--radius); font-size: 14px; font-weight: 500;
-    cursor: pointer; border: 1px solid var(--border); background: var(--card); color: var(--text);
-    transition: background 0.15s;
-  }
-  .finished-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
-  .finished-btn:active { background: var(--bg); }
-  .finished-btn.primary:active { background: #3c5949; }
 
   /* Confetti falls across the whole scrim, behind the card */
   .confetti-piece {
@@ -688,7 +716,7 @@
   }
   .step.active:active { background: var(--card); }
   .step-circle {
-    width: 22px; height: 22px; border-radius: 6px;
+    width: 22px; height: 22px; border-radius: var(--radius-xs);
     border: 2px solid var(--muted); background: transparent;
     flex-shrink: 0; display: flex; align-items: center; justify-content: center;
     margin-top: 2px; transition: all 0.15s;
@@ -766,7 +794,7 @@
   .repeat-tag {
     flex-shrink: 0; font-size: 10px; font-weight: 600; letter-spacing: 0.03em;
     text-transform: uppercase; color: var(--accent); background: var(--accent-light);
-    padding: 2px 7px; border-radius: 20px; line-height: 1.4;
+    padding: 2px 7px; border-radius: var(--radius-lg); line-height: 1.4;
   }
   .step.done .repeat-tag { color: var(--muted); background: var(--bg); }
 
@@ -889,14 +917,6 @@
     padding: 16px 1.25rem calc(16px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--border);
   }
-  .nav-btn {
-    flex: 1; padding: 14px; border-radius: var(--radius);
-    border: 1px solid var(--border); background: var(--card);
-    font-size: 14px; font-weight: 500; color: var(--text); cursor: pointer; transition: background 0.15s;
-  }
-  .nav-btn:active { background: var(--bg); }
-  .nav-btn.primary { background: var(--text); color: #fff; border-color: var(--text); }
-  .nav-btn.primary:active { background: #444; }
 
   /* ── Chart Tracker ── */
   .chart-tracker {
@@ -1026,11 +1046,11 @@
   }
   .yarn-chip {
     display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 5px;
-    border: 1px solid var(--border); border-radius: 999px; background: var(--card);
+    border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--card);
     font-size: 12px; color: var(--text);
   }
   .yarn-dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0,0,0,.2); }
-  .yarn-chips:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+  .yarn-chips:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-xs); }
   .yarn-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
   .yarn-row + .yarn-row { border-top: 1px solid var(--border); }
   .yarn-pick {
@@ -1144,7 +1164,7 @@
   .color-edit-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
   .color-edit-swatch {
     width: 36px; height: 36px; flex-shrink: 0; padding: 0; cursor: pointer;
-    border: 1px solid var(--border); border-radius: 6px;
+    border: 1px solid var(--border); border-radius: var(--radius-xs);
   }
   .color-edit-name { flex: 1; margin: 0; }
   .color-grid {
@@ -1157,7 +1177,7 @@
   .color-grid[hidden] { display: none; }
   .color-swatch-opt {
     width: 100%; aspect-ratio: 1; padding: 0; cursor: pointer;
-    border: 1px solid var(--border); border-radius: 6px;
+    border: 1px solid var(--border); border-radius: var(--radius-xs);
   }
   .color-swatch-opt:active { transform: scale(0.92); }
 
@@ -1206,8 +1226,8 @@
   }
   .cc-minus { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
   .cc-minus:active { background: var(--border); }
-  .cc-plus { background: var(--ch-blue); color: #fff; }
-  .cc-plus:active { background: #1d4ed8; }
+  .cc-plus { background: var(--ch-blue); color: var(--on-accent); }
+  .cc-plus:active { background: var(--ch-blue-pressed); }
 
   .cc-stats { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 0 12px; }
   .cc-stat-lbl { font-size: 11px; color: var(--muted); letter-spacing: 0.02em; }
@@ -1223,11 +1243,11 @@
   }
   #banner-stack > * { pointer-events: auto; }
   #update-banner {
-    background: var(--text); color: #fff;
+    background: var(--text); color: var(--on-accent);
     border-radius: var(--radius); padding: 13px 16px;
     display: flex; align-items: center; justify-content: space-between;
     font-size: 14px; gap: 12px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+    box-shadow: var(--shadow-float);
     animation: slide-up 0.25s ease;
   }
   @keyframes slide-up { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -1241,11 +1261,11 @@
      dark: nothing is broken and nothing is lost, there is just a question
      waiting. Persistent until answered. */
   #conflict-banner {
-    background: #8a6417; color: #fff;
+    background: var(--warn-strong); color: var(--on-accent);
     border-radius: var(--radius); padding: 13px 16px;
     display: flex; align-items: center; justify-content: space-between;
     font-size: 14px; gap: 12px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+    box-shadow: var(--shadow-float);
     animation: slide-up 0.25s ease;
   }
   #conflict-banner button {
@@ -1261,10 +1281,10 @@
      message. Raised only for the two states this device cannot resolve itself;
      an out-of-date row is converted on read (see upgradeLegacyRow). */
   .sync-banner {
-    background: #8a6417; color: #fff;
+    background: var(--warn-strong); color: var(--on-accent);
     border-radius: var(--radius); padding: 13px 16px;
     font-size: 14px; line-height: 1.45;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+    box-shadow: var(--shadow-float);
     animation: slide-up 0.25s ease;
   }
 
@@ -1301,11 +1321,11 @@
     padding: 10px 12px 10px 16px;
     display: flex; align-items: center; justify-content: space-between;
     font-size: 13.5px; gap: 12px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    box-shadow: var(--shadow-toast);
     animation: slide-up 0.25s ease;
   }
   #pattern-chip button {
-    background: var(--accent); color: #fff; border: none;
+    background: var(--accent); color: var(--on-accent); border: none;
     border-radius: 8px; padding: 7px 14px;
     font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; flex-shrink: 0;
   }
@@ -1318,10 +1338,10 @@
   /* ── Save-failure banner ── persistent and buttonless: the only fix is
      freeing space, which the user has to do themselves. */
   #save-error {
-    background: #8a3b32; color: #fff;
+    background: var(--danger-strong); color: var(--on-accent);
     border-radius: var(--radius); padding: 13px 16px;
     font-size: 13.5px; line-height: 1.45;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+    box-shadow: var(--shadow-float);
     animation: slide-up 0.25s ease;
   }
 </style>
@@ -1363,6 +1383,7 @@
 <script src="js/core/rows.js"></script>
 <script src="js/core/chart.js"></script>
 <script src="js/core/yarns.js"></script>
+<script src="js/core/ui.js"></script>
 <script src="js/core/render.js"></script>
 <script src="js/core/patternImport.js"></script>
 <script src="js/core/chartImport.js"></script>

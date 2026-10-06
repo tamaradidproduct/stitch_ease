@@ -610,9 +610,9 @@ function renderChartDock() {
   </div>`;
 
   html += '<div class="nav-btns" id="chart-nav-btns">';
-  if (cur > 0) html += `<button class="nav-btn" onclick="go(${cur - 1})">← Back</button>`;
-  if (cur < PHASES.length - 1) html += `<button class="nav-btn primary" onclick="go(${cur + 1})">Next →</button>`;
-  else html += `<button class="nav-btn primary" onclick="showFinishedScreen()">Finished! 🎉</button>`;
+  if (cur > 0) html += btnHtml({ label: '← Back', variant: 'lg', cls: 'nav-btn', onclick: `go(${cur - 1})` });
+  if (cur < PHASES.length - 1) html += btnHtml({ label: 'Next →', variant: ['primary', 'lg'], cls: 'nav-btn', onclick: `go(${cur + 1})` });
+  else html += btnHtml({ label: 'Finished! 🎉', variant: ['primary', 'lg'], cls: 'nav-btn', onclick: 'showFinishedScreen()' });
   html += '</div>';
 
   dock.innerHTML = html;
