@@ -1128,7 +1128,7 @@ function openConflictSheet() {
        <button class="btn" id="cfl-mine">Keep this device</button>
        <button class="btn" id="cfl-theirs">Use the other</button>
      </div>
-     <p class="acct-note">Closing this keeps what's on this device — nothing is lost either way.</p>`,
+     <p class="msg msg--note">Closing this keeps what's on this device — nothing is lost either way.</p>`,
     {
       // Dismissing is an answer, not a deferral: this device's values are
       // already stored, so leaving them is the only outcome that changes

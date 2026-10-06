@@ -253,11 +253,11 @@ function pdfRemoteHtml(pat, src) {
       <button class="btn ${src ? '' : 'btn--primary'}" id="pdf-download" ${downloading ? 'disabled' : ''}>${
         downloading ? 'Downloading…' : (hasLocal ? 'Get the newer copy' : 'Download to this device')}</button>
     </div>
-    ${busy.failed === 'download' ? `<p class="acct-err">Couldn’t download it just now. Check your connection and try again — nothing was lost.</p>` : ''}
+    ${busy.failed === 'download' ? `<p class="msg msg--error">Couldn’t download it just now. Check your connection and try again — nothing was lost.</p>` : ''}
     <div class="sheet-actions">
       <button class="btn" id="pdf-replace">Use a different file</button>
     </div>
-    <p class="acct-note">Downloaded once and kept on this device, so it opens offline afterwards.</p>`;
+    <p class="msg msg--note">Downloaded once and kept on this device, so it opens offline afterwards.</p>`;
 }
 
 // Where a local file stands relative to the account, in one line. Silent when
@@ -286,7 +286,7 @@ function pdfUploadErrorHtml(patternId) {
   if (typeof pdfActivityFor !== 'function') return '';
   if (pdfActivityFor(patternId).failed !== 'upload') return '';
   return `<div class="pdf-retry">
-      <p class="acct-err">Couldn’t back this up to your account. It’s still safe on this device.</p>
+      <p class="msg msg--error">Couldn’t back this up to your account. It’s still safe on this device.</p>
       <div class="sheet-actions"><button class="btn btn--slim" id="pdf-retry-upload">Try again</button></div>
     </div>`;
 }
@@ -321,7 +321,7 @@ function pdfViewHtml(pat, src, state) {
       <button class="btn" id="pdf-replace">${src.kind === 'attached' ? 'Replace' : 'Use my own file'}</button>
       ${src.kind === 'attached' ? '<button class="btn" id="pdf-remove">Remove</button>' : ''}
     </div>
-    <p class="acct-note">${pdfFooterNote(pat.id, src)}</p>`;
+    <p class="msg msg--note">${pdfFooterNote(pat.id, src)}</p>`;
 }
 
 // The closing line has to agree with whatever is above it. It previously said
@@ -347,15 +347,15 @@ function pdfEmptyHtml(pat) {
   const signedIn = typeof cloudState === 'function' && cloudState() === 'signed-in';
   // The id is refreshPdfSheet()'s marker for "this body is still a PDF sheet" —
   // the file states are recognised by .pdf-file, and the empty state has none.
-  return `
-    <p class="sheet-msg" id="pdf-empty">No original pattern saved for ${escapeHtml(pat.name)}.</p>
-    <p class="sheet-sub">Add the PDF you bought it in, and it’ll be one tap away from any section — including offline.</p>
-    <div class="sheet-actions">
-      <button class="btn btn--primary" id="pdf-replace">Choose a PDF</button>
-    </div>
-    <p class="acct-note">${signedIn
+  return sheetBodyHtml({
+    messageHtml: `No original pattern saved for ${escapeHtml(pat.name)}.`,
+    messageId: 'pdf-empty',
+    detail: 'Add the PDF you bought it in, and it’ll be one tap away from any section — including offline.',
+    actions: [btnHtml({ label: 'Choose a PDF', variant: 'primary', id: 'pdf-replace' })],
+    note: signedIn
       ? 'Saved to your account, so your other devices can download it too.'
-      : 'Stored on this device. Sign in and it’ll back up to your account and reach your other devices.'}</p>`;
+      : 'Stored on this device. Sign in and it’ll back up to your account and reach your other devices.',
+  });
 }
 
 function wirePdfSheet(body, pat) {
@@ -457,13 +457,13 @@ function confirmRemovePatternPdfFrom(pat, after) {
 }
 
 function pdfError(message, detail) {
-  openSheet('Original pattern', `
-    <p class="sheet-msg">${escapeHtml(message)}</p>
-    <p class="sheet-sub">${escapeHtml(detail)}</p>
-    <div class="sheet-actions">
-      <button class="btn" onclick="dismissSheet()">Close</button>
-      <button class="btn btn--primary" id="pdf-retry">Pick another file</button>
-    </div>`, {
+  openSheet('Original pattern', sheetBodyHtml({
+    message, detail,
+    actions: [
+      btnHtml({ label: 'Close', onclick: 'dismissSheet()' }),
+      btnHtml({ label: 'Pick another file', variant: 'primary', id: 'pdf-retry' }),
+    ],
+  }), {
     onOpen: el => {
       const pat = activePattern();
       el.querySelector('#pdf-retry').onclick = () => { if (pat) choosePatternPdf(pat); };

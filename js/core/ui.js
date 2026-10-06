@@ -27,3 +27,50 @@ function btnHtml(o) {
   }
   return `<button class="${cls}"${attr}>${inner}</button>`;
 }
+
+// An inline message: a boxed error or confirmation, or a muted footnote.
+//
+//   kind    'error' | 'ok' | 'note'
+//   text    plain text — escaped here
+//   html    trusted markup — NOT escaped; use instead of text
+//   plain   note only: no rule above it, tucked under the line before it
+//   id      optional element id
+function msgHtml(o) {
+  const cls = 'msg msg--' + o.kind + (o.plain ? ' msg--plain' : '');
+  const id = o.id ? ` id="${escapeHtml(o.id)}"` : '';
+  const inner = o.html != null ? o.html : escapeHtml(o.text == null ? '' : o.text);
+  return `<p class="${cls}"${id}>${inner}</p>`;
+}
+
+// A row of buttons: pass btnHtml() strings.
+function sheetActionsHtml(buttons) {
+  return `<div class="sheet-actions">${buttons.join('')}</div>`;
+}
+
+// The content stack most sheets share, in the order they all read:
+//   message → detail → body → error → actions → note
+//
+//   message / messageHtml   the question or statement, escaped / trusted
+//   messageId               id on the message paragraph
+//   detail  / detailHtml    one muted line under it, escaped / trusted
+//   body                    trusted markup between detail and the rest (an input, a list)
+//   error                   plain text, shown as a boxed error
+//   actions                 array of btnHtml() strings
+//   note    / noteHtml      footnote under the actions, escaped / trusted
+//
+// A sheet whose order differs (a note above its buttons, two button rows)
+// composes msgHtml() and sheetActionsHtml() directly instead.
+function sheetBodyHtml(o) {
+  const part = (plain, trusted) => trusted != null ? trusted : (plain != null ? escapeHtml(plain) : null);
+  const message = part(o.message, o.messageHtml);
+  const detail = part(o.detail, o.detailHtml);
+  const note = part(o.note, o.noteHtml);
+  return [
+    message != null ? `<p class="sheet-msg"${o.messageId ? ` id="${escapeHtml(o.messageId)}"` : ''}>${message}</p>` : '',
+    detail != null ? `<p class="sheet-sub">${detail}</p>` : '',
+    o.body || '',
+    o.error != null ? msgHtml({ kind: 'error', text: o.error }) : '',
+    o.actions && o.actions.length ? sheetActionsHtml(o.actions) : '',
+    note != null ? msgHtml({ kind: 'note', html: note }) : '',
+  ].filter(Boolean).join('\n    ');
+}

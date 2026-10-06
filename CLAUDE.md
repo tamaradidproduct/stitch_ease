@@ -13,6 +13,7 @@ peacock-tee-deploy/
   js/patterns/*.js              ← one file per pattern; each PATTERNS.push()es itself
   js/core/storage.js            ← pkey/save/load*/migrations/projects registry
   js/core/chart.js              ← chart tracker, zoom, scroll, changeChartRow
+  js/core/ui.js                 ← shared UI builders: btnHtml, msgHtml, sheetBodyHtml
   js/core/render.js             ← render*/stepHtml/openSheet/escapeHtml
   js/core/patternImport.js      ← on-device CSV import → custom pattern (pt3_custom_patterns)
   js/core/chartImport.js        ← on-device .stitchchart.json import → custom chart pattern
@@ -221,6 +222,7 @@ HTML is fetched **network-first** (fresh page on each load when online; cache fa
 - `save()` / `loadProjectState()` / `loadGlobal()` / `migrateLegacy()` — persistence
 - `renderGlobalRows()` — updates the header Rows tally in place
 - `showUpdateBanner(worker)` / `applyUpdate()` — PWA update prompt
+- `btnHtml` / `msgHtml` / `sheetBodyHtml` (`js/core/ui.js`) — buttons (`.btn` + `--primary|accent|danger|slim|lg|block`), inline messages (`.msg` + `--error|ok|note|plain`), and the message→detail→body→error→actions→note stack inside a sheet. Each says in its signature which strings are escaped (`label`, `text`, `message`) and which are trusted markup (`labelHtml`, `html`, `messageHtml`).
 - `openSheet(title, html, opts)` / `sheetConfirm` / `sheetPrompt` — the bottom-sheet primitive; **use these, never `prompt()`/`confirm()`** (unreliable in Chrome Custom Tabs, which is where magic links open)
 
 **Original PDF (`js/core/pdf.js`)**

@@ -524,12 +524,14 @@ function pickColorSwatch(i, hex) {
 // `if (!confirm(...)) return;` have to move their work into onConfirm.
 
 function sheetConfirm(o) {
-  const body = `<p class="sheet-msg">${escapeHtml(o.message)}</p>
-    ${o.detail ? `<p class="sheet-sub">${escapeHtml(o.detail)}</p>` : ''}
-    <div class="sheet-actions">
-      ${btnHtml({ label: o.cancelLabel || 'Cancel', onclick: 'dismissSheet()' })}
-      ${btnHtml({ label: o.confirmLabel || 'OK', variant: o.danger ? 'danger' : 'primary', id: 'sheet-ok' })}
-    </div>`;
+  const body = sheetBodyHtml({
+    message: o.message,
+    detail: o.detail || null,
+    actions: [
+      btnHtml({ label: o.cancelLabel || 'Cancel', onclick: 'dismissSheet()' }),
+      btnHtml({ label: o.confirmLabel || 'OK', variant: o.danger ? 'danger' : 'primary', id: 'sheet-ok' }),
+    ],
+  });
   openSheet(o.title, body, {
     onDismiss: o.onCancel,
     onOpen: el => {
@@ -539,13 +541,15 @@ function sheetConfirm(o) {
 }
 
 function sheetPrompt(o) {
-  const body = `${o.message ? `<p class="sheet-msg">${escapeHtml(o.message)}</p>` : ''}
-    <input class="sheet-input" id="sheet-input" type="text"
-           value="${escapeHtml(o.value || '')}" aria-label="${escapeHtml(o.title)}">
-    <div class="sheet-actions">
-      ${btnHtml({ label: 'Cancel', onclick: 'dismissSheet()' })}
-      ${btnHtml({ label: o.confirmLabel || 'Save', variant: 'primary', id: 'sheet-ok' })}
-    </div>`;
+  const body = sheetBodyHtml({
+    message: o.message || null,
+    body: `<input class="sheet-input" id="sheet-input" type="text"
+           value="${escapeHtml(o.value || '')}" aria-label="${escapeHtml(o.title)}">`,
+    actions: [
+      btnHtml({ label: 'Cancel', onclick: 'dismissSheet()' }),
+      btnHtml({ label: o.confirmLabel || 'Save', variant: 'primary', id: 'sheet-ok' }),
+    ],
+  });
   openSheet(o.title, body, {
     onDismiss: o.onCancel,
     onOpen: el => {
@@ -974,22 +978,23 @@ function openPatternUpdateSheet() {
   // lost reads as a warning when it is the only thing in the box.
   const lost = sum.ticks - sum.kept;
   const lostNote = lost > 0
-    ? `<p class="acct-err">${lost === 1 ? 'One tick belongs to a step that no longer exists'
-        : lost + ' ticks belong to steps that no longer exist'} — they stay saved, and come back if the step does.</p>`
-    : '';
+    ? (lost === 1 ? 'One tick belongs to a step that no longer exists'
+        : lost + ' ticks belong to steps that no longer exist') + ' — they stay saved, and come back if the step does.'
+    : null;
 
-  openSheet('Pattern updated', `
-    <p class="sheet-msg">A newer version of this pattern is available.</p>
-    <div class="pu-facts">
+  openSheet('Pattern updated', sheetBodyHtml({
+    message: 'A newer version of this pattern is available.',
+    body: `<div class="pu-facts">
       <div class="pu-line">${escapeHtml(changeLine)}</div>
       <div class="pu-line">${escapeHtml(kept)}</div>
-    </div>
-    ${lostNote}
-    <div class="sheet-actions">
-      <button class="btn" onclick="dismissSheet()">Not now</button>
-      <button class="btn btn--primary" id="pu-adopt">Use the new version</button>
-    </div>
-    <p class="acct-note">Until you take it, this project keeps the version you started on. Nothing is deleted either way.</p>`,
+    </div>`,
+    error: lostNote,
+    actions: [
+      btnHtml({ label: 'Not now', onclick: 'dismissSheet()' }),
+      btnHtml({ label: 'Use the new version', variant: 'primary', id: 'pu-adopt' }),
+    ],
+    note: 'Until you take it, this project keeps the version you started on. Nothing is deleted either way.',
+  }),
     {
       onOpen: el => {
         el.querySelector('#pu-adopt').onclick = () => {

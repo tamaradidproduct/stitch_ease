@@ -201,10 +201,6 @@
   }
   .acct-email { font-size: 14px; color: var(--text); word-break: break-all; }
   .acct-status { font-size: 12px; color: var(--muted); margin-top: 1px; }
-  .acct-note {
-    font-size: 12px; color: var(--muted); line-height: 1.5;
-    margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--border);
-  }
   /* "Backed up 4 minutes ago", with the manual trigger beside it. Shown on
      every visit, not only on failure — a status nobody has seen working is one
      nobody can read when it breaks. */
@@ -214,16 +210,18 @@
   }
   .acct-sync-when { font-size: 13px; color: var(--text); }
 
-  .acct-err {
-    font-size: 13px; line-height: 1.45; color: var(--danger-text);
-    background: var(--danger-bg); border: 1px solid var(--danger-border); border-radius: var(--radius);
-    padding: 10px 12px; margin-top: 12px;
+  /* ── Inline message (see msgHtml in js/core/ui.js) ──
+     .msg is the text; --error / --ok are boxed, --note is a muted footnote
+     under a rule, --plain drops the rule and tightens it to sit under a heading. */
+  .msg { font-size: 13px; line-height: 1.45; margin-top: 12px; }
+  .msg--error, .msg--ok { border-radius: var(--radius); padding: 10px 12px; }
+  .msg--error { color: var(--danger-text); background: var(--danger-bg); border: 1px solid var(--danger-border); }
+  .msg--ok { color: var(--text); background: var(--accent-light); border: 1px solid var(--accent); }
+  .msg--note {
+    font-size: 12px; color: var(--muted); line-height: 1.5;
+    margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);
   }
-  .acct-ok {
-    font-size: 13px; line-height: 1.45; color: var(--text);
-    background: var(--accent-light); border: 1px solid var(--accent);
-    border-radius: var(--radius); padding: 10px 12px; margin-top: 12px;
-  }
+  .msg--plain { border: 0; margin-top: 8px; padding-top: 0; }
 
   /* Google's brand guidelines: white button, their four-colour G unmodified,
      and the wording left as "Continue with Google". */
