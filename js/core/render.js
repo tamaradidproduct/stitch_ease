@@ -782,7 +782,7 @@ function renderHome() {
       const pr = projectProgress(proj);
       const pat = livePatternFor(proj);
       const meta = pat ? [pat.badge, pat.desc].filter(Boolean).join(' · ') : '';
-      return `<div class="lib-card proj-card" onclick="openProject('${proj.id}')">
+      return `<div class="card lib-card proj-card" onclick="openProject('${proj.id}')">
         <div class="lib-card-top">
           <span class="lib-card-name">${escapeHtml(proj.name)}</span>
           <span class="lib-card-pct">${pr.pct}%</span>
@@ -867,7 +867,7 @@ function renderPicker() {
   renderHeader();
   // Imported patterns carry an explicit Update: the only way a file replaces
   // an existing pattern (see putCustomPattern in patternImport.js).
-  const cards = PATTERNS.map(p => `<div class="lib-card proj-card" onclick="choosePattern('${p.id}')">
+  const cards = PATTERNS.map(p => `<div class="card lib-card proj-card" onclick="choosePattern('${p.id}')">
       <div class="lib-card-top"><span class="lib-card-name">${p.name}</span></div>
       <div class="lib-card-meta">${[p.badge, p.desc].filter(Boolean).join(' · ')}</div>
       ${p.custom ? `<div class="lib-card-bottom">

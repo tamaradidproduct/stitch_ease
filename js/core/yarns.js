@@ -57,7 +57,7 @@ function yarnChipsHtml(phase) {
   const yarns = phase.chartYarns;
   if (!yarns || !yarns.length) return '';
   return `<button class="yarn-chips" onclick="openYarnSheet()" aria-label="Yarn colours — tap to change">
-    ${yarns.map((y, i) => `<span class="yarn-chip"><span class="yarn-dot" style="background:var(--yarn-${i})"></span>${escapeHtml(y.name)}</span>`).join('')}
+    ${yarns.map((y, i) => chipHtml({ lead: true, html: swatchHtml({ color: `var(--yarn-${i})`, round: true }) + escapeHtml(y.name) })).join('')}
   </button>`;
 }
 

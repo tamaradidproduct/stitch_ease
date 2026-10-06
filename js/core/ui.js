@@ -123,3 +123,19 @@ document.addEventListener('keydown', e => {
   const t = e.target;
   if (t && t.getAttribute && t.getAttribute('role') === 'checkbox') { e.preventDefault(); t.click(); }
 });
+
+// A colour sample.
+//   color   a CSS colour value — a hex or var(--yarn-0); escaped into the style attribute
+//   size    'xs' (10) | 'sm' (12) | default 14
+//   round   a dot instead of a rounded square
+//   cls     extra classes
+function swatchHtml(o) {
+  const cls = ['swatch'].concat(o.size ? 'swatch--' + o.size : [], o.round ? 'swatch--round' : [], o.cls || []).join(' ');
+  return `<span class="${cls}" style="background:${escapeHtml(o.color)}"></span>`;
+}
+
+// An outlined pill label. `html` is trusted markup (it often holds a swatch or
+// a <b> count); `lead` trims the padding on the side a swatch or icon sits.
+function chipHtml(o) {
+  return `<span class="chip${o.lead ? ' chip--lead' : ''}">${o.html}</span>`;
+}

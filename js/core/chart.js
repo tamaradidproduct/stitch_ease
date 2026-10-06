@@ -522,7 +522,7 @@ function rowRecap(row) {
     while (j < cells.length && cells[j].c === cells[i].c) j++;
     const c = cells[i].c;
     const sw = c !== null
-      ? `<span class="recap-swatch" style="background:var(--yarn-${c})"></span>${yarns[c] ? escapeHtml(yarns[c].name) + ': ' : ''}`
+      ? `${swatchHtml({ color: `var(--yarn-${c})`, size: 'xs', cls: 'recap-swatch' })}${yarns[c] ? escapeHtml(yarns[c].name) + ': ' : ''}`
       : '';
     runs.push(sw + collapseRepeats(rleStitches(cells.slice(i, j).map(x => x.t), abbr)).join(', '));
     i = j;
@@ -546,7 +546,7 @@ function pairedRecapHtml(row, phase, pairedText) {
   // real weight here (a swatch dot + the row's biggest text), not the same
   // small muted caps as the rest of the recap's metadata.
   const headText = colorInfo
-    ? `<span class="recap-row-dot" style="background:${colorInfo.hex}"></span>Row ${row} · work in ${escapeHtml(colorInfo.name)}`
+    ? `${swatchHtml({ color: colorInfo.hex, round: true })}Row ${row} · work in ${escapeHtml(colorInfo.name)}`
     : `Row ${row}`;
   return `<div class="recap-title">${headText}</div>
     <div class="recap-section">
