@@ -465,6 +465,40 @@ function buildHatsukiPhases(z) {
   [[rightFront, HK_FOLLOW_NOTE_RIGHT, 2], [leftBack, HK_FOLLOW_NOTE_LEFT, 1]].forEach(([ph, note, idx]) =>
     ph.entries.splice(idx, 0, n(ph.id + '-follow', note)));
 
+  // Stitch count at the end of each shoulder row. Each shoulder starts from its
+  // cast-on (or pick-up) number and adds whatever each row's increase says; the
+  // short-row DS/TW rows change nothing. A repeat block is counted from its first
+  // pass, with its per-pass gain stated in the title. The count is appended to
+  // the row so the knitter can check it as they go.
+  const incOf = t => {
+    const m = t.match(/(\d+)\s*(?:sts?|st\(s\))\s*inc'd/);
+    return m ? +m[1] : 0;
+  };
+  const countShoulder = (ph, start) => {
+    let n = start;
+    ph.entries.forEach(e => {
+      if (e.kind === 'note') return;
+      if (e.kind === 'repeat') {
+        let per = 0;
+        e.rows.forEach(r => {
+          per += incOf(r.text);
+          n += incOf(r.text);
+          r.text += ` — ${n} sts`;
+        });
+        n += per * (e.times - 1);
+        e.text += ` — ${n} sts after all passes`;
+        return;
+      }
+      n += incOf(e.text);
+      e.text += ` — ${n} sts`;
+    });
+    return n;
+  };
+  const CO_SIZE = S([41, 48, 51, 56, 63, 68]);
+  countShoulder(leftFront, CO_SIZE);
+  countShoulder(rightFront, CO_SIZE);
+  countShoulder(rightBack, CO_SIZE);
+  countShoulder(leftBack, CO_SIZE);
   return [materials, leaf, leftFront, rightFront, front, rightBack, leftBack, back, body, edgings, finishing];
 }
 
