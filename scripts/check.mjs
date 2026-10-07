@@ -5,9 +5,9 @@ import { join } from 'node:path';
 
 const errors = [];
 const walk = d => readdirSync(d, { withFileTypes: true }).flatMap(e =>
-  e.isDirectory() ? walk(join(d, e.name)) : [join(d, e.name)]);
+  e.isDirectory() ? walk(join(d, e.name)) : [join(d, e.name).replace(/\\/g, '/')]);
 
-const jsFiles = walk('js').filter(f => f.endsWith('.js'));
+const jsFiles = walk('js').filter(f => f.endsWith('.js')).map(f => f.replace(/\\/g, '/'));
 for (const f of [...jsFiles, 'sw.js']) {
   try { execFileSync(process.execPath, ['--check', f], { stdio: 'pipe' }); }
   catch (e) { errors.push(`syntax: ${f}\n${e.stderr}`); }
@@ -19,7 +19,7 @@ catch (e) { errors.push(`manifest.json: ${e.message}`); }
 const shipped = jsFiles.filter(f => !f.endsWith('.selftest.js'));
 const html = readFileSync('index.html', 'utf8');
 const sw = readFileSync('sw.js', 'utf8');
-const scripts = [...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map(m => m[1]);
+const scripts = [...html.matchAll(/<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/g)].map(m => m[1]);
 
 for (const f of shipped) {
   if (!scripts.includes(f)) errors.push(`index.html does not load ${f}`);
@@ -28,7 +28,7 @@ for (const f of shipped) {
 for (const s of scripts.filter(s => s.startsWith('js/'))) {
   if (!existsSync(s)) errors.push(`index.html loads missing file ${s}`);
 }
-for (const m of sw.matchAll(/'\.\/([^']+)'/g)) {
+for (const m of sw.matchAll(/["']\.\/([^"']+)["']/g)) {
   if (!existsSync(m[1])) errors.push(`sw.js ASSETS lists missing file ${m[1]}`);
 }
 if (scripts.filter(s => s.startsWith('js/')).at(-1) !== 'js/core/app.js')
