@@ -57,6 +57,7 @@ Fields per case: **Area · Priority · Preconditions · Steps · Expected**.
   - The chart runs edge to edge with no box around it.
   - The current row is on a sage band, with row numbers on both sides and stitch numbers across the top.
   - The symbols are the app's own (YO ring, k2tog and SKPO triangles, purl dot).
+  - Every stitch is a square of the same size; none is stretched or squeezed. A chart wider than the screen scrolls sideways (opening at the end the row starts from), a narrower one is centred.
   - The legend is one line: Knit plus up to three stitches, then `+N` if there are more, then a book icon at the right that opens the stitch sheet.
 
 **TC-07 Chartless row keeps its natural height** · Player · P1

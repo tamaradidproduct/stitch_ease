@@ -166,6 +166,12 @@ function stepViewsSelfTest() {
       [has(sheet, 'ON THIS ROW'), has(sheet, 'Yarn over'), has(sheet, 'IN THIS PATTERN'), has(sheet, 'Double stitch.'), has(sheet, 'Full glossary')], [true, true, true, true, true]);
     check('the stitch sheet with nothing on the row still offers the glossary', [has(spStitchSheetHtml([], []), 'ON THIS ROW'), has(spStitchSheetHtml([], []), 'Full glossary')], [false, true]);
 
+    // ── Chart cells are always square: fixed size, the chart scrolls sideways ──
+    const win = spChartWindowHtml(2, [], 'all', cp.chart);
+    check('chart cells have a fixed size, never a stretchy minmax(…1fr) track',
+      [has(win, 'minmax'), has(win, '1fr'), has(win, 'repeat(12, var(--h-cell))')], [false, false, true]);
+    check('the playlist preview uses the smaller fixed square cell', [has(spChartWindowHtml(2, [], 1, cp.chart), 'repeat(12, var(--h-cell-mini))'), has(spChartWindowHtml(2, [], 1, cp.chart), 'minmax')], [true, false]);
+
     // ── App shell: the document never scrolls on step screens ──
     check('playlist: everything under the bar lives in one scroll container',
       [count(pl, 'class="sp-scroll"'), pl.indexOf('ui-top') < pl.indexOf('sp-scroll'), pl.indexOf('sp-scroll') < pl.indexOf('sp-row')], [1, true, true]);

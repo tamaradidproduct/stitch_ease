@@ -85,6 +85,7 @@
   --h-icon: 36px;
   --h-chart-min: 205px;
   --h-cell: 24px;
+  --h-cell-mini: 18px;
   --h-dock: 86px;
 
   /* legacy bridge: the app's older variables follow the tokens, which restyles the

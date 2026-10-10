@@ -21,8 +21,8 @@ body.sp-on .content { padding: 0; }   /* the bars and cards bring their own gutt
   background: var(--c-card); border-top: 1px solid var(--c-line); border-bottom: 1px solid var(--c-line); }
 .sp-cw-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .sp-cw-scroll { flex: 1; min-height: 0; overflow: auto; }
-.sp-cw { display: flex; flex-direction: column; gap: 2px; padding: var(--s-2) 0 var(--s-3); user-select: none; }
-.sp-cw-head, .sp-cw-row { display: grid; align-items: center; gap: 2px; text-align: center; }
+.sp-cw { display: flex; flex-direction: column; gap: 2px; width: max-content; min-width: 100%; align-items: stretch; padding: var(--s-2) 0 var(--s-3); user-select: none; }
+.sp-cw-head, .sp-cw-row { display: grid; justify-content: center; align-items: center; gap: 2px; text-align: center; }
 .sp-cw-head { padding-bottom: var(--s-1); font-size: var(--fs-caps); color: var(--c-muted); }
 .sp-cw-n { font-size: var(--fs-caps); color: var(--c-muted); text-align: center; }
 .sp-cw-row { opacity: .35; padding: 1px 0; }
@@ -30,7 +30,7 @@ body.sp-on .content { padding: 0; }   /* the bars and cards bring their own gutt
 .sp-cw-row.d2 { opacity: .5; }
 .sp-cw-row.active { opacity: 1; background: var(--c-sage-wash); }
 .sp-cw-row.active .sp-cw-n { color: var(--c-blue); font-weight: var(--fw-bold); }
-.sp-cw-row .cc { width: auto; height: var(--h-cell); background: var(--c-cell); border: 0; border-radius: var(--r-cell); }
+.sp-cw-row .cc { width: var(--h-cell); height: var(--h-cell); aspect-ratio: 1; background: var(--c-cell); border: 0; border-radius: var(--r-cell); }
 .sp-cw-row .cc-sym { color: var(--c-cell-ink); }
 .sp-cw-row.active .cc { background: var(--c-card); }
 .sp-cw-row .cc.cc-e { background: transparent !important; }
@@ -99,3 +99,5 @@ body.sp-on .content { padding: 0; }   /* the bars and cards bring their own gutt
 
 .sp-sh-h { margin: var(--s-4) 0 var(--s-1); font-size: var(--fs-caps); font-weight: var(--fw-bold); letter-spacing: .12em; color: var(--c-muted); }
 .sp-sh-full { margin-top: var(--s-5); width: 100%; }
+
+.sp-mini .sp-cw-row .cc { width: var(--h-cell-mini); height: var(--h-cell-mini); }

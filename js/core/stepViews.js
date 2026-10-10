@@ -344,8 +344,9 @@ function spChartWindowHtml(chartRow, after, span, chart) {
   const n = chart.length, N = chart[0].length;
   const first = all ? 1 : Math.max(1, Math.min(chartRow - span, n - 2 * span)), last = all ? n : Math.min(n, first + 2 * span);
   const mini = span === 1;
-  const minCell = mini ? 15 : 20;                             // the preview sits inside a card, so its cells may be narrower
-  const cols = `grid-template-columns:${mini ? 18 : 24}px repeat(${N},minmax(${minCell}px,1fr)) ${mini ? 18 : 24}px`;
+  // Cells are fixed squares (never stretched or squeezed to fit): a chart wider than the screen scrolls sideways.
+  const cell = mini ? 'var(--h-cell-mini)' : 'var(--h-cell)', num = mini ? 'var(--h-cell-mini)' : 'var(--h-cell)';
+  const cols = `grid-template-columns:${num} repeat(${N}, ${cell}) ${num}`;
   const head = Array.from({ length: N }, (_, i) => `<span>${N - i}</span>`).join('');
   const types = {};
   let rowsHtml = '';
@@ -355,7 +356,7 @@ function spChartWindowHtml(chartRow, after, span, chart) {
       <span class="sp-cw-n">${r}</span>${spCellsHtml(r, active, types, active && chart === CHART_B ? spMarkCol(N) : -1, chart)}<span class="sp-cw-n">${r}</span></div>`;
   }
   return `<section class="sp-cw-wrap${mini ? ' sp-mini' : ''}">
-    <div class="sp-cw-scroll"${mini ? '' : ' id="sp-cw-scroll"'}><div class="sp-cw" style="min-width:${N * (minCell + 3) + (mini ? 44 : 52)}px">
+    <div class="sp-cw-scroll"${mini ? '' : ' id="sp-cw-scroll"'}><div class="sp-cw">
       <div class="sp-cw-head" style="${cols}"><span></span>${head}<span></span></div>${rowsHtml}</div></div>
   </section>`;
 }
