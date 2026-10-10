@@ -40,6 +40,29 @@ function stepViewsSelfTest() {
     const rp = PHASES[1], rrows = spRowsFor(rp);
     check('repeat row: dock names the row and pass', has(spPlayerHtml(rp, 0, rrows.length, rrows), 'Mark R1 of pass 1 done'), true);
 
+    // ── Task 5: player card and chart region ──
+    const wHtml = spPlayerHtml(p, 0, rows.length, rows);
+    check('card (no chart): row label once, CHECK shown, no count, no chart region',
+      [count(wHtml, 'ROW 1 OF 3'), has(wHtml, 'CHECK'), has(wHtml, 'class="ui-count"'), has(wHtml, 'sp-chart-region')], [1, true, false, false]);
+    check('Setup is collapsed by default', has(wHtml, 'Cast on 88 sts'), false);
+    spSetupOpen = true;
+    check('Setup shows once opened', has(spPlayerHtml(p, 0, rows.length, rows), 'Cast on 88 sts'), true);
+    spSetupOpen = false;
+    check('spCount is null until rows carry a count', spCount(rows[0]), null);
+
+    const cp = PHASES[2], crows = spRowsFor(cp);
+    const realChart = CHART_B;
+    CHART_B = cp.chart;   // what syncActiveChart() does when the section is opened
+    spViewedRow = 3;
+    const cHtml = spPlayerHtml(cp, 3, crows.length, crows);
+    spViewedRow = null;
+    CHART_B = realChart;
+    check('chart row: label, instruction, chart region and glossary button once each',
+      [count(cHtml, 'ROW 3 OF 12'), count(cHtml, 'k2, yo, k2tog — authored override'), count(cHtml, 'sp-chart-region'), count(cHtml, 'aria-label="Glossary"')], [1, 1, 1, 1]);
+    check('chart row: no old strip or hero markup', [has(cHtml, 'sp-strip'), has(cHtml, 'sp-hero'), has(cHtml, 'sp-next')], [false, false, false]);
+    check('legend line truncates to Knit + 3 stitches and counts the rest',
+      [has(spLegendLine({ K: 1, P: 1, YO: 1, K2: 1, SK: 1, M1: 1 }), 'Knit'), has(spLegendLine({ K: 1, P: 1, YO: 1, K2: 1, SK: 1, M1: 1 }), '+2'), has(spLegendLine({ K: 1, P: 1 }), '+')], [true, true, false]);
+
     const realConfirm = sheetConfirm;
     let asked = null;
     sheetConfirm = o => { asked = o; };

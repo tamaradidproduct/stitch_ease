@@ -24,6 +24,7 @@
   --r-small: 8px;
   --r-sheet: 16px;
   --r-round: 50%;
+  --r-cell: 4px;
 
   /* space (multiples of 4) */
   --s-1: 4px;
@@ -50,6 +51,8 @@
   --h-btn: 54px;
   --h-icon: 36px;
   --h-chart-min: 205px;
+  --h-cell: 24px;
+  --h-dock: 86px;
 
   /* legacy bridge: the app's older variables follow the tokens, which restyles the
      screens that still use them without touching their selectors or layout */

@@ -29,12 +29,14 @@ function uiToggleSection({ label, open, onclick, html }) {
 
 // The line at the foot of a card: the stitch count (muted label) and the designer's
 // Check (accent rule). Either may be absent; with neither, nothing is rendered.
+// `check` is pattern text — raw HTML by convention, already sanitised when a pattern
+// arrives by sync — so it is not escaped here, like an instruction.
 function uiFacts({ count, check }) {
   const hasCount = typeof count === 'number' && isFinite(count);
   if (!hasCount && !check) return '';
   return '<div class="ui-facts">' +
     (hasCount ? `<span class="ui-count"><b>${count}</b> sts</span>` : '<span></span>') +
-    (check ? `<span class="ui-check"><b>CHECK</b> ${escapeHtml(check)}</span>` : '') + '</div>';
+    (check ? `<span class="ui-check"><b>CHECK</b> ${check}</span>` : '') + '</div>';
 }
 
 // Back · project name over section name (taps open the section menu) · tally · actions.

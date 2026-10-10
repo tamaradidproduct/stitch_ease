@@ -208,12 +208,26 @@ const SP_STITCH_NAMES = { K: 'Knit', P: 'Purl', YO: 'YO', K2: 'k2tog', SK: 'SKPO
   K2A: 'k2tog', SKA: 'ssk', SSP: 'ssp', P2TOG: 'p2tog', KTBL: 'ktbl', PTBL: 'ptbl', TK2TOG: 'tk2tog', TSSK: 'tssk',
   PU: 'pull up', GP: 'ghost purl', BRK: 'brk', BRP: 'brp', SL: 'sl1' };
 
-function spLegendHtml(types) {
-  return Object.keys(types).filter(t => t !== 'E').map(t => {
-    const sym = SYMS[t];
-    return `<span class="sp-leg"><span class="sp-leg-cc">${sym || ''}</span>${SP_STITCH_NAMES[t] || t.toLowerCase()}</span>`;
-  }).join('');
+// Every stitch type a chart uses, as {type: true} (the legend's input).
+function spChartTypes(chart) {
+  const types = {};
+  chart.forEach(r => r.forEach(t => { types[parseColorCell(t).t] = true; }));
+  return types;
 }
+
+// One line, never wrapping: Knit, the first three other stitches used, "+N" for the
+// rest, and the glossary button at the right.
+function spLegendLine(types) {
+  const keys = Object.keys(types).filter(t => t !== 'E' && t !== 'K');
+  const shown = keys.slice(0, 3), more = keys.length - shown.length;
+  const item = t => `<span class="sp-leg"><span class="sp-leg-cc">${SYMS[t] || ''}</span>${SP_STITCH_NAMES[t] || t.toLowerCase()}</span>`;
+  return `<div class="sp-legend">${item('K')}${shown.map(item).join('')}${more > 0 ? `<span class="sp-leg-more">+${more}</span>` : ''}` +
+    uiIconButton({ icon: typeof GLOSSARY_SVG === 'undefined' ? '?' : GLOSSARY_SVG, label: 'Glossary', onclick: 'openGlossary()' }) + '</div>';
+}
+
+// The stitch count after this row. Null until patterns carry one (a later piece of work);
+// everything that shows a count hides it when this is null.
+function spCount(row) { return null; }
 
 function spCellsHtml(r, active, types, mark, chart) {
   chart = chart || CHART_B;
@@ -237,26 +251,25 @@ function spMarkCol(N) {
 // `span` is how many rows to show either side of the current one: 3 in the
 // player, 1 for the preview inside the playlist's selected row.
 function spChartWindowHtml(chartRow, after, span, chart) {
-  span = span || 3;
+  const all = span === 'all';
+  span = all ? 0 : (span || 3);
   chart = chart || CHART_B;
   const n = chart.length, N = chart[0].length;
-  const first = Math.max(1, Math.min(chartRow - span, n - 2 * span)), last = Math.min(n, first + 2 * span);
-  const minCell = span === 1 ? 15 : 20;                       // the preview sits inside a card, so its cells may be narrower
-  const cols = `grid-template-columns:${span === 1 ? 18 : 24}px repeat(${N},minmax(${minCell}px,1fr)) ${span === 1 ? 18 : 24}px`;
+  const first = all ? 1 : Math.max(1, Math.min(chartRow - span, n - 2 * span)), last = all ? n : Math.min(n, first + 2 * span);
+  const mini = span === 1;
+  const minCell = mini ? 15 : 20;                             // the preview sits inside a card, so its cells may be narrower
+  const cols = `grid-template-columns:${mini ? 18 : 24}px repeat(${N},minmax(${minCell}px,1fr)) ${mini ? 18 : 24}px`;
   const head = Array.from({ length: N }, (_, i) => `<span>${N - i}</span>`).join('');
   const types = {};
   let rowsHtml = '';
   for (let r = last; r >= first; r--) {
-    const active = r === chartRow, d = Math.abs(r - chartRow);
+    const active = r === chartRow, d = Math.min(3, Math.abs(r - chartRow));
     rowsHtml += `<div class="sp-cw-row${active ? ' active' : ' d' + d}" style="${cols}">
       <span class="sp-cw-n">${r}</span>${spCellsHtml(r, active, types, active && chart === CHART_B ? spMarkCol(N) : -1, chart)}<span class="sp-cw-n">${r}</span></div>`;
   }
-  return `<section class="sp-cw-wrap${span === 1 ? ' sp-mini' : ''}">
-    ${span === 1 ? '' : `<div class="sp-cw-bar"><span>Viewing rows ${first}–${last}</span>
-      <span class="sp-cw-bar-r">${after.map(t => `<span class="sp-cw-chip"><b>Check:</b> ${t}</span>`).join('')}</span></div>`}
-    <div class="sp-cw-scroll"${span === 1 ? '' : ' id="sp-cw-scroll"'}><div class="sp-cw" style="min-width:${N * (minCell + 3) + (span === 1 ? 44 : 52)}px">
+  return `<section class="sp-cw-wrap${mini ? ' sp-mini' : ''}">
+    <div class="sp-cw-scroll"${mini ? '' : ' id="sp-cw-scroll"'}><div class="sp-cw" style="min-width:${N * (minCell + 3) + (mini ? 44 : 52)}px">
       <div class="sp-cw-head" style="${cols}"><span></span>${head}<span></span></div>${rowsHtml}</div></div>
-    <div class="sp-legend">${spLegendHtml(types)}</div>
   </section>`;
 }
 
@@ -280,48 +293,43 @@ function spFullChartHtml(p, cursor, total, rows) {
       <button onclick="spFcRecenter()" aria-label="Centre on the current row">Current row</button>
       ${pal ? '<button onclick="openColorSheet()" aria-label="Edit yarn colours">Colours</button>' : ''}</div>
     <div class="sp-fc-scroll"><div class="sp-fc" id="sp-fc" style="--cell-sz:${cellSz}px">${body}</div></div>
-    <div class="sp-legend">${spLegendHtml(types)}</div>` +
+    ${spLegendLine(types)}` +
     `<footer class="ui-dock"><div class="ui-dock-in"><button class="ui-dock-main" id="sp-fc-back" onclick="spCloseChart()">Back to row ${v}</button></div></footer>`;
 }
 
 // ── The player screen ──
-//
-// A chart row: a compact written strip (the row's label, the reading direction,
-// the Setup line), then the chart window. Any other row: the row as a large
-// card, its Check line, and a preview of the next row.
-function spPlayerChartHtml(p, row, chart) {
-  const co = spCallouts(row);
-  const rep = row.step.kind === 'repeat';
-  const rs = rep ? null : isRSRow(row.def.chartRow);   // RS/WS belongs to the section's chart, not a motif
-  return `<div class="sp-strip">
-      <div class="sp-strip-top"><span class="sp-lbl-chip">${spLabel(row)}</span>
-        ${rs === null ? '' : `<span class="sp-read">read ${rs ? 'right → left' : 'left → right'}</span>`}
-        ${co.before.map(t => `<span class="sp-strip-chip"><span class="sp-dot"></span>${t}</span>`).join('')}</div>
-      <p class="sp-strip-text">${spText(row)}</p></div>` +
-    spChartWindowHtml(row.def.chartRow, co.after, 3, chart);
+// The card at the top of the player: the row's position (once), its Setup (collapsed until
+// asked for), the instruction, and the count and Check pinned to the foot.
+function spPlayerCardHtml(p, row, v, total, hasChart) {
+  const co = spCallouts(row), rep = row.step.kind === 'repeat';
+  const cr = row.def.chartRow;
+  const rs = !rep && cr ? isRSRow(cr) : null;   // RS/WS belongs to the section's chart, not a motif
+  const where = rep ? `ROW ${row.rowInPass} OF ${row.R}` : `ROW ${v} OF ${total}`;
+  const dir = rs === null ? '' : `<span class="sp-read">${rs ? 'RS · read right → left' : 'WS · read left → right'}</span>`;
+  const setup = co.before.length
+    ? uiToggleSection({ label: 'SETUP', open: spSetupOpen, onclick: 'spToggleSetup()', html: co.before.map(t => `<p>${t}</p>`).join('') }) : '';
+  return `<article class="ui-card sp-card${hasChart ? '' : ' sp-card--nochart'}">
+    <div class="sp-card-top">${uiCapsLabel(where)}${dir}${spPassNote(row)}</div>
+    ${setup}
+    <p class="sp-ins">${spText(row)}</p>
+    ${uiFacts({ count: spCount(row), check: co.after.join(' · ') || null })}
+  </article>`;
+}
+
+// The chart fills the rest of the screen, edge to edge; the legend sits beneath it.
+function spChartRegionHtml(p, row, chart) {
+  return `<section class="sp-chart-region">${spChartWindowHtml(row.def.chartRow, [], 'all', chart)}${spLegendLine(spChartTypes(chart))}</section>`;
 }
 
 function spPlayerHtml(p, cursor, total, rows) {
   const v = Math.min(total, spViewedRow !== null ? spViewedRow : cursor + 1);
   const row = rows[v - 1];
-  const next = rows[v];
-  const co = spCallouts(row);
-  const current = v === cursor + 1, done = v <= cursor;
+  const done = v <= cursor;
   const rl = row.step.kind === 'repeat' ? `R${row.rowInPass} of pass ${row.pass}` : `row ${v}`;
   const label = done ? `Mark ${rl} not done` : `Mark ${rl} done`;
   const call = done ? `spMarkIncomplete(${v})` : `spDone(${v})`;
   const chart = spChartFor(p, row);
-  const badge = current ? '<span class="sp-badge light">Current row</span>' : done ? '<span class="sp-badge">Completed</span>' : '<span class="sp-badge muted">Upcoming</span>';
-  const bar = spTopBarHtml(p, cursor, total, { onBack: 'spClosePlayer()' });
-  if (chart) return bar + spPlayerChartHtml(p, row, chart) + spDockHtml(label, call);
-  const rs = row.def.chartRow && row.step.kind === 'row' ? isRSRow(row.def.chartRow) : null;
-  return bar + co.before.map(spSetupPill).join('') +
-    `<article class="sp-hero">
-      <div class="sp-row-top"><div class="sp-row-lbl"><span class="sp-lbl-chip">${spLabel(row)}</span>
-        ${rs === null ? '' : `<span class="sp-read">read ${rs ? 'right → left' : 'left → right'}</span>`}</div>${badge}</div>
-      <p class="sp-hero-text">${spText(row)}</p>
-      <div class="sp-hero-foot">${spPassNote(row)}${co.after.map(spCheckChip).join('')}</div>
-    </article>` +
-    (next ? `<article class="sp-next"><div class="sp-row-top"><span>${spLabel(next)}</span><span class="sp-next-k">Next</span></div><p>${spText(next)}</p></article>` : '') +
-    spDockHtml(label, call);
+  return spTopBarHtml(p, cursor, total, { onBack: 'spClosePlayer()' }) +
+    `<div class="sp-player">${spPlayerCardHtml(p, row, v, total, !!chart)}${chart ? spChartRegionHtml(p, row, chart) : ''}</div>` +
+    spDockHtml(label, call, done ? 'outline' : undefined);
 }

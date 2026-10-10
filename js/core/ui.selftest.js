@@ -17,7 +17,7 @@ function uiSelfTest() {
     [has(uiFacts({ count: 90 }), '<b>90</b> sts'), has(uiFacts({ count: 90 }), 'CHECK')], [true, false]);
   check('uiFacts check only: no count',
     [has(uiFacts({ check: 'Row 2 cm' }), 'CHECK'), has(uiFacts({ check: 'Row 2 cm' }), ' sts')], [true, false]);
-  check('uiFacts escapes the check text', has(uiFacts({ check: 'a <b>x' }), 'a &lt;b&gt;x'), true);
+  check('uiFacts renders the check as given (pattern text is pre-sanitised)', has(uiFacts({ check: 'a <i>x</i>' }), 'a <i>x</i>'), true);
   check('uiFacts zero is a count', has(uiFacts({ count: 0 }), '<b>0</b> sts'), true);
 
   const closed = uiToggleSection({ label: 'SETUP', open: false, onclick: 'tog()', html: 'BODY' });

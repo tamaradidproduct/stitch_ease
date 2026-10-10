@@ -19,6 +19,7 @@
 let spViewedRow = null;     // null = follow the cursor
 let spPlayerOpen = false;
 let spNotesOpen = false;
+let spSetupOpen = false;     // the player card's Setup toggle (collapsed until asked for)
 let spChartOpen = false;    // the full chart screen
 let spKey = null;           // project|section the view state belongs to
 
@@ -77,7 +78,7 @@ function spCallouts(row) {
 
 function spSyncKey() {
   const key = activeProjectId + '|' + (PHASES[cur] && PHASES[cur].id);
-  if (key !== spKey) { spKey = key; spViewedRow = null; spPlayerOpen = false; spNotesOpen = false; spChartOpen = false; }
+  if (key !== spKey) { spKey = key; spViewedRow = null; spPlayerOpen = false; spNotesOpen = false; spChartOpen = false; spSetupOpen = false; }
 }
 
 // null means "on the cursor row" — also when the viewed row is dropped back
@@ -148,6 +149,7 @@ function spRender() {
   root.innerHTML = spInnerHtml(PHASES[cur]);
   root.classList.toggle('sp-browsing', root.querySelector('.sp-browse') !== null);
   renderTabs();
+  spSyncPlayerLayout();
   spAimChart();
   spAimMini();
 }
@@ -155,11 +157,22 @@ function spRender() {
 // A wide window opens on the end the row starts from: right for RS, left for WS.
 function spAimChart() {
   const el = document.getElementById('sp-cw-scroll');
-  if (!el || el.scrollWidth <= el.clientWidth) return;
+  if (!el) return;
+  const active = el.querySelector('.sp-cw-row.active');
+  if (active) el.scrollTop = active.offsetTop - el.clientHeight / 2 + active.offsetHeight / 2;
+  if (el.scrollWidth <= el.clientWidth) return;
   const p = PHASES[cur], c = stepCursor(p), total = stepsRowCount(p, activeDoc);
   const v = spViewedRow !== null ? spViewedRow : Math.min(total, c + 1);
   const row = spRowsFor(p)[v - 1];
   el.scrollLeft = row && row.step.kind === 'row' && row.def.chartRow && !isRSRow(row.def.chartRow) ? 0 : el.scrollWidth;
+}
+
+// Pin the player between the bars: measured, because vh units mis-report in Chrome Custom Tabs.
+function spSyncPlayerLayout() {
+  const bar = document.querySelector('.ui-top'), dock = document.querySelector('.ui-dock');
+  const st = document.documentElement.style;
+  st.setProperty('--sp-top', (bar ? Math.round(bar.getBoundingClientRect().bottom) : 0) + 'px');
+  st.setProperty('--sp-bottom', (dock ? Math.round(dock.getBoundingClientRect().height) : 0) + 'px');
 }
 
 function leaveStepMode() { document.body.classList.remove('sp-on'); }
@@ -297,6 +310,7 @@ function spFcRecenter() {
   if (el) el.scrollIntoView({ block: 'center' });
 }
 
+function spToggleSetup() { spSetupOpen = !spSetupOpen; spRender(); }
 function spToggleNotes() { spNotesOpen = !spNotesOpen; spRender(); }
 
 // "Mark rows 1–3 done?" — one row reads "Mark row 3 done?".
