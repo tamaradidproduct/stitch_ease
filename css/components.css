@@ -1,0 +1,363 @@
+  /* ── Row ── lead · main · trail (see rowHtml in js/core/widgets.js).
+     --sm tightens the gap, --baseline aligns on text, --divided adds the
+     padding and the rule between stacked rows. Text styles stay with the
+     caller (.acct-email, .yarn-row-name, …) until the type scale is tokenised. */
+  .row { display: flex; align-items: center; gap: 12px; }
+  .row--sm { gap: 10px; }
+  .row--baseline { align-items: baseline; }
+  .row--divided { padding: 8px 0; }
+  .row--divided + .row--divided { border-top: 1px solid var(--border); }
+  .row-lead, .row-trail { flex-shrink: 0; }
+  .row-main { flex: 1; min-width: 0; }
+  .acct-row { margin-bottom: 4px; }
+  .acct-avatar {
+    width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+    background: var(--accent); color: var(--on-accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 600;
+  }
+  .acct-email { font-size: 14px; color: var(--text); word-break: break-all; }
+  .acct-status { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  /* "Backed up 4 minutes ago", with the manual trigger beside it. Shown on
+     every visit, not only on failure — a status nobody has seen working is one
+     nobody can read when it breaks. */
+  .acct-sync {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);
+  }
+  .acct-sync-when { font-size: 13px; color: var(--text); }
+
+  /* ── Inline message (see msgHtml in js/core/widgets.js) ──
+     .msg is the text; --error / --ok are boxed, --note is a muted footnote
+     under a rule, --plain drops the rule and tightens it to sit under a heading. */
+  .msg { font-size: 13px; line-height: 1.45; margin-top: 12px; }
+  .msg--error, .msg--ok { border-radius: var(--radius); padding: 10px 12px; }
+  .msg--error { color: var(--danger-text); background: var(--danger-bg); border: 1px solid var(--danger-border); }
+  .msg--ok { color: var(--text); background: var(--accent-light); border: 1px solid var(--accent); }
+  .msg--note {
+    font-size: 12px; color: var(--muted); line-height: 1.5;
+    margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);
+  }
+  .msg--plain { border: 0; margin-top: 8px; padding-top: 0; }
+
+  /* Google's brand guidelines: white button, their four-colour G unmodified,
+     and the wording left as "Continue with Google". */
+  .google-btn {
+    width: 100%; margin-top: 14px;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    background: #fff; color: #3c4043; border: 1px solid #dadce0;
+  }
+  .google-btn:active { background: #f7f8f8; }
+  .google-btn svg { flex-shrink: 0; }
+
+  /* "or" divider between the two sign-in paths */
+  .acct-or {
+    display: flex; align-items: center; gap: 10px;
+    margin: 16px 0 4px; color: var(--muted); font-size: 12px;
+  }
+  .acct-or::before, .acct-or::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  /* Compact project header: back · (title + size subtitle) · Rows · chevron */
+  .proj-head { align-items: flex-start; gap: 8px; margin-bottom: 0; }
+  .proj-heading { flex: 1; min-width: 0; }
+  .proj-title {
+    font-family: Georgia, serif; font-style: italic; color: var(--accent);
+    font-size: 1.05rem; font-weight: 400; line-height: 1.25;
+    letter-spacing: -0.01em; cursor: pointer;
+  }
+  .proj-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  /* Overall project progress, right side of the header (mirrors the
+     per-section "X / Y completed" treatment). */
+  .proj-progress { flex-shrink: 0; text-align: center; }
+  .proj-menu-btn {
+    flex-shrink: 0; background: none; border: none; color: var(--muted);
+    cursor: pointer; padding: 4px 8px; font-size: 20px; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    transition: color 0.15s;
+  }
+  .proj-menu-btn:active { color: var(--text); }
+  .pp-pct { font-size: 12px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .pp-label { font-size: 8px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); margin-top: 1px; }
+  .header h1 {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 1.25rem; font-weight: 400; color: var(--text); letter-spacing: -0.01em;
+  }
+  .header h1 span { font-style: italic; color: var(--accent); }
+
+  /* ── Card ── the raised surface: card fill, hairline border, standard radius.
+     .card is the class; the "you are here" step and the project-title menu take
+     the same surface from the state/role selectors rather than from markup. */
+  .card, .step.active, .repeat-step.active, .reset-menu {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  }
+  .lib-card {
+    display: block; width: 100%; text-align: left;
+    padding: 16px; cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    font-family: inherit; color: inherit;
+  }
+  .lib-card:active { background: var(--bg); }
+  .lib-card-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .lib-card-name { font-family: Georgia, serif; font-size: 1.2rem; color: var(--text); }
+  .lib-card-pct { font-size: 13px; font-weight: 600; color: var(--accent); flex-shrink: 0; }
+  .lib-card-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .lib-card-track {
+    height: 5px; background: var(--border); border-radius: 3px;
+    overflow: hidden; margin: 12px 0 6px;
+  }
+  .lib-card-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.3s ease; }
+  .lib-card-sub { font-size: 11px; color: var(--muted); }
+  .lib-card-bottom { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .proj-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .proj-act {
+    font-size: 11px; color: var(--muted); background: none;
+    border: 1px solid var(--border); border-radius: var(--radius-xs);
+    padding: 3px 9px; cursor: pointer; font-family: inherit;
+  }
+  .proj-act:active { background: var(--bg); }
+  .proj-del { color: var(--danger); border-color: var(--danger-border); }
+
+  /* New-project floating action button + empty/picker states */
+  .fab-new {
+    position: fixed; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom));
+    z-index: 60; width: 56px; height: 56px; border-radius: 50%;
+    background: var(--accent); color: var(--on-accent); border: none;
+    font-size: 30px; font-weight: 300; line-height: 1; padding-bottom: 3px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; box-shadow: var(--shadow-fab);
+    transition: background 0.15s, transform 0.12s;
+  }
+  .fab-new:active { background: var(--accent-pressed); transform: scale(0.94); }
+  .home-empty { text-align: center; color: var(--muted); font-size: 14px; line-height: 1.6; padding: 24px 12px; }
+  .picker-hint { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+  .picker-import-sub { font-size: 12px; color: var(--muted); text-align: center; margin-top: 6px; }
+
+  /* ── Button ── one component (see btnHtml in js/core/widgets.js).
+     Variants: --primary (dark), --accent (green), --danger, --slim, --lg, --block.
+     .nav-btn and .picker-import-btn are no longer styles, only hooks for
+     context rules (.chart-dock .nav-btn).
+     Position matters: this sits where .sheet-btn used to, so it still beats
+     .google-btn and .size-opt on the cascade exactly as before. */
+  .btn {
+    flex: 1; padding: 13px; border-radius: var(--radius);
+    border: 1px solid var(--border); background: var(--card);
+    font-family: inherit; font-size: 14px; font-weight: 500;
+    color: var(--text); cursor: pointer; transition: background 0.15s;
+  }
+  .btn:active { background: var(--bg); }
+  .btn--lg { padding: 14px; }
+  .btn--block { width: 100%; }
+  .picker-import-btn { margin-top: 16px; }
+  .btn--primary {
+    background: var(--text); color: var(--on-accent); border-color: var(--text);
+  }
+  .btn--primary:active { background: var(--text-pressed); }
+  .btn--accent {
+    background: var(--accent); color: var(--on-accent); border-color: var(--accent);
+  }
+  .btn--accent:active { background: var(--accent-pressed); }
+  .btn--danger {
+    background: var(--danger); color: var(--on-accent); border-color: var(--danger);
+  }
+  .btn--danger:active { background: var(--danger-pressed); }
+  .btn:disabled { opacity: 0.45; cursor: default; }
+  /* .btn is flex:1 for the paired full-width rows; --slim sits beside a line of
+     text and has to be content-width instead. */
+  .btn--slim { flex: 0 0 auto; margin: 0; padding: 9px 16px; font-size: 13px; }
+  /* The PDF "Open" is a real <a> — a user-gesture anchor click is the one path
+     no popup blocker touches, and on Android Chrome it's what hands a blob:
+     URL to the system viewer. It has to be dressed as the button it replaces. */
+  a.btn { display: flex; align-items: center; justify-content: center; }
+  /* The PDF "Open" is a real <a> — a user-gesture anchor click is the one path
+     no popup blocker touches, and on Android Chrome it's what hands a blob:
+     URL to the system viewer. It has to be dressed as the button it replaces. */
+
+  /* ── Check ── the tick box (see checkHtml / checkboxAttrs in js/core/widgets.js).
+     Whether it is ticked comes from the ancestor (.step.done, .rep-row.done),
+     which is what render() already sets; --sm is the one inside repeat rows. */
+  .check {
+    width: 22px; height: 22px; border-radius: var(--radius-xs);
+    border: 2px solid var(--muted); background: transparent;
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    margin-top: 2px; transition: all 0.15s;
+  }
+  .check--sm { width: 20px; height: 20px; border-radius: 5px; margin-top: 1px; }
+  .step.done .check, .rep-row.done .check { background: var(--checkbox-done); border-color: var(--checkbox-done); }
+  .check svg { display: none; }
+  .step.done .check svg, .rep-row.done .check svg { display: block; }
+  [role="checkbox"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .step-body { flex: 1; min-width: 0; }
+  .step-text { font-size: 16px; line-height: 1.5; color: var(--text); }
+  .step.done .step-text { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--muted); }
+  .step-bullets {
+    list-style: none; margin: 8px 0 0; padding: 0;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .step-bullets li {
+    position: relative; padding-left: 18px;
+    font-size: 16px; line-height: 1.5; color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  .step-bullets li::before {
+    content: ''; position: absolute; left: 3px; top: 8px;
+    width: 5px; height: 5px; border-radius: 50%; background: var(--accent);
+  }
+  .step.done .step-bullets li { color: var(--done-text); }
+  .step.done .step-bullets li::before { background: var(--accent-mid); }
+  /* A short gloss below a row's text — e.g. what "work in pattern" means for
+     this specific row — kept out of the main text so a repeated phrase
+     doesn't bloat every row it appears in. */
+  .step-sub { font-size: 13px; line-height: 1.4; color: var(--muted); margin-top: 4px; }
+  .step.done .step-sub { text-decoration: line-through; text-decoration-color: var(--muted); }
+  .rep-row.done .rep-t .step-sub { text-decoration: line-through; text-decoration-color: var(--border); }
+
+  /* ── Stepper button ── a round ± (see stepperBtnHtml in js/core/widgets.js).
+     --sm is the quiet inline one beside a label; --lg is the chart dock's,
+     with --minus neutral and --plus blue. */
+  .stepper-btn {
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0; line-height: 1; transition: background 0.12s;
+  }
+  .stepper-btn--sm {
+    width: 22px; height: 22px; border: none; background: transparent; color: var(--accent);
+    font-size: 14px; font-weight: 400;
+  }
+  .stepper-btn--sm:active { background: rgba(0,0,0,0.08); }
+  .stepper-btn--lg { width: 44px; height: 44px; border: none; font-size: 26px; font-weight: 300; }
+  .stepper-btn--minus { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+  .stepper-btn--minus:active { background: var(--border); }
+  .stepper-btn--plus { background: var(--ch-blue); color: var(--on-accent); }
+  .stepper-btn--plus:active { background: var(--ch-blue-pressed); }
+  .step.done .rep-pass-lbl,
+  .step.done .stepper-btn--sm { color: var(--muted); }
+
+  .rep-rows { list-style: none; margin: 0; padding: 0; }
+  .rep-row {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 11px 12px; border-radius: var(--radius-sm);
+    border-left: 3px solid transparent;
+    cursor: pointer; transition: background 0.15s;
+  }
+  .rep-row + .rep-row { margin-top: 2px; }
+  .rep-n {
+    flex-shrink: 0; width: 16px; text-align: center;
+    font-size: 11px; font-weight: 600; color: var(--muted);
+    font-variant-numeric: tabular-nums; margin-top: 2px;
+  }
+  .rep-t { flex: 1; min-width: 0; font-size: 14px; line-height: 1.45; color: var(--text); }
+  /* Worked earlier in THIS pass — struck through, the way the old checkable
+     bullets were, and reset every pass. */
+  .rep-row.done .rep-n,
+  .rep-row.done .rep-t { color: var(--muted); }
+  .rep-row.done .rep-t { text-decoration: line-through; text-decoration-color: var(--border); }
+  /* The row you are on. */
+  .rep-row.now {
+    background: var(--accent-light); border-left-color: var(--accent);
+  }
+  .rep-row.now .rep-n { color: var(--accent); }
+  .rep-row.now .rep-t { color: var(--done-text); font-weight: 500; }
+  .step.done .rep-row { opacity: 0.6; }
+
+  /* Position line on a repeat block: which row of which pass, and the
+     pattern row it works out to. Was the cadence reminder before repeats
+     replaced cadence. */
+  .round-hint {
+    margin-top: 10px; padding: 9px 12px; border-radius: var(--radius-sm);
+    background: var(--bg); border-left: 3px solid var(--border);
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .round-hint-lbl {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .round-hint-txt { font-size: 13px; line-height: 1.45; color: var(--text); }
+  .round-hint.on {
+    background: var(--accent-light); border-left-color: var(--accent);
+  }
+  .round-hint.on .round-hint-lbl { color: var(--accent); }
+  .round-hint.on .round-hint-txt { color: var(--done-text); font-weight: 500; }
+
+  /* ── Chip ── outlined pill label (see chipHtml in js/core/widgets.js); --lead when
+     it starts with a swatch or icon, which wants less padding on that side. */
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px;
+    border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--card);
+    font-size: 12px; color: var(--text);
+  }
+  .chip--lead { padding: 3px 9px 3px 5px; }
+  .chip b { font-weight: 600; color: var(--muted); }
+  /* ── Swatch ── a colour sample (see swatchHtml in js/core/widgets.js); the colour
+     arrives as an inline background. Sizes --xs 10 / --sm 12 / --md 14, --round
+     for a dot. The pickers (.yarn-pick, .color-edit-swatch, .color-swatch-opt)
+     are controls, not samples, and stay their own thing. */
+  .swatch {
+    display: inline-block; flex-shrink: 0; border: 1px solid rgba(0,0,0,.2);
+    width: 14px; height: 14px; border-radius: 3px;
+  }
+  .swatch--xs { width: 10px; height: 10px; border-radius: 2px; }
+  .swatch--sm { width: 12px; height: 12px; }
+  .swatch--round { border-radius: 50%; }
+  .yarn-chips:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-xs); }
+  .yarn-pick {
+    display: block; position: relative; width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0;
+    border: 1px solid rgba(0,0,0,.2); cursor: pointer; overflow: hidden;
+  }
+  .yarn-pick input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
+  .yarn-pick:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .yarn-row-name { font-size: 15px; color: var(--text); }
+  .recap-swatch { vertical-align: -1px; margin-right: 3px; }
+
+  /* Row-number cell — same frame as a stitch cell (.cc: same --cell-sz box,
+     border, background — it carries the .cc class itself, so it gets that
+     styling AND the .crow-active background/ring treatment above for free),
+     just showing text instead of a symbol. One at each end of the row,
+     pinned with position:sticky so at least one — in practice both — stays
+     on screen while a wide chart (e.g. a colorwork import) scrolls
+     horizontally underneath, rather than only being visible once you've
+     scrolled all the way to that edge. Needs its own opaque background
+     since cells now scroll UNDER it rather than stopping before it —
+     .cc's own background custom property handles the active-row case, and
+     the plain var(--ch-def-bg)/var(--card) here (identical in most themes)
+     covers the resting state.
+     `left`/`right: 0` stick flush to .chart-vp's own edge (no gutter, by
+     request — .chart-tracker's negative margin already bleeds its
+     background edge-to-edge, this just lets the grid itself reach the same
+     edge). The margin on each is mirrored in chart.js's
+     midRowLeftPad() — the left one's width+margin shifts where column 0
+     actually starts, which the mid-row line's position math depends on. */
+  .cc-rownum {
+    flex-shrink: 0; font-size: 10px; font-weight: 500;
+    color: var(--muted); background: var(--card);
+    z-index: 3; overflow: hidden;
+  }
+  .cc-rownum-l { margin-right: 4px; position: sticky; left: 0; }
+  .cc-rownum-r { margin-left: 4px; position: sticky; right: 0; }
+  .crow-num-active { color: var(--ch-blue) !important; font-weight: 700; }
+  .crow-num-done { color: var(--accent) !important; }
+
+  /* Chart legend */
+  .chart-legend {
+    display: none;
+    transition: max-height 0.35s ease, opacity 0.25s ease, padding 0.35s ease, border-color 0.35s ease;
+  }
+
+  /* Chart confirm step — nested inside .chart-recap (same "what do I do
+     now" panel as the row instructions), shown only on the last row. The
+     negative margins cancel .chart-recap's padding so this still bleeds
+     edge-to-edge like the rest of the dock's rows. */
+  .chart-confirm-step {
+    display: flex; align-items: center; gap: 12px;
+    margin: 8px -16px -9px;
+    padding: 10px 16px;
+    border-top: 1px solid var(--border);
+    cursor: pointer; -webkit-user-select: none; user-select: none;
+    transition: background 0.15s;
+  }
+  .chart-confirm-step:active { background: var(--bg); }
+  .chart-confirm-step.done { background: var(--done-bg); }
+  .chart-confirm-step.done .check { background: var(--accent); border-color: var(--accent); }
+  .chart-confirm-step.done .check svg { display: block; }
+  .chart-confirm-step.done .step-text { color: var(--done-text); text-decoration: line-through; text-decoration-color: var(--accent-mid); }
+

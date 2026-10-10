@@ -104,6 +104,19 @@
   --h-check: 22px;
   --w-rownum: 58px;
 
+  /* restored with the components in css/components.css */
+  --accent-pressed: var(--c-sage-strong);
+  --ch-blue-pressed: #1d4ed8;
+  --danger: #a4553f;
+  --danger-bg: #f7ece8;
+  --danger-border: #e4c7bd;
+  --danger-pressed: #8e4634;
+  --danger-text: #8e4634;
+  --on-accent: var(--c-card);
+  --radius-pill: 999px;
+  --radius-xs: 6px;
+  --shadow-fab: 0 4px 14px rgba(0, 0, 0, .22);
+  --text-pressed: #444;
   /* legacy bridge: the app's older variables follow the tokens, which restyles the
      screens that still use them without touching their selectors or layout */
   --bg: var(--c-bg);
