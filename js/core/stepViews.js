@@ -163,13 +163,8 @@ function spRepeatHtml(block, cursor, total, sel) {
       <span class="sp-row-n">Repeat${done ? ' ✓' : ''}</span>
       <span class="sp-row-t">Repeat · ${R} rows × ${T}<span class="sp-row-sub">${block.slice(0, R).map(spText).join(' · ')}</span></span></article>`;
   }
-  const pass = block[(selIn ? sel : cursor + 1) - first].pass;
-  return `<section class="sp-repeat">
-    <div class="sp-stepper">
-      <button class="sp-step-btn" onclick="spPass(-1)" aria-label="Previous pass">−</button>
-      <div class="sp-step-mid"><span class="sp-step-k">Repeat sequence</span><span class="sp-step-v">Pass <b>${pass}</b> of ${T}</span></div>
-      <button class="sp-step-btn" onclick="spPass(1)" aria-label="Finish this pass">+</button>
-    </div>${block.filter(b => b.pass === pass).map(b => spRowHtml(b, cursor, total)).join('')}</section>`;
+  const row = block[(selIn ? sel : cursor + 1) - first];
+  return spRepeatCardHtml(block, row, row.n, false, true);
 }
 
 function spPlaylistHtml(p, cursor, total, rows) {
@@ -337,7 +332,7 @@ function spPlayerCardHtml(p, row, v, total, hasChart) {
 
 // The player's card for a repeat row: the pass line (− / + are progress actions), every row
 // of the viewed pass as a tappable look, Setup, and the count at the end of the pass.
-function spRepeatCardHtml(block, row, v, hasChart) {
+function spRepeatCardHtml(block, row, v, hasChart, inList) {
   const T = row.passes, pass = row.pass, co = spCallouts(row);
   const rows = block.filter(b => b.pass === pass);
   const items = rows.map(b => {
@@ -347,12 +342,13 @@ function spRepeatCardHtml(block, row, v, hasChart) {
   }).join('');
   const setup = co.before.length
     ? uiToggleSection({ label: 'SETUP', open: spSetupOpen, onclick: 'spToggleSetup()', html: co.before.map(t => `<p>${t}</p>`).join('') }) : '';
-  return `<article class="ui-card sp-card sp-card--repeat${hasChart ? '' : ' sp-card--nochart'}">
+  return `<article class="ui-card ${inList ? 'sp-row selected' : 'sp-card'} sp-card--repeat${hasChart ? '' : ' sp-card--nochart'}"${inList ? ` data-row="${v}"` : ''}>
     <div class="sp-pass-line">${uiCapsLabel('REPEAT')}<span class="sp-pass-n">Pass ${pass} of ${T}</span>
       ${uiIconButton({ icon: '−', label: 'Previous pass', onclick: 'spPass(-1)' })}${uiIconButton({ icon: '+', label: 'Finish this pass', onclick: 'spPass(1)' })}</div>
     ${setup}
     <ul class="sp-rlist">${items}</ul>
     ${uiFacts({ count: spPassEndCount(block, pass), countLabel: 'sts at end of pass ' + pass, check: co.after.join(' · ') || null })}
+    ${inList ? `<button class="sp-open-btn" onclick="spOpenPlayer(${v})">Open row ›</button>` : ''}
   </article>`;
 }
 

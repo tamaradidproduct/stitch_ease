@@ -316,6 +316,8 @@ function spPatchPlaylist(p, prev, next) {
   const root = document.getElementById('sp-root');
   if (!root || spPlayerOpen || spViewedRow !== null || next !== prev + 1) return false;
   const rows = spRowsFor(p), total = rows.length;
+  // A repeat is one card for the whole block, so a tap inside or into one repaints instead of patching two rows.
+  if ([prev + 1, next + 1].some(n => rows[n - 1] && rows[n - 1].step.kind === 'repeat')) return false;
   const swap = n => {
     if (n < 1 || n > total) return true;
     const el = root.querySelector('.sp-row[data-row="' + n + '"]');

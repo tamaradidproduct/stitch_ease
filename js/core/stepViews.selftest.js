@@ -119,6 +119,15 @@ function stepViewsSelfTest() {
       ['sp-row-top', 'sp-row-lbl', 'sp-badge', 'sp-row-text'].map(c => has(collapsed, c)), [false, false, false, false]);
     check('a collapsed repeat line still reads as a done repeat', [has(collapsed, 'Repeat · 2 rows × 4'), has(collapsed, '✓')], [true, true]);
 
+    // ── Repeat in the playlist: one card for the whole repeat ──
+    const rPl = spPlaylistHtml(PHASES[1], 0, prow.length, prow);
+    check('playlist repeat: one card with the pass line, the pass rows and one Open row',
+      [count(rPl, 'Pass 1 of 4'), count(rPl, 'Open row'), count(rPl, 'sp-rrow sel'), count(rPl, 'spOpenPlayer(1)'), has(rPl, 'sp-stepper'), has(rPl, 'spPass(1)')], [1, 1, 1, 1, false, true]);
+    spViewedRow = 2;
+    const rPl2 = spPlaylistHtml(PHASES[1], 0, prow.length, prow);
+    spViewedRow = null;
+    check('playlist repeat: Open row follows the selected row of the repeat', [count(rPl2, 'spOpenPlayer(2)'), has(rPl2, 'spOpenPlayer(1)')], [1, false]);
+
     // ── App shell: the document never scrolls on step screens ──
     check('playlist: everything under the bar lives in one scroll container',
       [count(pl, 'class="sp-scroll"'), pl.indexOf('ui-top') < pl.indexOf('sp-scroll'), pl.indexOf('sp-scroll') < pl.indexOf('sp-row')], [1, true, true]);

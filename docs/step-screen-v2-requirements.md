@@ -78,6 +78,8 @@ Product requirements from the interview of 2026-10-09. They revise the step scre
 - **Chart:** the repeat's motif chart if it has one; otherwise hidden (§3.2).
 - Dock as §3.5, acting on the selected row.
 
+- **In the playlist:** a repeat is one card for the whole block while it is current or selected: the pass line with − / +, the pass's rows, Setup, the end-of-pass count and Check, and a single `Open row ›` that opens the player on the selected row. Otherwise it is one quiet line (`Repeat · 2 rows × 4`).
+
 ## 6. Glossary
 - A **dedicated glossary**, reached from the legend's **Glossary ›** link and from the library home as today. No tap-to-define on instruction text or chart symbols (too fiddly on a small screen).
 - Covers general stitches **and** the designer's pattern-specific stitches (the pattern's `notes`) together.

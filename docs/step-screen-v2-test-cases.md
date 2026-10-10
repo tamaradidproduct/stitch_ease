@@ -183,6 +183,14 @@ Fields per case: **Area · Priority · Preconditions · Steps · Expected**.
   - Done rows are muted with a ✓; the current row, when not selected, is tagged `CURRENT ROW`.
   - Tapping the instruction or `Open row ›` opens the player.
 
+**TC-32 Playlist: a repeat is one card** · Playlist · P0
+- Steps: open the **Repeat** section in the playlist. Tap +, then tap R2 in the card, then `Open row ›`. Go back to the playlist and move on past the repeat (mark its rows done) so it is no longer current.
+- Expected:
+  - While the repeat is current or selected it is a single card: `REPEAT` and `Pass n of 4` with − / +, the pass's rows (tap one to look at it; the selected row is larger), Setup, the end-of-pass count and the Check, and one `Open row ›` button.
+  - There is no separate stepper and no separate selected-row card for it.
+  - `Open row ›` opens the player on the selected row, showing the same repeat card with the dock reading `Mark R2 of pass 2 done`.
+  - When the repeat is neither current nor selected it shows as one quiet line, `Repeat · 2 rows × 4` (with ✓ when done).
+
 **TC-24 Focus follows the selection** · Playlist · P0
 - Preconditions: **Chart** section in the playlist, window small enough that the list scrolls.
 - Steps: tap › five times. Tap a row near the bottom of the screen. Tap `Mark row N done`.

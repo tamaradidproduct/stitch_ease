@@ -77,12 +77,6 @@ body.sp-on .content { padding: 0; }   /* the bars and cards bring their own gutt
 .sp-open-btn { height: 44px; margin-top: var(--s-3); background: var(--c-card); color: var(--c-soft); border: 0; border-radius: var(--r-control); box-shadow: 0 0 0 1px var(--c-line); font: inherit; font-size: var(--fs-body); font-weight: var(--fw-medium); cursor: pointer; }
 .sp-mc-wrap { margin: 0 calc(-1 * var(--s-5)) var(--s-4); border-top: 1px solid var(--c-line); border-bottom: 1px solid var(--c-line); cursor: pointer; }
 .sp-mc-wrap .sp-cw-scroll { overflow-x: auto; }
-.sp-repeat { margin: var(--s-3) 0; }
-.sp-stepper { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-2) 0; }
-.sp-step-mid { flex: 1; display: flex; flex-direction: column; }
-.sp-step-k { font-size: var(--fs-caps); font-weight: var(--fw-bold); letter-spacing: .12em; text-transform: uppercase; color: var(--c-muted); }
-.sp-step-v { font-size: 17px; font-weight: var(--fw-semibold); }
-.sp-step-btn { width: var(--h-icon); height: var(--h-icon); background: var(--c-card); border: 0; border-radius: var(--r-control); box-shadow: 0 0 0 1px var(--c-line); font: inherit; font-size: 18px; cursor: pointer; }
 .sp-browse { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); margin: 0 var(--s-4) var(--s-2); padding: var(--s-2) var(--s-2) var(--s-2) 14px; background: var(--c-line); border-radius: var(--r-control); font-size: 12.5px; color: var(--c-soft); }
 .sp-browse button { padding: 6px var(--s-3); background: var(--c-sage-strong); color: var(--c-card); border: 0; border-radius: var(--r-small); font: inherit; font-size: 12px; font-weight: var(--fw-semibold); cursor: pointer; }
 .sp-list-head { display: flex; justify-content: space-between; padding: var(--s-2) 0; font-size: var(--fs-caps); font-weight: var(--fw-bold); letter-spacing: .12em; text-transform: uppercase; color: var(--c-soft); }
