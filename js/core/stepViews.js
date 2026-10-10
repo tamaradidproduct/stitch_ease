@@ -173,8 +173,8 @@ function spRepeatHtml(block, cursor, total, sel) {
 }
 
 function spPlaylistHtml(p, cursor, total, rows) {
-  return spTopBarHtml(p, cursor, total) + spListHeadHtml(p) + spNotesHtml(p) +
-    `<section class="sp-list">` + spListHtml(rows, cursor, total) + '</section>';
+  return spTopBarHtml(p, cursor, total) + '<div class="sp-scroll">' + spListHeadHtml(p) + spNotesHtml(p) +
+    `<section class="sp-list">` + spListHtml(rows, cursor, total) + '</section></div>';
 }
 
 // The section's description. The progress lives in the top bar's tally, so it is not repeated here.

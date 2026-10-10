@@ -124,7 +124,7 @@ function spInnerHtml(p) {
   const total = rows.length;
   const cursor = stepCursor(p);
   if (!total) {
-    return spTopBarHtml(p, 0, 0) + spNotesHtml(p) + spTasksHtml(p) + spRowlessDock();
+    return spTopBarHtml(p, 0, 0) + '<div class="sp-scroll">' + spNotesHtml(p) + spTasksHtml(p) + '</div>' + spRowlessDock();
   }
   if (spViewedRow !== null && (spViewedRow < 1 || spViewedRow > total)) spViewedRow = null;
   if (spChartOpen && spPlayerOpen && spHasChart(p, rows[0])) return spFullChartHtml(p, cursor, total, rows);
@@ -140,13 +140,17 @@ function renderStepSection(p) {
   spRowsCache = null;
   const html = `<div class="sp" id="sp-root">${spInnerHtml(p)}</div>`;
   document.body.classList.add('sp-on');
+  requestAnimationFrame(spSyncPlayerLayout);
   return html;
 }
 
 function spRender() {
   const root = document.getElementById('sp-root');
   if (!root) return;
+  const keep = root.querySelector('.sp-scroll'), kept = keep ? keep.scrollTop : 0;
   root.innerHTML = spInnerHtml(PHASES[cur]);
+  const again = root.querySelector('.sp-scroll');
+  if (again) again.scrollTop = kept;
   root.classList.toggle('sp-browsing', root.querySelector('.sp-browse') !== null);
   renderTabs();
   spSyncPlayerLayout();
@@ -185,14 +189,13 @@ function spScrollCurrent() { spFocusSelected(); }
 // after every ‹ ›, row tap, Done and when the playlist opens. Smooth unless motion is reduced.
 function spFocusSelected() {
   if (spPlayerOpen) return window.scrollTo({ top: 0 });
-  const el = document.querySelector('.sp-row.selected');
-  if (!el) return;
+  const sc = document.querySelector('.sp-scroll'), el = document.querySelector('.sp-row.selected');
+  if (!sc || !el) return;
   const prev = el.previousElementSibling;
   const anchor = prev && prev.classList.contains('sp-row') ? prev : el;
-  const bar = document.querySelector('.ui-top');
-  const top = anchor.getBoundingClientRect().top + window.scrollY - (bar ? bar.getBoundingClientRect().height : 0) - 8;
+  const top = anchor.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 8;
   const calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-  window.scrollTo({ top: Math.max(0, top), behavior: calm ? 'auto' : 'smooth' });
+  sc.scrollTo({ top: Math.max(0, top), behavior: calm ? 'auto' : 'smooth' });
 }
 
 function spOpenPlayer(row) {
@@ -387,3 +390,5 @@ function spToggleTask(i) {
   toggleTask(task);
   spRender();
 }
+
+window.addEventListener('resize', () => { if (document.body.classList.contains('sp-on')) spSyncPlayerLayout(); });

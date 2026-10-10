@@ -1,5 +1,6 @@
 /* Step screens (js/core/stepViews.js). Composed from ui.css components; tokens only. */
-body.sp-on { background: var(--c-bg); padding-bottom: calc(var(--h-btn) + var(--s-6) + var(--s-5)); overflow-x: clip; }
+/* An app shell: the document itself never scrolls, so the browser's own bars cannot move the top bar or the dock. The lists scroll inside .sp-scroll / .sp-player. */
+body.sp-on { position: fixed; inset: 0; overflow: hidden; padding: 0; background: var(--c-bg); }
 body.sp-on #header { display: none; }
 body.sp-on .content { padding: 0; }   /* the bars and cards bring their own gutter */
 .sp { max-width: 28rem; margin: 0 auto; color: var(--c-text); font-family: var(--font-ui); }
@@ -91,3 +92,6 @@ body.sp-on .content { padding: 0; }   /* the bars and cards bring their own gutt
 .sp-task.done .sp-check { background: var(--c-sage-strong); border-color: var(--c-sage-strong); }
 
 .sp-row-sub { display: block; margin-top: 2px; font-size: var(--fs-meta); color: var(--c-muted); }
+
+.sp-scroll { position: fixed; left: 0; right: 0; top: var(--sp-top, var(--h-bar)); bottom: var(--sp-bottom, var(--h-dock)); max-width: 28rem; margin: 0 auto; overflow-y: auto; overscroll-behavior: contain; padding-bottom: var(--s-4); }
+.sp-player { overscroll-behavior: contain; }

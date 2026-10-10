@@ -117,6 +117,11 @@ function stepViewsSelfTest() {
       ['sp-row-top', 'sp-row-lbl', 'sp-badge', 'sp-row-text'].map(c => has(collapsed, c)), [false, false, false, false]);
     check('a collapsed repeat line still reads as a done repeat', [has(collapsed, 'Repeat · 2 rows × 4'), has(collapsed, '✓')], [true, true]);
 
+    // ── App shell: the document never scrolls on step screens ──
+    check('playlist: everything under the bar lives in one scroll container',
+      [count(pl, 'class="sp-scroll"'), pl.indexOf('ui-top') < pl.indexOf('sp-scroll'), pl.indexOf('sp-scroll') < pl.indexOf('sp-row')], [1, true, true]);
+    check('checklist section: also inside the scroll container', count(spInnerHtml(PHASES[3]), 'class="sp-scroll"'), 1);
+
     // ── Glossary Back ──
     const gid = proj.id || proj;
     check('Back from the glossary returns to the project it was opened from',
