@@ -173,15 +173,13 @@ function spRepeatHtml(block, cursor, total, sel) {
 }
 
 function spPlaylistHtml(p, cursor, total, rows) {
-  return spTopBarHtml(p, cursor, total) + spListHeadHtml(p, cursor, total) + spNotesHtml(p) +
+  return spTopBarHtml(p, cursor, total) + spListHeadHtml(p) + spNotesHtml(p) +
     `<section class="sp-list">` + spListHtml(rows, cursor, total) + '</section>';
 }
 
-// INSTRUCTIONS · progress, a thin bar, and the section's description.
-function spListHeadHtml(p, cursor, total) {
-  const pct = total ? Math.round(cursor / total * 100) : 0;
-  return `<div class="sp-lh"><div class="sp-lh-r1">${uiCapsLabel('INSTRUCTIONS')}<span class="sp-lh-pg"><b>${cursor}</b> / ${total} rows · ${pct}%</span></div>
-    <div class="sp-lh-bar"><i style="width:${pct}%"></i></div>${p.desc ? `<p class="sp-lh-desc">${p.desc}</p>` : ''}</div>`;
+// The section's description. The progress lives in the top bar's tally, so it is not repeated here.
+function spListHeadHtml(p) {
+  return p.desc ? `<div class="sp-lh"><p class="sp-lh-desc">${p.desc}</p></div>` : '';
 }
 
 // gap: the playlist dock's centre button is labelled "Next row" in the design;

@@ -83,7 +83,7 @@ function stepViewsSelfTest() {
 
     // ── Task 7: playlist ──
     const pl = spPlaylistHtml(p, 1, rows.length, rows);
-    check('playlist heading: INSTRUCTIONS and the section progress', [has(pl, 'INSTRUCTIONS'), has(pl, '<b>1</b> / 3 rows · 33%')], [true, true]);
+    check('playlist heading: just the description (the bar already shows the progress)', [has(pl, 'INSTRUCTIONS'), has(pl, 'sp-lh-pg'), has(pl, 'sp-lh-bar'), has(pl, 'Rows with callouts')], [false, false, false, true]);
     check('playlist: a done row is marked ✓, once', count(pl, '✓'), 1);
     check('playlist: the selected card opens the row and has no Mark button',
       [count(pl, 'Open row'), has(pl, 'sp-done-btn'), has(pl, 'ROW 2 · CURRENT')], [1, false, true]);

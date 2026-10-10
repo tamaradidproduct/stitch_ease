@@ -323,9 +323,6 @@ function spPatchPlaylist(p, prev, next) {
   if (!swap(prev + 1) || !swap(next + 1)) return false;
   const tallyEl = root.querySelector('.ui-top-tally');
   if (tallyEl) tallyEl.textContent = next + ' / ' + total + ' rows';
-  const pg = root.querySelector('.sp-lh-pg'), bar = root.querySelector('.sp-lh-bar i'), pct = Math.round(next / total * 100);
-  if (pg) pg.innerHTML = '<b>' + next + '</b> / ' + total + ' rows · ' + pct + '%';
-  if (bar) bar.style.width = pct + '%';
   const tally = document.getElementById('prog-rows');
   if (tally) tally.textContent = globalRowsNow() + ' / ' + patternTotalRows();
   const dock = root.querySelector('.ui-dock');

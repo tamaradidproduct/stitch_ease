@@ -169,10 +169,10 @@ Fields per case: **Area · Priority · Preconditions · Steps · Expected**.
 
 ## Playlist
 
-**TC-22 Heading and notes** · Playlist · P1
-- Steps: open **Written rows** in the playlist.
+**TC-22 Section description and notes** · Playlist · P1
+- Steps: open **Written rows** in the playlist; tap `SECTION NOTES view`.
 - Expected:
-  - `INSTRUCTIONS` at the left, `0 / 3 rows · 0%` at the right, a thin progress bar and the section description below.
+  - Under the top bar there is only the section's description line. There is no `INSTRUCTIONS` heading, no progress text and no progress bar (the top bar's tally is the one progress figure).
   - A `SECTION NOTES view` row, collapsed. Tapping it shows the notes.
 
 **TC-23 Selected row is a card without a Mark button** · Playlist · P0

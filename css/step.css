@@ -57,11 +57,6 @@ body.sp-on .content { padding-left: 0; padding-right: 0; }   /* the bars and car
 
 /* Playlist */
 .sp-lh { padding: var(--s-1) var(--s-4) var(--s-3); }
-.sp-lh-r1 { display: flex; align-items: baseline; justify-content: space-between; }
-.sp-lh-pg { font-size: 12px; color: var(--c-muted); }
-.sp-lh-pg b { color: var(--c-sage-strong); }
-.sp-lh-bar { height: 3px; margin: var(--s-2) 0 var(--s-3); background: var(--c-line); border-radius: var(--r-round); overflow: hidden; }
-.sp-lh-bar i { display: block; height: 100%; background: var(--c-sage); }
 .sp-lh-desc { margin: 0; font-size: var(--fs-body); line-height: 1.5; color: var(--c-soft); }
 .sp-notes { margin: 0 var(--s-4) var(--s-3); background: var(--c-card); border: 1px solid var(--c-line); border-radius: var(--r-card); }
 .sp-notes-head { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: var(--s-3) 14px; background: none; border: 0; font: inherit; font-size: var(--fs-caps); font-weight: var(--fw-bold); letter-spacing: .1em; text-transform: uppercase; color: var(--c-soft); cursor: pointer; }
