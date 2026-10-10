@@ -72,6 +72,7 @@ Product requirements from the interview of 2026-10-09. They revise the step scre
 
 ## 5. Repeat state (same screen)
 - A repeat is a **state of the player**, not a separate screen.
+- **Heading:** `Repeat · 2 rows × 6` above the card, in the same heading style as `Row 4 of 44`. In the playlist, where there is no heading, the card carries it as a small caps label (`REPEAT · 2 ROWS × 6`).
 - **Pass line:** `Pass 3 of 6` with the existing **− / +** stepper beside it. Behaviour is as built: + finishes the pass, − goes to the start of this or the previous pass. There is no separate "Pass done" button.
 - **Rows:** every row of the current pass, listed together in the card, numbered within the pass (R1–R4). Tapping a row moves your place within the pass; looking at a row never changes progress.
 - **Counts:** the stitch count after each row, and at the end of the pass. Per-row counts are in the first release; patterns are retrofitted with them separately (§7).

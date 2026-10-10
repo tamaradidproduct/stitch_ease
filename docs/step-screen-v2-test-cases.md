@@ -144,7 +144,8 @@ Fields per case: **Area · Priority · Preconditions · Steps · Expected**.
 **TC-17 Repeat state** · Repeat · P0
 - Steps: open the **Repeat** section and its player on row 1.
 - Expected:
-  - The card shows `REPEAT`, `Pass 1 of 4`, − and + buttons, and only the two rows of the pass shown.
+  - A heading above the card reads `Repeat · 2 rows × 4`, in the same style as a row heading (`Row 3 of 12`).
+  - The card shows `Pass 1 of 4`, − and + buttons, and only the two rows of the pass shown.
   - The selected row is larger, with no box around it.
   - The dock reads `Mark R1 of pass 1 done`.
   - There is no separate "Pass done" button.

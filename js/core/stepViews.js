@@ -386,8 +386,9 @@ function spFullChartHtml(p, cursor, total, rows) {
 
 // ── The player screen ──
 // "Row 3 of 12" with the side and reading direction: a heading above the card, quieter than
-// the instruction. A repeat row has its own pass line instead.
+// the instruction. A repeat row's heading is the repeat itself (its pass line is in the card).
 function spPlayerHeadHtml(row, v, total) {
+  if (row.step.kind === 'repeat') return `<div class="sp-head"><h2 class="sp-head-t">Repeat · ${row.R} rows × ${row.passes}</h2></div>`;
   const cr = row.def.chartRow;
   const rs = cr ? isRSRow(cr) : null;   // RS/WS belongs to the section's chart, not a motif
   const dir = rs === null ? '' : `<span class="sp-read">${rs ? 'RS · read right → left' : 'WS · read left → right'}</span>`;
@@ -420,7 +421,7 @@ function spRepeatCardHtml(block, row, v, hasChart, inList) {
   const setup = co.before.length
     ? uiToggleSection({ label: 'SETUP', open: spSetupOpen, onclick: 'spToggleSetup()', html: co.before.map(t => `<p>${t}</p>`).join('') }) : '';
   return `<article class="ui-card ${inList ? 'sp-row selected' : 'sp-card'} sp-card--repeat${hasChart ? '' : ' sp-card--nochart'}"${inList ? ` data-row="${v}"` : ''}>
-    <div class="sp-repeat-label">${uiCapsLabel('REPEAT · ' + row.R + ' ROWS × ' + T)}</div>
+    ${inList ? `<div class="sp-repeat-label">${uiCapsLabel('REPEAT · ' + row.R + ' ROWS × ' + T)}</div>` : ''}
     <div class="sp-pass-line"><span class="sp-pass-n">Pass ${pass} of ${T}</span>
       ${uiIconButton({ icon: '−', label: 'Previous pass', onclick: 'spPass(-1)' })}${uiIconButton({ icon: '+', label: 'Finish this pass', onclick: 'spPass(1)' })}</div>
     ${setup}
@@ -444,6 +445,6 @@ function spPlayerHtml(p, cursor, total, rows) {
   const call = done ? `spMarkIncomplete(${v})` : `spDone(${v})`;
   const chart = spChartFor(p, row);
   return spTopBarHtml(p, cursor, total, { onBack: 'spClosePlayer()' }) +
-    `<div class="sp-player">${row.step.kind === 'repeat' ? '' : spPlayerHeadHtml(row, v, total)}${row.step.kind === 'repeat' ? spRepeatCardHtml(rows.filter(r => r.step === row.step), row, v, !!chart) : spPlayerCardHtml(p, row, v, total, !!chart)}${chart ? spChartRegionHtml(p, row, chart) : spGlossaryBar(spRowStitches(p, row))}</div>` +
+    `<div class="sp-player">${spPlayerHeadHtml(row, v, total)}${row.step.kind === 'repeat' ? spRepeatCardHtml(rows.filter(r => r.step === row.step), row, v, !!chart) : spPlayerCardHtml(p, row, v, total, !!chart)}${chart ? spChartRegionHtml(p, row, chart) : spGlossaryBar(spRowStitches(p, row))}</div>` +
     spDockHtml(label, call, done ? 'outline' : undefined);
 }

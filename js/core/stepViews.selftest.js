@@ -73,6 +73,8 @@ function stepViewsSelfTest() {
     check('repeat: pass line with − / +, only the viewed pass\'s rows, no count or end-of-pass line yet',
       [has(rep1, 'Pass 1 of 4'), has(rep1, 'spPass(-1)'), has(rep1, 'spPass(1)'), has(rep1, 'aria-label="Previous pass"'), count(rep1, 'data-row='), has(rep1, 'sp-rrow-c'), has(rep1, 'at end of pass')],
       [true, true, true, true, 2, false, false]);
+    check('player: the repeat heading sits above the card, in heading style, like a row heading',
+      [rep1.indexOf('sp-head') > -1, rep1.indexOf('sp-head') < rep1.indexOf('sp-card'), has(rep1, 'Repeat · 2 rows × 4'), has(rep1, 'REPEAT · 2 ROWS × 4')], [true, true, true, false]);
     check('repeat: rows are tappable looks, one is selected', [has(rep1, 'spSelectRow(2)'), count(rep1, 'sp-rrow sel')], [true, 1]);
     check('repeat with a motif draws the chart region', has(rep1, 'sp-chart-region'), true);
     spViewedRow = 5;
