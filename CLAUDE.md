@@ -38,8 +38,9 @@ plumbing. Load order matters only for top-level *executed* code — the pattern
 data and the bootstrap. Function declarations can live anywhere.
 
 ## Deployment
-- Hosted on **GitHub Pages** at https://tamaradidproduct.github.io/stitch_ease/, deploying from the `main` branch.
-- **Auto-deploys on every push to `main`** — GitHub Pages rebuilds the site instantly when the branch updates. **Merging a PR into `main` is the deploy action** — nothing further to run.
+- Production: https://app.stitch-ease.com (GitHub Pages, Actions deploy). Staging: https://staging.app.stitch-ease.com.
+- Every push to `main` triggers `deploy-staging.yml` (automatic) and `deploy.yml` (waits for manual approval in the `production` environment). **Merging a PR starts the deploy; approving the run ships it.**
+- CI (`ci.yml`) runs `node scripts/check.mjs` on PRs. Workflow map and Airtable QA loop: `.claude/skills/dev-setup/SKILL.md`.
 - **Only merge when the user explicitly asks** — make and verify changes locally, commit, push, and open a PR; hold the merge until requested.
 - Service worker cache is named `stitch-ease-vN` — bump N in `sw.js` when deploying a change so clients refresh. HTML is served **network-first** (see SW section), so page updates land on next load without a manual cache bump; bump N mainly for the cached static assets.
 
