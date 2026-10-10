@@ -54,6 +54,10 @@ if (process.argv.includes('--selftest')) {
   // The playlist card's row heading is a step quieter than the player's heading (smaller, softer).
   const rowH = (stepCss.match(/\.sp-row-h\s*\{[^}]*\}/) || [''])[0];
   if (!/font-size:\s*var\(--fs-title\)/.test(rowH) || !/color:\s*var\(--c-soft\)/.test(rowH)) { console.log('FAIL .sp-row-h must be smaller and softer than the player heading'); bad++; }
+  // The chart bleeds to the screen edges even when the text column is narrower than the screen.
+  const region = (stepCss.match(/\.sp-chart-region\s*\{[^}]*\}/) || [''])[0];
+  const player = (stepCss.match(/\.sp-player\s*\{[^}]*\}/) || [''])[0];
+  if (!/margin:[^;]*--sp-gutter/.test(region) || !/--sp-gutter/.test(player) || /max-width/.test(player)) { console.log('FAIL the chart region must bleed by the same gutter that centres the column (no max-width on .sp-player)'); bad++; }
   // The top bar's project name must truncate, or a long name runs under the tally and buttons.
   const ui = fs.readFileSync(path.join(root, 'css/ui.css'), 'utf8');
   const proj = (ui.match(/\.ui-top-project\s*\{[^}]*\}/) || [''])[0];

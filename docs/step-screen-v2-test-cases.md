@@ -267,10 +267,11 @@ Fields per case: **Area · Priority · Preconditions · Steps · Expected**.
 - Expected: the chart, row counter, zoom and highlight work as before and show no layout break from the restyle.
 
 **TC-30 Small and large windows** · Visual · P1
-- Steps: view the player (chart row and repeat) and playlist at 320 px, 375 px, 414 px and 768 px wide.
+- Steps: view the player (chart row and repeat) and playlist at 320 px, 375 px, 414 px, 494 px (a wide phone: the layout width many Android phones report) and 768 px wide.
 - Expected:
   - No horizontal page scroll and no text cut off the screen, except truncated names.
   - At 768 px the content stays centred in a column, with the dock buttons aligned to it.
+  - On screens wider than the 28 rem text column (494 px and up) the text, cards and dock stay in the centred column, but the chart and its legend still run edge to edge with no margins at the sides.
 
 **TC-31 Offline and update** · Service worker · P1
 - Steps: load the app online, go offline, reload. Then bump nothing and reload online.
