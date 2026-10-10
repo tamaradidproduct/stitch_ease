@@ -390,6 +390,13 @@
     display: flex; flex-direction: column;
     min-width: 200px; overflow: hidden;
   }
+  /* A transparent layer under the menu: a tap anywhere outside closes it, the trigger included. */
+  .reset-menu-scrim { position: fixed; inset: 0; z-index: 249; background: transparent; }
+  /* While the menu is open the ⋮ trigger reads as ✕ */
+  body.reset-menu-open .proj-menu-btn, body.reset-menu-open .ui-icon-btn--bare { position: relative; font-size: 0; }
+  body.reset-menu-open .proj-menu-btn::after, body.reset-menu-open .ui-icon-btn--bare::after {
+    content: '\2715'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 16px; color: var(--text);
+  }
   .reset-menu-item {
     padding: 12px 16px; border: none; background: transparent; color: var(--text);
     text-align: left; font-size: 14px; font-family: inherit; cursor: pointer;

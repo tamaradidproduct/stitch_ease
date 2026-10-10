@@ -576,7 +576,8 @@ function sheetPrompt(o) {
 // Context menu for resetting project progress.
 function showResetMenu(e) {
   if (e.preventDefault) e.preventDefault();
-  closeResetMenu(); // never stack two
+  // The trigger toggles: tapping it again (or anywhere outside the menu) closes it.
+  if (document.getElementById('reset-menu')) { closeResetMenu(); return; }
   const proj = activeProject();
   const phase = PHASES[cur];
   const menu = document.createElement('div');
@@ -590,7 +591,13 @@ function showResetMenu(e) {
       Reset all progress
     </button>
   `;
+  const scrim = document.createElement('div');
+  scrim.className = 'reset-menu-scrim';
+  scrim.id = 'reset-menu-scrim';
+  scrim.onclick = closeResetMenu;
+  document.body.appendChild(scrim);
   document.body.appendChild(menu);
+  document.body.classList.add('reset-menu-open');   // the ⋮ trigger shows ✕ while the menu is open
   const rect = e.target.getBoundingClientRect();
   const margin = 8;
   // Prefer below + right-aligned to the target, but clamp to the viewport on
@@ -610,9 +617,12 @@ function showResetMenu(e) {
 }
 
 function closeResetMenu() {
-  const m = document.getElementById('reset-menu');
+  const m = document.getElementById('reset-menu'), s = document.getElementById('reset-menu-scrim');
   if (m) m.remove();
+  if (s) s.remove();
+  document.body.classList.remove('reset-menu-open');
 }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeResetMenu(); });
 
 function confirmResetPhase(projectId, phaseName) {
   closeResetMenu();

@@ -37,7 +37,7 @@ Product requirements from the interview of 2026-10-09. They revise the step scre
 - **Section name** opens a sheet with the section's notes and the section switcher.
 - **Section tally** (`3 / 24 rows`) at the right of the bar, next to the section name. There is no project-wide tally; it is only useful for single-section patterns.
 - **PDF button:** the original pattern PDF has its own icon button in the bar, between the tally and ⋮, so it is one tap from any row. It opens the existing PDF sheet (open, attach, sync state). It is not buried in ⋮.
-- **⋮** keeps reset section / reset pattern. It is reachable but not prominent.
+- **⋮** keeps reset section / reset pattern. While its menu is open the ⋮ shows ✕; tapping outside the menu, the ✕ or Esc closes it. It is reachable but not prominent.
 
 ### 3.2 Vertical split
 - The area between the top bar and the dock is divided about **1 / 3 for the instruction card and 2 / 3 for the chart**.

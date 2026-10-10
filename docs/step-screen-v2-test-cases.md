@@ -125,6 +125,14 @@ Fields per case: **Area · Priority · Preconditions · Steps · Expected**.
   - Back returns to the player on row 4, with the same row and Setup state, not to the library.
   - Opening the glossary from the library's book icon and tapping Back still returns to the library.
 
+**TC-33 Options menu closes and the trigger shows ✕** · Navigation · P0
+- Steps: tap ⋮ in the top bar. Tap outside the menu. Open it again and tap the ✕. Open it again and press Esc (desktop). Open it and tap `Reset "…"`.
+- Expected:
+  - While the menu is open the ⋮ reads as ✕.
+  - Tapping anywhere outside the menu, tapping the ✕ or pressing Esc closes it, and the trigger goes back to ⋮.
+  - Tapping a menu item closes the menu and opens its confirmation sheet.
+  - It never stacks two menus.
+
 **TC-16 PDF button** · PDF · P1
 - Steps: tap the document icon in the top bar.
 - Expected:
