@@ -208,7 +208,9 @@ function stepsSelfTest() {
   ] };
   const NEW = convertPattern(OLD);
   const ph = id => NEW.phases.find(x => x.id === id);
-  check('materials-only section: rowless, items become section notes', [ph('mat').rowless, ph('mat').steps.length, ph('mat').notes], [true, 0, ['4 mm circular', 'Stitch markers<br>• 4 markers']]);
+  check('materials-only section: rowless, and its items are a checklist like the finishing steps, not section notes',
+    [ph('mat').rowless, ph('mat').steps.map(t => t.kind), ph('mat').steps.map(t => t.text), ph('mat').notes],
+    [true, ['task', 'task'], ['4 mm circular', 'Stitch markers<br>• 4 markers'], undefined]);
   check('leading context → section notes; the action just before the first row → its `before`',
     [ph('work').notes.slice(0, 1), ph('work').steps[0].before], [['Rhythm: increase every 2nd row throughout.'], 'Switch to 4 mm and place a marker.']);
   check('an interior note that is not a checkpoint → `before` the next step', ph('work').steps[1].before, 'Now work the lace panel.');

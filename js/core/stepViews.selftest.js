@@ -269,6 +269,25 @@ function stepViewsSelfTest() {
     check('playlist dock: a finished section still moves on once nothing is selected, and follows a selected row otherwise',
       [has(spPlaylistDock(total9, total9), 'Next section') || has(spPlaylistDock(total9, total9), 'Finished!'), has(doneSection, 'Mark row 2 not done')], [true, true]);
 
+    // ── Section notes: open on the first visit to a section, collapsed on later ones; a tap is remembered ──
+    check('notes default by what was stored for the section',
+      [spNotesInitial(undefined), spNotesInitial('seen'), spNotesInitial('open'), spNotesInitial('closed')], [true, false, true, false]);
+    cur = 0;                                         // the Written rows section has notes
+    spKey = null; spSyncKey();
+    const firstVisit = spNotesOpen;
+    spKey = null; spSyncKey();
+    const secondVisit = spNotesOpen;
+    check('first visit: open; later visits: collapsed', [firstVisit, secondVisit], [true, false]);
+    spToggleNotes();                                 // the knitter opens them
+    spKey = null; spSyncKey();
+    const afterOpen = spNotesOpen;
+    spToggleNotes();                                 // and closes them again
+    spKey = null; spSyncKey();
+    check('what the knitter chose is remembered for that section', [afterOpen, spNotesOpen], [true, false]);
+    cur = 1; spKey = null; spSyncKey();
+    check('a section with no notes is untouched', spNotesOpen, false);
+    cur = 0; spKey = null; spSyncKey(); spKey = null;
+
     // ── App shell: the document never scrolls on step screens ──
     check('playlist: everything under the bar lives in one scroll container',
       [count(pl, 'class="sp-scroll"'), pl.indexOf('ui-top') < pl.indexOf('sp-scroll'), pl.indexOf('sp-scroll') < pl.indexOf('sp-row')], [1, true, true]);

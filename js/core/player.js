@@ -81,7 +81,7 @@ function spCallouts(row) {
 
 function spSyncKey() {
   const key = activeProjectId + '|' + (PHASES[cur] && PHASES[cur].id);
-  if (key !== spKey) { spKey = key; spViewedRow = null; spPlayerOpen = false; spNotesOpen = false; spChartOpen = false; spSetupOpen = false; }
+  if (key !== spKey) { spKey = key; spViewedRow = null; spPlayerOpen = false; spNotesOpen = spEnterNotes(); spChartOpen = false; spSetupOpen = false; }
 }
 
 // null means "on the cursor row" — also when the viewed row is dropped back
@@ -364,7 +364,25 @@ function spNoteChange() { spEnterPending = true; }
 function spTakeEnter() { const was = spEnterPending; spEnterPending = false; return was; }
 
 function spToggleSetup() { spSetupOpen = !spSetupOpen; spRender(); }
-function spToggleNotes() { spNotesOpen = !spNotesOpen; spRender(); }
+// ── Section notes: open on the first visit to a section in a project, collapsed on later visits, and
+// whatever the knitter taps is remembered for that section. A device preference: never synced.
+// Stored per project as {sectionId: 'seen' | 'open' | 'closed'} under pt3_proj_<id>_notesui.
+function spNotesInitial(stored) { return stored === undefined ? true : stored === 'open'; }
+function spNotesUi() { try { return JSON.parse(localStorage.getItem(pkey('notesui'))) || {}; } catch (e) { return {}; } }
+function spNotesUiSave(map) { try { localStorage.setItem(pkey('notesui'), JSON.stringify(map)); } catch (e) { /* storage full or off: the default applies next time */ } }
+function spEnterNotes() {
+  const p = PHASES[cur];
+  if (!p || !(p.notes || []).length) return false;
+  const map = spNotesUi(), v = map[p.id];
+  if (v === undefined) { map[p.id] = 'seen'; spNotesUiSave(map); }
+  return spNotesInitial(v);
+}
+function spToggleNotes() {
+  spNotesOpen = !spNotesOpen;
+  const p = PHASES[cur];
+  if (p) { const map = spNotesUi(); map[p.id] = spNotesOpen ? 'open' : 'closed'; spNotesUiSave(map); }
+  spRender();
+}
 
 // "Mark rows 1–3 done?" — one row reads "Mark row 3 done?".
 function spRangeQuestion(from, to, what) {

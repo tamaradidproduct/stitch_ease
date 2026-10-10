@@ -48,7 +48,8 @@ const CONV_CHECK = /(\b\d+\s*(sts?|stitches|cm)\b|\bshould (measure|have|be)\b|\
 // A leading note that opens with an instruction is a setup action for the first row.
 const CONV_ACTION = /^(cast|switch|change|place|pick|join|using|with|begin|start|rejoin|set up|put|transfer|divide|slip|turn)\b/i;
 // A section with no rows whose notes are things to DO.
-const CONV_TASKS = /finish|bind off|sew|weave|seam|block|assembl/i;
+// Materials are things to gather, so they are a checklist too — never hidden away as section notes.
+const CONV_TASKS = /finish|bind off|sew|weave|seam|block|assembl|material/i;
 
 function convertWork(e) {
   const st = Object.assign({}, e);

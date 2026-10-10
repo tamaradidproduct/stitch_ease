@@ -236,6 +236,18 @@ Fields per case: **Area · Priority · Preconditions · Steps · Expected**.
   - With nothing selected elsewhere the button is the current row; once the section is finished it becomes `Next section` (or `Finished!`).
   - The `Viewing row 8 · on row 7` chip and `Back to current` still show whenever the selected row isn't the current one.
 
+**TC-39 Section notes open on the first visit** · Playlist · P0
+- Steps: create a Step demo project and open **Written rows** (it has section notes). Leave for another section and come back. Tap `SECTION NOTES hide`, leave and come back; then tap `view`, leave and come back.
+- Expected:
+  - The first time you open a section that has notes, they are expanded.
+  - On later visits they are collapsed.
+  - Once you open or close them yourself, that choice is remembered for that section in that project, on this device.
+  - A section with no notes shows no notes card. Another project starts with its own first visit.
+
+**TC-40 Materials are a checklist** · Playlist · P1
+- Steps: create a Peacock Tee project and open **Materials**.
+- Expected: each material is a line with a tick box, like the finishing steps; there is no collapsed "Section notes" card holding them. Ticking changes no row tally, and the section counts as complete when everything is ticked.
+
 **TC-24 The playlist scrolls only when it has to** · Playlist · P0
 - Preconditions: Peacock Tee, yoke chart section (44 rows) in the playlist, window small enough that the list scrolls.
 - Steps: tap › repeatedly from row 1. Then tap a row far below the visible part of the list. Then tap › on a row near the top of the view, and ‹ back up past the top.
