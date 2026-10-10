@@ -51,6 +51,13 @@ function uiSelfTest() {
   check('caps label escapes', uiCapsLabel('a<b'), '<span class="ui-caps">a&lt;b</span>');
   check('card keeps html raw and takes a class', [has(uiCard({ cls: 'x', html: '<p>hi</p>' }), '<p>hi</p>'), has(uiCard({ cls: 'x', html: '' }), 'ui-card x')], [true, true]);
 
+  check('tag: plain and done variants', [uiTag('Current'), uiTag('Done', 'done')], ['<span class="ui-tag">Current</span>', '<span class="ui-tag ui-tag--done">Done</span>']);
+  check('tag escapes', has(uiTag('<b>'), '&lt;b&gt;'), true);
+  check('button: label escaped, class and handler carried', uiButton({ label: 'Open row ›', onclick: 'o(1)', cls: 'sp-open-btn' }), '<button class="sp-open-btn" onclick="o(1)">Open row ›</button>');
+  check('button: aria-label optional', has(uiButton({ label: 'x', onclick: 'o()', aria: 'Why' }), 'aria-label="Why"'), true);
+  const art = uiCard({ cls: 'sp-row', html: 'x', tag: 'article', attrs: 'data-row="3"' });
+  check('card: tag and extra attributes', [art.indexOf('<article class="ui-card sp-row" data-row="3">'), art.slice(-10)], [0, '</article>']);
+
   const failed = results.filter(r => !r.ok);
   console.log('[ui selftest] ' + (results.length - failed.length) + '/' + results.length + ' passed');
   failed.forEach(f => console.log('FAIL', f.case, '\n  got ', f.got, '\n  want', f.want));

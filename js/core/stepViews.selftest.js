@@ -99,12 +99,12 @@ function stepViewsSelfTest() {
     check('playlist heading: just the description (the bar already shows the progress)', [has(pl, 'INSTRUCTIONS'), has(pl, 'sp-lh-pg'), has(pl, 'sp-lh-bar'), has(pl, 'Rows with callouts')], [false, false, false, true]);
     check('playlist: a done row is marked ✓, once', count(pl, '✓'), 1);
     check('playlist: the selected card opens the row and has no Mark button',
-      [count(pl, 'Open row'), has(pl, 'sp-done-btn'), /sp-row-h[^<]*>Row 2<\/h3><span class="sp-tag">Current/.test(pl)], [1, false, true]);
+      [count(pl, 'Open row'), has(pl, 'sp-done-btn'), /sp-row-h[^<]*>Row 2<\/h3><span class="ui-tag">Current/.test(pl)], [1, false, true]);
     spViewedRow = 3;
     const pl2 = spPlaylistHtml(p, 1, rows.length, rows);
     spViewedRow = null;
     check('browsing: the selected card is the looked-at row and the current row is tagged',
-      [has(pl2, '>Row 3</h3>'), /Row 3<\/h3><span class="sp-tag">Current/.test(pl2), count(pl2, 'class="sp-tag">Current')], [true, false, 1]);
+      [has(pl2, '>Row 3</h3>'), /Row 3<\/h3><span class="ui-tag">Current/.test(pl2), count(pl2, 'class="ui-tag">Current')], [true, false, 1]);
     check('spFocusSelected is safe with nothing on screen', (() => { try { spFocusSelected(); return true; } catch (e) { return String(e); } })(), true);
 
     // ── Task 8: counts ──
@@ -147,7 +147,7 @@ function stepViewsSelfTest() {
     const away = spPlaylistHtml(PHASES[1], 2, prow.length, prow);
     spViewedRow = null;
     check('repeat with the current row but the selection elsewhere: collapsed, tagged CURRENT ROW, and only one card is open',
-      [has(away, 'sp-card--repeat'), count(away, 'Open row'), has(away, 'Repeat · 2 rows × 4'), has(away, 'class="sp-tag">Current'), has(away, 'Pass 2 of 4')], [false, 1, true, true, true]);
+      [has(away, 'sp-card--repeat'), count(away, 'Open row'), has(away, 'Repeat · 2 rows × 4'), has(away, 'class="ui-tag">Current'), has(away, 'Pass 2 of 4')], [false, 1, true, true, true]);
     const here = spPlaylistHtml(PHASES[1], 2, prow.length, prow);
     check('repeat holding the selection (the current row by default): expanded', [has(here, 'sp-card--repeat'), count(here, 'Open row')], [true, 1]);
     spViewedRow = 2;

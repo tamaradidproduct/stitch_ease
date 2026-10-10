@@ -61,7 +61,9 @@
   /* space (multiples of 4) */
   --s-1: 4px;
   --s-2: 8px;
+  --s-2h: 6px;
   --s-3: 12px;
+  --s-3h: 14px;
   --s-4: 16px;
   --s-5: 20px;
   --s-6: 24px;
@@ -96,6 +98,11 @@
   --h-cell: 24px;
   --h-cell-mini: 18px;
   --h-dock: 86px;
+  --h-tap: 44px;
+  --w-column: 640px;
+  --w-navbtn: 52px;
+  --h-check: 22px;
+  --w-rownum: 58px;
 
   /* legacy bridge: the app's older variables follow the tokens, which restyles the
      screens that still use them without touching their selectors or layout */

@@ -15,6 +15,7 @@ export function findViolations(text, strict = true) {
   for (const m of text.matchAll(/border-radius\s*:\s*[^;"]*\d+px/g)) out.push('raw radius ' + m[0].trim());
   if (strict) for (const m of text.matchAll(/font-size\s*:\s*[\d.]+px/g)) out.push('raw font size ' + m[0].trim());
   if (strict) for (const m of text.matchAll(/letter-spacing\s*:\s*-?[\d.]+(?:em|px)/g)) out.push('raw letter-spacing ' + m[0].trim());
+  if (strict) for (const m of text.matchAll(/(?<![\w.-])(?:[4-9]|\d{2,})(?:\.\d+)?px/g)) out.push('raw size ' + m[0]);
   if (strict) for (const m of text.matchAll(/style="[^"]*"/g)) { if (!/^style="\s*(?:--[\w-]+\s*:[^;"]*;?\s*)+"$/.test(m[0])) out.push('inline style ' + m[0].trim()); }
   for (const m of text.matchAll(/font-family\s*:\s*(?!\s*(?:var\(|inherit))[^;"]+/g)) out.push('raw font ' + m[0].trim());
   return out;
@@ -26,13 +27,15 @@ if (process.argv.includes('--selftest')) {
   const cases = [
     ['hex colour', 'color: #fff;', 1],
     ['rgba', 'background: rgba(0,0,0,.4);', 1],
-    ['px font size', 'font-size: 15px;', 1],
+    ['px font size (also a raw size)', 'font-size: 15px;', 2],
     ['token font size', 'font-size: var(--fs-lead);', 0],
     ['em letter-spacing', 'letter-spacing: .1em;', 1],
     ['token letter-spacing', 'letter-spacing: var(--ls-label);', 0],
     ['inline layout style', '<div style="flex-direction:column">', 1],
     ['inline custom property is fine', '<div style="--cw-cols:1px">', 0],
-    ['px radius', 'border-radius: 12px;', 1],
+    ['raw size', 'padding: 14px;', 1],
+    ['hairline is fine', 'border: 1px solid x; margin: 2px; width: 1.5px;', 0],
+    ['px radius (also a raw size)', 'border-radius: 12px;', 2],
     ['font name', 'font-family: Georgia, serif;', 1],
     ['token colour', 'color: var(--c-card);', 0],
     ['token radius', 'border-radius: var(--r-card);', 0],

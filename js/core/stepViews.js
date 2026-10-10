@@ -69,17 +69,17 @@ function spRowHtml(row, cursor, total) {
     const setup = co.before.length
       ? uiToggleSection({ label: 'SETUP', open: spSetupOpen, onclick: 'spToggleSetup()', html: co.before.map(t => `<p>${t}</p>`).join('') }) : '';
     return `<article class="ui-card sp-row selected" data-row="${row.n}" onclick="spCardTap(event, ${row.n})">
-      <div class="sp-card-top"><h3 class="sp-row-h">Row ${row.n}</h3>${current ? '<span class="sp-tag">Current</span>' : done ? '<span class="sp-tag sp-tag--done">Done</span>' : ''}<span class="sp-card-top-r">${rs ? `<span class="sp-read">${rs}</span>` : ''}${rep ? '' : spPassNote(row)}</span></div>
+      <div class="sp-card-top"><h3 class="sp-row-h">Row ${row.n}</h3>${current ? uiTag('Current') : done ? uiTag('Done', 'done') : ''}<span class="sp-card-top-r">${rs ? `<span class="sp-read">${rs}</span>` : ''}${rep ? '' : spPassNote(row)}</span></div>
       ${setup}
       <p class="sp-ins">${text}</p>
       ${spMiniChartHtml(PHASES[cur], row)}
       ${uiFacts({ count: cnt, check: co.after.join(' · ') || null })}
-      <button class="sp-open-btn" onclick="spOpenPlayer(${row.n})">Open row ›</button>
+      ${uiButton({ label: 'Open row ›', onclick: `spOpenPlayer(${row.n})`, cls: 'sp-open-btn' })}
     </article>`;
   }
   return `<article class="sp-row ${done ? 'done' : 'upcoming'}${current ? ' current' : ''}" data-row="${row.n}" onclick="spSelectRow(${row.n})">
     <span class="sp-row-n">${spLabel(row)}${done ? ' ✓' : ''}</span>
-    <span class="sp-row-t">${current ? '<span class="sp-tag">Current</span> ' : ''}${text}</span>
+    <span class="sp-row-t">${current ? uiTag('Current') + ' ' : ''}${text}</span>
     ${cnt === null ? '' : `<span class="sp-row-c">${cnt}</span>`}
   </article>`;
 }
@@ -136,7 +136,7 @@ function spSectionSheetHtml() {
   const notes = (p.notes || []).length
     ? '<p class="sheet-sub">' + p.notes.join('</p><p class="sheet-sub">') + '</p>' : '';
   const list = PHASES.map((s, i) =>
-    `<button class="sheet-btn${i === cur ? ' primary' : ''}" onclick="closeSheet(); go(${i})">${escapeHtml(spName(s.name))}</button>`).join('');
+    uiButton({ label: spName(s.name), onclick: `closeSheet(); go(${i})`, cls: 'sheet-btn' + (i === cur ? ' primary' : '') })).join('');
   return notes + '<div class="sheet-actions sheet-actions--col">' + list + '</div>';
 }
 
@@ -166,7 +166,7 @@ function spRepeatHtml(block, cursor, total, sel) {
     const pass = curIn ? block[cursor + 1 - first].pass : 0;
     return `<article class="sp-row ${done ? 'done' : 'upcoming'}${curIn ? ' current' : ''}" onclick="spSelectRow(${curIn ? cursor + 1 : first})">
       <span class="sp-row-n">R${first}–${last}${done ? ' ✓' : ''}</span>
-      <span class="sp-row-t">${curIn ? '<span class="sp-tag">Current</span> ' : ''}Repeat · ${R} rows × ${T}${curIn ? `<span class="sp-row-sub">Pass ${pass} of ${T}</span>` : ''}<span class="sp-row-sub">${block.slice(0, R).map(spText).join(' · ')}</span></span></article>`;
+      <span class="sp-row-t">${curIn ? uiTag('Current') + ' ' : ''}Repeat · ${R} rows × ${T}${curIn ? `<span class="sp-row-sub">Pass ${pass} of ${T}</span>` : ''}<span class="sp-row-sub">${block.slice(0, R).map(spText).join(' · ')}</span></span></article>`;
   }
   const row = block[sel - first];
   return spRepeatCardHtml(block, row, row.n, false, true);
@@ -310,7 +310,7 @@ function spStitchSheetHtml(items, notes) {
   });
   return (items && items.length ? `<h4 class="sp-sh-h">ON THIS ROW</h4>${items.map(i => row(i.term, i.def, i.sym)).join('')}` : '') +
     (own.length ? `<h4 class="sp-sh-h">IN THIS PATTERN</h4>${own.join('')}` : '') +
-    '<button class="sheet-btn sp-sh-full" onclick="closeSheet(); openGlossary()">Full glossary ›</button>';
+    uiButton({ label: 'Full glossary ›', onclick: 'closeSheet(); openGlossary()', cls: 'sheet-btn sp-sh-full' });
 }
 
 // The stitch count after this row, from the row's optional `sts`: a number, or an array
@@ -439,7 +439,7 @@ function spRepeatCardHtml(block, row, v, hasChart, inList) {
     ${setup}
     <ul class="sp-rlist">${items}</ul>
     ${uiFacts({ count: spPassEndCount(block, pass), countLabel: 'sts at end of pass ' + pass, check: co.after.join(' · ') || null })}
-    ${inList ? `<button class="sp-open-btn" onclick="spOpenPlayer(${v})">Open row ›</button>` : ''}
+    ${inList ? uiButton({ label: 'Open row ›', onclick: `spOpenPlayer(${v})`, cls: 'sp-open-btn' }) : ''}
   </article>`;
 }
 

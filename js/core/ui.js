@@ -62,8 +62,19 @@ function uiDock({ label, onclick, variant, chip, onPrev, onNext }) {
     `<button class="ui-dock-nav" onclick="${onNext || 'spBrowse(1)'}" aria-label="Next row">${UI_CHEV_R}</button></div></footer>`;
 }
 
-function uiCard({ cls, html }) {
-  return `<div class="ui-card${cls ? ' ' + cls : ''}">${html}</div>`;
+function uiCard({ cls, html, tag, attrs }) {
+  const t = tag || 'div';
+  return `<${t} class="ui-card${cls ? ' ' + cls : ''}"${attrs ? ' ' + attrs : ''}>${html}</${t}>`;
+}
+
+// A small status label beside a heading or a row ("Current", "Done").
+function uiTag(text, variant) {
+  return `<span class="ui-tag${variant ? ' ui-tag--' + variant : ''}">${escapeHtml(text)}</span>`;
+}
+
+// A plain labelled button; the look comes from `cls`.
+function uiButton({ label, onclick, cls, aria }) {
+  return `<button${cls ? ` class="${cls}"` : ''} onclick="${onclick}"${aria ? ` aria-label="${escapeHtml(aria)}"` : ''}>${escapeHtml(label)}</button>`;
 }
 
 // A short buzz where the browser allows it (Android); a quiet no-op elsewhere (iOS Safari has no vibration API).
