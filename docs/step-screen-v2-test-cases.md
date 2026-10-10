@@ -64,6 +64,7 @@ Fields per case: **Area · Priority · Preconditions · Steps · Expected**.
 - Expected:
   - No chart area is shown.
   - The card is only as tall as its content and does not stretch to fill the screen.
+  - Under the card there is still the glossary strip (`Stitch glossary` and the book icon), styled like the legend under a chart; the icon opens the glossary.
 
 **TC-08 Dock labels and the one primary action** · Player · P0
 - Steps: in **Written rows**, open the player on row 1. Tap the main button. Tap ‹ to go back to row 1.

@@ -46,6 +46,8 @@ function stepViewsSelfTest() {
       [count(wHtml, 'Row 1 of 3'), has(wHtml, 'CHECK'), has(wHtml, 'class="ui-count"'), has(wHtml, 'sp-chart-region')], [1, true, false, false]);
     check('the row heading sits above the card, outside it, in heading style',
       [wHtml.indexOf('sp-head') > -1, wHtml.indexOf('sp-head') < wHtml.indexOf('sp-card'), has(spPlayerCardHtml(p, rows[0], 1, 3, false), 'Row 1 of 3'), has(wHtml, 'ROW 1 OF 3')], [true, true, false, false]);
+    check('a written row still has the glossary bar (no chart): one glossary button, no chart region',
+      [count(wHtml, 'aria-label="Glossary"'), has(wHtml, 'sp-chart-region'), has(wHtml, 'sp-legend')], [1, false, true]);
     check('Setup is collapsed by default', has(wHtml, 'Cast on 88 sts'), false);
     spSetupOpen = true;
     check('Setup shows once opened', has(spPlayerHtml(p, 0, rows.length, rows), 'Cast on 88 sts'), true);

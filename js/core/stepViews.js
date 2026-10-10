@@ -225,6 +225,13 @@ function spLegendLine(types) {
     uiIconButton({ icon: typeof GLOSSARY_SVG === 'undefined' ? '?' : GLOSSARY_SVG, label: 'Glossary', onclick: 'openGlossary()' }) + '</div>';
 }
 
+// A row with no chart still gets the glossary strip: the same bar as under a chart, with a label
+// where the stitches would be.
+function spGlossaryBar() {
+  return `<div class="sp-legend sp-legend--bare"><span class="sp-leg-more">Stitch glossary</span>` +
+    uiIconButton({ icon: typeof GLOSSARY_SVG === 'undefined' ? '?' : GLOSSARY_SVG, label: 'Glossary', onclick: 'openGlossary()' }) + '</div>';
+}
+
 // The stitch count after this row, from the row's optional `sts`: a number, or an array
 // indexed by pass for a repeat. Null when absent or not a finite number; everything that
 // shows a count hides it when this is null. (Patterns are given counts separately.)
@@ -368,6 +375,6 @@ function spPlayerHtml(p, cursor, total, rows) {
   const call = done ? `spMarkIncomplete(${v})` : `spDone(${v})`;
   const chart = spChartFor(p, row);
   return spTopBarHtml(p, cursor, total, { onBack: 'spClosePlayer()' }) +
-    `<div class="sp-player">${row.step.kind === 'repeat' ? '' : spPlayerHeadHtml(row, v, total)}${row.step.kind === 'repeat' ? spRepeatCardHtml(rows.filter(r => r.step === row.step), row, v, !!chart) : spPlayerCardHtml(p, row, v, total, !!chart)}${chart ? spChartRegionHtml(p, row, chart) : ''}</div>` +
+    `<div class="sp-player">${row.step.kind === 'repeat' ? '' : spPlayerHeadHtml(row, v, total)}${row.step.kind === 'repeat' ? spRepeatCardHtml(rows.filter(r => r.step === row.step), row, v, !!chart) : spPlayerCardHtml(p, row, v, total, !!chart)}${chart ? spChartRegionHtml(p, row, chart) : spGlossaryBar()}</div>` +
     spDockHtml(label, call, done ? 'outline' : undefined);
 }
