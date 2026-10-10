@@ -49,7 +49,7 @@ function sectionSteps(section, pattern) {
   const out = [];
   const cs = section.chartSteps;
   if (cs) {
-    const n = chartForPhaseOf(pattern, section).length;
+    const n = (chartForPhaseOf(pattern, section) || []).length;
     for (let row = 1; row <= n; row++) {
       const step = { kind: 'row', id: section.id + '#' + row, chartRow: row };
       const text = typeof cs.text === 'function' ? cs.text(row) : (cs.text || {})[row];
@@ -96,7 +96,7 @@ function locateCursor(section, pattern, cursor) {
     if (!n || c >= acc + n) { acc += n; continue; }
     const s = steps[i], within = c - acc;
     if (s.kind === 'repeat') {
-      const R = s.rows.length;
+      const R = (s.rows || []).length;
       const rowInPass = within % R + 1;
       return Object.assign(base, { stepIndex: i, step: s, pass: Math.floor(within / R) + 1,
         passes: s.times | 0, rowInPass, rowId: s.rows[rowInPass - 1].id });
@@ -120,7 +120,7 @@ function cursorAtRow(section, pattern, stepIndex, pass, rowInPass) {
   const base = cursorAtStep(section, pattern, stepIndex);
   const s = sectionSteps(section, pattern)[stepIndex | 0];
   if (!s || s.kind !== 'repeat' || !stepRowCount(s)) return base;
-  const R = s.rows.length;
+  const R = (s.rows || []).length;
   const p = Math.max(1, Math.min(s.times | 0, pass | 0));
   const r = Math.max(1, Math.min(R, rowInPass | 0));
   return base + (p - 1) * R + (r - 1);
@@ -160,7 +160,7 @@ function passContext(section, pattern, cursor) {
     const s = steps[i];
     if (s.kind !== 'repeat') return null;
     return { step: s, stepIndex: i, pass: s.times | 0, passes: s.times | 0,
-             rowInPass: s.rows.length, ended: true };
+             rowInPass: (s.rows || []).length, ended: true };
   }
   return null;
 }
@@ -171,7 +171,7 @@ function passPlus(section, pattern, cursor) {
   const loc = locateCursor(section, pattern, cursor);
   const ctx = passContext(section, pattern, cursor);
   if (!ctx || ctx.ended) return loc.cursor;
-  return cursorAtStep(section, pattern, ctx.stepIndex) + ctx.pass * ctx.step.rows.length;
+  return cursorAtStep(section, pattern, ctx.stepIndex) + ctx.pass * (ctx.step.rows || []).length;
 }
 
 // Pass −: at row 1 of pass P → row 1 of P−1; mid-pass (or a finished block) →
@@ -213,6 +213,7 @@ function calloutsFor(step, loc) {
 // ── Section progress, from a ctx — what rows.js dispatches to ──
 
 function stepSectionCursor(section, ctx, pattern) {
+  if (!section) return 0;
   const total = stepsRowCount(section, pattern);
   const raw = (positionsOf(ctx) || {})[stepCursorKey(section.id)];
   return Math.max(0, Math.min(total, raw | 0));
@@ -251,7 +252,7 @@ function cursorsFromLegacyProgress(pattern, legacy) {
     let rows = 0;
     const src = [];
     if (sec.chartSteps) {
-      const n = chartForPhaseOf(pattern, sec).length;
+      const n = (chartForPhaseOf(pattern, sec) || []).length;
       rows += Math.max(1, Math.min(n, (pr['cr:' + sec.id] | 0) || 1)) - 1;   // the old chart row is clamped to the chart first; standing on row 1 = nothing done
       src.push('cr:' + sec.id);
     }
@@ -297,9 +298,10 @@ function setStepCursor(section, n) {
   renderGlobalRows();
 }
 
-function taskDone(task) { return !!entryProg[taskKey(task.id)]; }
+function taskDone(task) { return !!(task && entryProg[taskKey(task.id)]); }
 
 function toggleTask(task) {
+  if (!task) return;
   const k = taskKey(task.id);
   entryProg[k] = !entryProg[k];
   stampClock(k);

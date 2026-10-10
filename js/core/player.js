@@ -37,7 +37,7 @@ function spRows(section) {
     if (step.kind === 'row') {
       out.push({ n: ++n, step, def: step, pass: 1, passes: 1, rowInPass: 1, R: 1 });
     } else if (step.kind === 'repeat') {
-      const R = step.rows.length, T = step.times | 0;
+      const R = (step.rows || []).length, T = step.times | 0;
       for (let p = 1; p <= T; p++) for (let r = 1; r <= R; r++)
         out.push({ n: ++n, step, def: step.rows[r - 1], pass: p, passes: T, rowInPass: r, R });
     }

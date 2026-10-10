@@ -159,7 +159,7 @@ function spListHtml(rows, cursor, total) {
 
 function spRepeatHtml(block, cursor, total, sel) {
   const first = block[0].n, last = block[block.length - 1].n, step = block[0].step;
-  const R = step.rows.length, T = step.times | 0;
+  const R = (step.rows || []).length, T = step.times | 0;
   const selIn = sel >= first && sel <= last;                 // like any row: open only when selected (the current row by default)
   if (!selIn) {
     const done = last <= cursor, curIn = cursor + 1 >= first && cursor + 1 <= last;

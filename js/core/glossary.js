@@ -156,7 +156,7 @@ function glossaryEntryIn(craft, query) {
   if (!query) return null;
   if (!glossaryCraftIndexes[craft]) {
     const idx = {};
-    GLOSSARY.filter(c => c.craft === craft).forEach(c => c.groups.forEach(gr => gr.terms.forEach(t => {
+    GLOSSARY.filter(c => c.craft === craft).forEach(c => (c.groups || []).forEach(gr => (gr.terms || []).forEach(t => {
       [t.term].concat(t.abbr ? t.abbr.split('/') : []).forEach(k => { const key = k.trim().toLowerCase(); if (key && !idx[key]) idx[key] = t; });
     })));
     glossaryCraftIndexes[craft] = idx;
