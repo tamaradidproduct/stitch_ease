@@ -231,9 +231,14 @@ function spLegendLine(types) {
     uiIconButton({ icon: typeof GLOSSARY_SVG === 'undefined' ? '?' : GLOSSARY_SVG, label: 'Glossary', onclick: 'openGlossary()' }) + '</div>';
 }
 
-// The stitch count after this row. Null until patterns carry one (a later piece of work);
-// everything that shows a count hides it when this is null.
-function spCount(row) { return null; }
+// The stitch count after this row, from the row's optional `sts`: a number, or an array
+// indexed by pass for a repeat. Null when absent or not a finite number; everything that
+// shows a count hides it when this is null. (Patterns are given counts separately.)
+function spCount(row) {
+  const s = row && row.def ? row.def.sts : undefined;
+  const n = Array.isArray(s) ? s[row.pass - 1] : s;
+  return typeof n === 'number' && isFinite(n) ? n : null;
+}
 
 // The count at the end of a pass: the last row of that pass, null when it has none.
 function spPassEndCount(block, pass) {

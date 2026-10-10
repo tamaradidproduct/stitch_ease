@@ -157,3 +157,7 @@ The ⤢ button that opened it is hidden for now. When re-enabled:
 - The project library, picker, glossary and account screens (unchanged; library cards count a step section's rows and tasks).
 - Sections still on the old renderer: Where Are the Leaves' chart section.
 - Making the step model the default, rewriting the pattern files from the classification review (`docs/superpowers/plans/2026-10-07-step-conversion-review.md`), and the release decisions are listed in the plan's Task 9 notes.
+
+## Stitch count (`sts`)
+
+A row may carry an optional `sts` — the stitch count **after** that row. A number for an ordinary or chart row; for a row inside a repeat, a number or an array indexed by pass (`sts: [66, 68, 70]`). `spCount(row)` returns it only when it is a finite number; otherwise the count is hidden everywhere (card, playlist line, repeat list, end-of-pass line). No pattern carries counts yet; adding them is separate work (`docs/step-screen-v2-requirements.md` §7).

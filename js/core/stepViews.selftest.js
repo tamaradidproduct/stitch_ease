@@ -94,6 +94,16 @@ function stepViewsSelfTest() {
       [has(pl2, 'ROW 3<'), has(pl2, 'ROW 3 · CURRENT'), has(pl2, 'CURRENT ROW')], [true, false, true]);
     check('spFocusSelected is safe with nothing on screen', (() => { try { spFocusSelected(); return true; } catch (e) { return String(e); } })(), true);
 
+    // ── Task 8: counts ──
+    const fake = (sts, pass) => ({ def: { sts }, pass: pass || 1 });
+    check('spCount reads a number', spCount(fake(41)), 41);
+    check('spCount reads the pass from an array', [spCount(fake([66, 68, 70], 2)), spCount(fake([66, 68, 70], 3)), spCount(fake([66, 68], 3))], [68, 70, null]);
+    check('spCount: zero counts, junk does not', [spCount(fake(0)), spCount(fake('41')), spCount(fake(NaN)), spCount(fake(undefined)), spCount(fake(Infinity)), spCount(fake([]))], [0, null, null, null, null, null]);
+    check('spCount: no def, no throw', spCount({ pass: 1 }), null);
+    const withCount = { def: { sts: 41 }, step: rows[0].step, n: 1, pass: 1, passes: 1, rowInPass: 1, R: 1 };
+    check('a count shows in the card and in the playlist when present',
+      [has(spPlayerCardHtml(p, withCount, 1, 3, false), '<b>41</b> sts'), has(spRowHtml(withCount, 5, 9), 'sp-row-c')], [true, true]);
+
     const realConfirm = sheetConfirm;
     let asked = null;
     sheetConfirm = o => { asked = o; };
