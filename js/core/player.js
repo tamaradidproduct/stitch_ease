@@ -19,7 +19,9 @@
 let spViewedRow = null;     // null = follow the cursor
 let spPlayerOpen = false;
 let spNotesOpen = false;
-let spChartSpan = 3;         // rows shown either side of the current chart row (fitted to the screen)
+let spChartRows = 7;         // rows the chart window shows (fitted to the screen)
+let spChartWatched = null;
+let spChartWatch = null;     // ResizeObserver on the chart area, so a changing screen height refits it
 let spSetupOpen = false;     // the player card's Setup toggle (collapsed until asked for)
 let spChartOpen = false;    // the full chart screen
 let spKey = null;           // project|section the view state belongs to
@@ -166,9 +168,15 @@ function spRender() {
 function spFitChart() {
   const el = document.getElementById('sp-cw-scroll');
   if (!el || !el.clientHeight) return false;
-  const span = spChartSpanFor(el.clientHeight);
-  if (span === spChartSpan) return false;
-  spChartSpan = span;
+  const row = el.querySelector('.sp-cw-row'), head = el.querySelector('.sp-cw-head'), box = el.querySelector('.sp-cw');
+  const pitch = row ? row.offsetHeight + 2 : 0;                                   // a row plus the gap under it
+  const pad = box ? parseFloat(getComputedStyle(box).paddingTop) + parseFloat(getComputedStyle(box).paddingBottom) : 0;
+  const chrome = head ? head.offsetHeight + 2 + pad : 0;                          // the stitch numbers and the padding
+  const rows = spChartRowsFor(el.clientHeight, pitch, chrome);
+  if (!spChartWatch && window.ResizeObserver) spChartWatch = new ResizeObserver(() => { spFitChart(); });
+  if (spChartWatch && spChartWatched !== el) { spChartWatch.disconnect(); spChartWatch.observe(el); spChartWatched = el; }   // once per element: observing fires a first callback
+  if (rows === spChartRows) return false;
+  spChartRows = rows;
   spRender();
   return true;
 }
@@ -424,4 +432,4 @@ function spToggleTask(i) {
   spRender();
 }
 
-window.addEventListener('resize', () => { if (document.body.classList.contains('sp-on')) spSyncPlayerLayout(); });
+window.addEventListener('resize', () => { if (document.body.classList.contains('sp-on')) { spSyncPlayerLayout(); spFitChart(); } });

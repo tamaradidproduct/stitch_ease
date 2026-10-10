@@ -173,12 +173,16 @@ function stepViewsSelfTest() {
     check('the playlist preview uses the smaller fixed square cell', [has(spChartWindowHtml(2, [], 1, cp.chart), 'repeat(12, var(--h-cell-mini))'), has(spChartWindowHtml(2, [], 1, cp.chart), 'minmax')], [true, false]);
 
     // ── Chart window: no vertical scroll, as many rows as fit; the nearer row-number column stays in view ──
-    check('chart span for a region height: at least 7 rows, more when there is room',
-      [spChartSpanFor(100), spChartSpanFor(230), spChartSpanFor(400)], [3, 3, 6]);
-    const w7 = spChartWindowHtml(6, [], 3, cp.chart), w5 = spChartWindowHtml(6, [], 2, cp.chart), wMax = spChartWindowHtml(6, [], 20, cp.chart);
-    check('the window shows 2 x span + 1 rows, clamped at the chart ends', [count(w7, 'class="sp-cw-row'), count(w5, 'class="sp-cw-row'), count(wMax, 'class="sp-cw-row')], [7, 5, 12]);
-    check('the window is centred on the current row and clamps at the start',
-      [has(spChartWindowHtml(1, [], 3, cp.chart), 'sp-cw-row active'), count(spChartWindowHtml(1, [], 3, cp.chart), 'class="sp-cw-row')], [true, 7]);
+    check('rows that fit a region height: at least 7, using every full row of room',
+      [spChartRowsFor(100), spChartRowsFor(230), spChartRowsFor(400), spChartRowsFor(400, 28, 50)], [7, 7, 13, 12]);
+    const w7 = spChartWindowHtml(6, [], { rows: 7 }, cp.chart), w8 = spChartWindowHtml(6, [], { rows: 8 }, cp.chart), wMax = spChartWindowHtml(6, [], { rows: 40 }, cp.chart);
+    check('the window shows exactly the rows asked for (even counts too), clamped at the chart ends', [count(w7, 'class="sp-cw-row'), count(w8, 'class="sp-cw-row'), count(wMax, 'class="sp-cw-row')], [7, 8, 12]);
+    check('the window holds the current row and clamps at both ends',
+      [has(spChartWindowHtml(1, [], { rows: 7 }, cp.chart), 'sp-cw-row active'), count(spChartWindowHtml(1, [], { rows: 7 }, cp.chart), 'class="sp-cw-row'), count(spChartWindowHtml(12, [], { rows: 7 }, cp.chart), 'class="sp-cw-row'), has(spChartWindowHtml(12, [], { rows: 7 }, cp.chart), 'sp-cw-row active')], [true, 7, 7, true]);
+    const oneRow = spChartWindowHtml(1, [], { rows: 1 }, cp.chart);
+    const symbolCells = cp.chart[0].filter(t => SYMS[parseColorCell(t).t]).length;
+    check('only cells that carry a symbol are marked as stitches (empty ones are left plain)',
+      [count(oneRow, 'sp-sym cc'), count(oneRow, 'class="cc"') + count(oneRow, 'sp-sym cc')], [symbolCells, cp.chart[0].length]);
     check('which row-number column to keep in view: the nearer side',
       [spChartSideFor(0, 648, 375), spChartSideFor(273, 648, 375), spChartSideFor(136, 648, 375), spChartSideFor(0, 300, 375)], ['left', 'right', 'left', 'left']);
 

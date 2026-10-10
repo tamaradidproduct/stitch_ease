@@ -34,6 +34,8 @@ if (process.argv.includes('--selftest')) {
   const stepCss = fs.readFileSync(path.join(root, 'css/step.css'), 'utf8');
   const scroller = (stepCss.match(/\.sp-cw-scroll\s*\{[^}]*\}/) || [''])[0];
   if (!/overflow-y:\s*hidden/.test(scroller)) { console.log('FAIL .sp-cw-scroll must not scroll vertically'); bad++; }
+  // Only stitches that carry a symbol are highlighted in the current row; empty cells get no ring or fill.
+  if (/\.sp-cw-row\.active \.cc\s*\{[^}]*box-shadow/.test(stepCss) || !/\.sp-cw-row\.active \.cc\.sp-sym\s*\{[^}]*box-shadow/.test(stepCss)) { console.log('FAIL only symbol cells may be highlighted in the active row'); bad++; }
   // The top bar's project name must truncate, or a long name runs under the tally and buttons.
   const ui = fs.readFileSync(path.join(root, 'css/ui.css'), 'utf8');
   const proj = (ui.match(/\.ui-top-project\s*\{[^}]*\}/) || [''])[0];

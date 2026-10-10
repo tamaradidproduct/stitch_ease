@@ -324,6 +324,7 @@ function spCellsHtml(r, active, types, mark, chart) {
     types[tt] = true;
     let c = stitchCell(t, false, colors ? colors[i] : null, active);
     if (mark === i) c = c.replace('class="cc', 'class="sp-cw-mark cc');
+    if (SYMS[tt]) c = c.replace('class="cc', 'class="sp-sym cc');   // a stitch that carries a symbol (the only kind highlighted in the current row)
     return c;
   }).join('');
 }
@@ -335,12 +336,11 @@ function spMarkCol(N) {
   return Number.isInteger(b) && b >= 0 ? Math.min(N - 1, b) : -1;
 }
 
-// How many rows either side of the current one fit in a chart area of this height (never fewer
-// than 3, so seven rows are always shown). Cells are fixed squares plus a 2 px gap; the stitch
-// numbers and the padding take about 44 px.
-function spChartSpanFor(heightPx) {
-  const rows = Math.max(7, Math.floor((heightPx - 44) / 26));
-  return Math.floor((rows - 1) / 2);
+// How many rows fit in a chart area of this height, never fewer than seven. `pitch` is one row
+// (a square cell plus its gaps) and `chrome` the stitch numbers and padding; the defaults are the
+// designed values and the player passes what it measured.
+function spChartRowsFor(heightPx, pitch, chrome) {
+  return Math.max(7, Math.floor((heightPx - (chrome || 44)) / (pitch || 26)));
 }
 
 // Which row-number column stays in view while the chart scrolls sideways: the nearer end.
@@ -352,11 +352,13 @@ function spChartSideFor(scrollLeft, scrollWidth, clientWidth) {
 // `span` is how many rows to show either side of the current one: 3 in the
 // player, 1 for the preview inside the playlist's selected row.
 function spChartWindowHtml(chartRow, after, span, chart) {
+  // span: rows either side of the current one (a number), or {rows: K} for exactly K rows;
+  // 'all' is the whole chart (for the full-chart view, later).
   const all = span === 'all';
-  span = all ? 0 : (span || 3);
+  const rowsN = span && typeof span === 'object' ? span.rows : 2 * (span || 3) + 1;
   chart = chart || CHART_B;
   const n = chart.length, N = chart[0].length;
-  const first = all ? 1 : Math.max(1, Math.min(chartRow - span, n - 2 * span)), last = all ? n : Math.min(n, first + 2 * span);
+  const first = all ? 1 : Math.max(1, Math.min(chartRow - Math.floor((rowsN - 1) / 2), n - rowsN + 1)), last = all ? n : Math.min(n, first + rowsN - 1);
   const mini = span === 1;
   // Cells are fixed squares (never stretched or squeezed to fit): a chart wider than the screen scrolls sideways.
   const cell = mini ? 'var(--h-cell-mini)' : 'var(--h-cell)', num = mini ? 'var(--h-cell-mini)' : 'var(--h-cell)';
@@ -448,7 +450,7 @@ function spRepeatCardHtml(block, row, v, hasChart, inList) {
 
 // The chart fills the rest of the screen, edge to edge; the legend sits beneath it.
 function spChartRegionHtml(p, row, chart) {
-  return `<section class="sp-chart-region">${spChartWindowHtml(row.def.chartRow, [], spChartSpan, chart)}${spLegendLine(spChartTypes(chart))}</section>`;
+  return `<section class="sp-chart-region">${spChartWindowHtml(row.def.chartRow, [], { rows: spChartRows }, chart)}${spLegendLine(spChartTypes(chart))}</section>`;
 }
 
 function spPlayerHtml(p, cursor, total, rows) {
