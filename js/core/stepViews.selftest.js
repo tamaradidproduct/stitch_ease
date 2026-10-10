@@ -117,6 +117,11 @@ function stepViewsSelfTest() {
       ['sp-row-top', 'sp-row-lbl', 'sp-badge', 'sp-row-text'].map(c => has(collapsed, c)), [false, false, false, false]);
     check('a collapsed repeat line still reads as a done repeat', [has(collapsed, 'Repeat · 2 rows × 4'), has(collapsed, '✓')], [true, true]);
 
+    // ── Glossary Back ──
+    const gid = proj.id || proj;
+    check('Back from the glossary returns to the project it was opened from',
+      [glossaryReturnTo('project', gid), glossaryReturnTo('home', gid), glossaryReturnTo('project', null), glossaryReturnTo('project', 'nope')], [gid, null, null, null]);
+
     const realConfirm = sheetConfirm;
     let asked = null;
     sheetConfirm = o => { asked = o; };

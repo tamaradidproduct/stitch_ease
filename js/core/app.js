@@ -23,10 +23,19 @@ function startNewProject() {
   render();
 }
 
+let glossaryFrom = null;   // the project the glossary was opened from, if any
+
 function openGlossary() {
+  glossaryFrom = glossaryReturnTo(view, activeProjectId);
   view = 'glossary';
   window.scrollTo(0, 0);
   render();
+}
+
+function closeGlossary() {
+  const id = glossaryFrom;
+  glossaryFrom = null;
+  if (id) openProject(id); else goHome();
 }
 
 function choosePattern(patternId) {

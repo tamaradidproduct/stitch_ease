@@ -911,7 +911,7 @@ function renderHeader() {
     return;
   }
   if (view === 'glossary') {
-    h.innerHTML = `<div class="header-top"><h1 class="pattern-h1"><button class="lib-back" onclick="goHome()" aria-label="Back">${BACK_CHEVRON_SVG}</button>Stitch glossary</h1></div>`;
+    h.innerHTML = `<div class="header-top"><h1 class="pattern-h1"><button class="lib-back" onclick="closeGlossary()" aria-label="Back">${BACK_CHEVRON_SVG}</button>Stitch glossary</h1></div>`;
     return;
   }
   const proj = activeProject();
@@ -929,6 +929,12 @@ function renderHeader() {
       <button class="proj-menu-btn" onclick="showResetMenu(event)" aria-label="Options" title="Reset progress">⋮</button>
     </div>`;
 }
+// Where Back from the glossary goes: the project it was opened from (so the knitter lands on
+// the row they left), or the library when it was opened from there.
+function glossaryReturnTo(fromView, projectId) {
+  return fromView === 'project' && projectId && projects.some(p => p.id === projectId && !p.deletedAt) ? projectId : null;
+}
+
 // Force the header to rebuild on next render (e.g. after a project rename,
 // where the view/project key is unchanged but the title text changed).
 function resetHeaderKey() { const h = document.getElementById('header'); if (h) h.dataset.key = ''; }
