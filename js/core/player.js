@@ -185,8 +185,8 @@ function spTasksHtml(p) {
 }
 
 const BACK_CHEV = (typeof BACK_CHEVRON_SVG !== 'undefined') ? BACK_CHEVRON_SVG : '‹';
-const SP_CHEV_L = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15.75 19.5-7.5-7.5 7.5-7.5"/></svg>';
-const SP_CHEV_R = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>';
+const SP_CHEV_L = UI_CHEV_L;
+const SP_CHEV_R = UI_CHEV_R;
 
 // The browse chip sits in the dock, directly above the buttons it relates to.
 function spDockChip() {
