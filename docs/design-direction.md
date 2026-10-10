@@ -63,4 +63,4 @@ The visual language of the step screen v2 prototype (`docs/prototypes/step-scree
 - **Checklist and notes sections:** same card and top bar; ticks use `--sage-d`.
 - **Glossary:** caps group labels, term in 600, definition in `--soft`; pattern-specific stitches first.
 - **Account, conflict and pattern-update sheets:** the sheet spec.
-- **Existing app note:** `CLAUDE.md` lists Georgia for headings and a cream palette (`--bg: #f5f2ed`, `--accent: #4a6b5a`). This direction replaces both once adopted; update `CLAUDE.md` then.
+- **Implemented:** tokens in `css/tokens.css`, components in `js/core/ui.js` + `css/ui.css`, step screens in `js/core/stepViews.js` + `css/step.css`. The older screens follow through the legacy-variable bridge; `CLAUDE.md` is updated to match.
