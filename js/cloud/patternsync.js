@@ -156,7 +156,13 @@ function swatchSymbolOk(s) {
 function sanitizeSyncedPattern(doc, expectedId) {
   if (!doc || typeof doc !== 'object' || Array.isArray(doc)) throw new Error('not an object');
   if (doc.id !== expectedId) throw new Error('doc id does not match its row');
-  if (!Array.isArray(doc.phases) || !doc.phases.length) throw new Error('no phases');
+  // A sized template keeps its raw phases (placeholders intact) in sizedPhases.
+  const sized = Array.isArray(doc.sizes) && Array.isArray(doc.sizedPhases);
+  if (sized) {
+    if (doc.sizes.length < 2 || doc.sizes.length > 60 || !doc.sizes.every(s => s && typeof s.name === 'string' && s.name))
+      throw new Error('malformed sizes');
+    if (!doc.sizedPhases.length) throw new Error('no phases');
+  } else if (!Array.isArray(doc.phases) || !doc.phases.length) throw new Error('no phases');
 
   const bad = why => { throw new Error(why); };
   const walk = (v, key, depth) => {
@@ -192,7 +198,7 @@ function sanitizeSyncedPattern(doc, expectedId) {
   };
 
   const clean = walk(doc, '', 0);
-  clean.phases.forEach(ph => { if (!ph || typeof ph.id !== 'string') bad('phase without id'); });
+  (clean.phases || clean.sizedPhases).forEach(ph => { if (!ph || typeof ph.id !== 'string') bad('phase without id'); });
   clean.custom = true;
   return clean;
 }
@@ -230,6 +236,8 @@ function backfillProjectSnapshots(pattern) {
 function installCustomPattern(doc) {
   const idx = PATTERNS.findIndex(p => p.id === doc.id);
   if (idx !== -1 && !PATTERNS[idx].custom) return false;   // a built-in always wins
+  attachSizeBuilder(doc);
+  dropSizedCache(doc.id);
   if (idx === -1) PATTERNS.push(doc); else PATTERNS[idx] = doc;
   try { saveCustomPatterns(); }
   catch (e) { showSaveError(e); return false; }

@@ -92,10 +92,15 @@ function sizedPattern(tpl, i) {
   const key = tpl.id + ':' + i;
   if (!sizedCache[key]) {
     const doc = Object.assign({}, tpl, { phases: tpl.buildPhases(i), sizeIndex: i, badge: tpl.sizes[i].badge });
-    delete doc.buildPhases; delete doc.sizes;
+    delete doc.buildPhases; delete doc.sizes; delete doc.sizedPhases;
     sizedCache[key] = doc;
   }
   return sizedCache[key];
+}
+// A custom sized pattern can be replaced while the app runs (Update, a synced
+// edit), unlike the bundled templates, so its memoised builds must go with it.
+function dropSizedCache(id) {
+  Object.keys(sizedCache).forEach(k => { if (k.indexOf(id + ':') === 0) delete sizedCache[k]; });
 }
 // Which size a project was started in. Locally created projects carry `size`;
 // one that arrived by sync has none, so it is read back from the frozen
