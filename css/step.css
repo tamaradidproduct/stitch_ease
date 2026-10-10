@@ -30,7 +30,7 @@ body.sp-on .content { padding: 0; }   /* the bars and cards bring their own gutt
 .sp-cw-row.d1 { opacity: .8; }
 .sp-cw-row.d2 { opacity: .65; }
 .sp-cw-row.active { opacity: 1; }
-.sp-cw-row.active .sp-cw-n { color: var(--c-blue); font-weight: var(--fw-bold); }
+.sp-cw-row.active .sp-cw-n { color: var(--c-sage-strong); font-weight: var(--fw-bold); }
 .sp-cw-row .cc { width: var(--h-cell); height: var(--h-cell); aspect-ratio: 1; background: var(--c-card); border: 0; border-radius: var(--r-cell); }
 .sp-cw-row .cc-sym { color: var(--c-cell-ink); }
 .sp-cw-row .cc.cc-e { background: transparent !important; }

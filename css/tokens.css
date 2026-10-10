@@ -40,9 +40,9 @@
   --ch-def-bg: #f8f9fb;
   --ch-def-border: #bcc9d8;
   --ch-def-symbol: #3d5170;
-  --ch-active-bg: #eff6ff;
-  --ch-active-border: var(--c-blue);
-  --ch-active-symbol: var(--c-blue);
+  --ch-active-bg: var(--c-sage-wash);
+  --ch-active-border: var(--c-sage);
+  --ch-active-symbol: var(--c-sage-strong);
   --ch-empty-bg: #dde1e7;
   /* Distinct from --ch-blue on purpose — that's the mid-row drag marker's colour (see
      .mid-row-line/.mid-row-handle), and a combined-chart's source-panel divider (.cc-seg-end)

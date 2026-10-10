@@ -58,7 +58,7 @@ Fields per case: **Area · Priority · Preconditions · Steps · Expected**.
   - The current row is on a sage band, with row numbers on both sides and stitch numbers across the top.
   - The symbols are the app's own (YO ring, k2tog and SKPO triangles, purl dot).
   - The chart area is a slightly darker well; stitches are light cells that stand out, the current row is at full strength on a sage band and the rows around it fade into the well.
-  - A stitch has two states. In the current row every stitch (plain knit cells included, but not no-stitch cells) is in its current state: a pale blue background, a blue ring and a blue symbol. All other rows show the default state: a light cell with a dark symbol.
+  - A stitch has two states. In the current row every stitch (plain knit cells included, but not no-stitch cells) is in its current state: a pale sage background, a sage ring and a dark sage symbol (the row number is dark sage too). All other rows show the default state: a light cell with a dark symbol.
   - On a colourwork chart a stitch keeps its yarn colour in the current row; its ring and symbol colour are picked for contrast with that yarn.
   - The chart area has no empty gap under the last row: the rows fill the height (a fraction of a row left over is split above and below), and the count adjusts when the screen height changes (for example when the browser's address bar hides).
   - The chart never scrolls vertically: it shows as many rows as fit (at least seven) around the current row. (A full-chart view comes later.)

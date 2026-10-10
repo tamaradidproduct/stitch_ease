@@ -18,7 +18,7 @@ The visual language of the step screen v2 prototype (`docs/prototypes/step-scree
 | `--sage` | `#587a67` | Accent: "where you are" markers |
 | `--sage-d` | `#2f4a3c` | Primary button, key figures, links |
 | `--sage-w` | `#e4eee4` | Current-row highlight |
-| `--blue` | `#2f63d6` | Current row number in charts only |
+| `--blue` | `#2f63d6` | Legacy chart only (mid-row marker); not used on the step screens |
 
 - **One accent.** Sage green. No orange, coral or beige anywhere.
 - **Primary action:** the only solid `--sage-d` button on a screen.

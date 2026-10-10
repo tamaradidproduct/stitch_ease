@@ -38,6 +38,13 @@ if (process.argv.includes('--selftest')) {
   // active background, border ring and symbol colour from the chart tokens.
   const activeRule = (stepCss.match(/\.sp-cw-row\.active \.cc:not\(\.cc-e\)\s*\{[^}]*\}/) || [''])[0];
   if (!/background:\s*var\(--ch-active-bg\)/.test(activeRule) || !/box-shadow:[^;]*--ch-active-border/.test(activeRule) || !/\.sp-cw-row\.active \.cc-sym\s*\{[^}]*--ch-active-symbol/.test(stepCss)) { console.log('FAIL the current row must colour every stitch (background, border, symbol)'); bad++; }
+  // The current stitch state stays inside the one sage theme (no separate blue).
+  const tok = fs.readFileSync(path.join(root, 'css/tokens.css'), 'utf8');
+  for (const name of ['--ch-active-bg', '--ch-active-border', '--ch-active-symbol']) {
+    const m = tok.match(new RegExp(name + '\\s*:\\s*([^;]+);'));
+    if (!m || !/var\(--c-sage/.test(m[1])) { console.log('FAIL ' + name + ' must use the sage tokens'); bad++; }
+  }
+  if (/\.sp-cw-row\.active \.sp-cw-n\s*\{[^}]*--c-blue/.test(stepCss)) { console.log('FAIL the current row number must not be blue'); bad++; }
   // The top bar's project name must truncate, or a long name runs under the tally and buttons.
   const ui = fs.readFileSync(path.join(root, 'css/ui.css'), 'utf8');
   const proj = (ui.match(/\.ui-top-project\s*\{[^}]*\}/) || [''])[0];
