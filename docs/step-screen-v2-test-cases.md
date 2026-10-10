@@ -157,7 +157,7 @@ Fields per case: **Area · Priority · Preconditions · Steps · Expected**.
   - A heading above the card reads `Repeat · 2 rows × 4`, in the same style as a row heading (`Row 3 of 12`).
   - The card shows `Pass 1 of 4`, − and + buttons, and only the two rows of the pass shown.
   - The selected row is larger, with no box around it.
-  - The dock reads `Mark R1 of pass 1 done`.
+  - The dock reads `Mark row 1 done`.
   - There is no separate "Pass done" button.
 
 **TC-18 Pass − / +** · Repeat · P0
@@ -171,7 +171,7 @@ Fields per case: **Area · Priority · Preconditions · Steps · Expected**.
 **TC-19 Tapping a repeat row only looks** · Repeat · P0
 - Steps: note the tally. Tap R2 in the list.
 - Expected:
-  - R2 becomes the larger selected row and the dock reads `Mark R2 of pass 1 done` with the browse chip above it.
+  - R2 becomes the larger selected row and the dock reads `Mark row 2 done` with the browse chip above it.
   - The tally is unchanged.
 
 **TC-20 Motif chart** · Repeat · P1
@@ -207,7 +207,7 @@ Fields per case: **Area · Priority · Preconditions · Steps · Expected**.
 - Expected:
   - While the repeat is current or selected it is a single card: `REPEAT` and `Pass n of 4` with − / +, the pass's rows (tap one to look at it; the selected row is larger), Setup, the end-of-pass count and the Check, and one `Open row ›` button.
   - There is no separate stepper and no separate selected-row card for it.
-  - `Open row ›` opens the player on the selected row, showing the same repeat card with the dock reading `Mark R2 of pass 2 done`.
+  - `Open row ›` opens the player on the selected row, showing the same repeat card with the dock reading `Mark row 4 done`.
   - Like any other row, the repeat is expanded only when it holds the selected row (the current row by default). When the current row is inside it but you have selected a different row elsewhere, it collapses to one quiet line, `Repeat · 2 rows × 4`, tagged `CURRENT ROW · PASS n OF 4`; only one card is ever open.
   - A completed repeat is the same line with a ✓.
   - The card's label carries the repeat's own summary: `REPEAT · 2 ROWS × 4`.
@@ -226,6 +226,15 @@ Fields per case: **Area · Priority · Preconditions · Steps · Expected**.
   - Tapping anywhere on the selected card that isn't a control opens the player on that row.
   - The Setup toggle, − / + and the repeat's rows keep doing their own thing and do not open the player.
   - `Open row ›` still works.
+
+**TC-38 The playlist's main button follows the selected row** · Playlist · P0
+- Steps: in the playlist select a different row (tap it, or use ‹ ›), including a row inside a repeat card. Then select a row that is already done. Finish a section and select one of its rows.
+- Expected:
+  - The main button names the selected row: `Mark row 6 done`; for a repeat row the wording is the same (`Mark row 8 done`, never `R2 of pass 4`).
+  - A selected row that is already done offers `Mark row 2 not done` (outlined).
+  - Marking a row more than one ahead, or un-marking several, asks first (the confirm sheets), as in the player.
+  - With nothing selected elsewhere the button is the current row; once the section is finished it becomes `Next section` (or `Finished!`).
+  - The `Viewing row 8 · on row 7` chip and `Back to current` still show whenever the selected row isn't the current one.
 
 **TC-24 The playlist scrolls only when it has to** · Playlist · P0
 - Preconditions: Peacock Tee, yoke chart section (44 rows) in the playlist, window small enough that the list scrolls.

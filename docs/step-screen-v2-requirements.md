@@ -69,7 +69,7 @@ Product requirements from the interview of 2026-10-09. They revise the step scre
 
 ### 3.5 Dock
 - ‹ previous row · main button · › next row.
-- Main button reads **"Mark row N done"**. When row N is already done it reads **"Mark row N not done"**.
+- Main button reads **"Mark row N done"**. When row N is already done it reads **"Mark row N not done"**. N is the **selected** row in the player and in the playlist alike, and the wording is the same for a repeat row (`Mark row 8 done`, not `R2 of pass 4`).
 - The browse chip ("Viewing row 12 · on row 11 · Back to current") stays when the viewed row isn't the current row.
 - Catch-up rules are unchanged: a confirm sheet before marking rows ahead, and a confirm sheet before "not done" un-completes more than one row.
 

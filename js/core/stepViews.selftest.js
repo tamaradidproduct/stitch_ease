@@ -45,7 +45,7 @@ function stepViewsSelfTest() {
     spViewedRow = null;
     check('playlist dock: records the current row', has(spPlaylistDock(2, rows.length), 'Mark row 3 done'), true);
     const rp = PHASES[1], rrows = spRowsFor(rp);
-    check('repeat row: dock names the row and pass', has(spPlayerHtml(rp, 0, rrows.length, rrows), 'Mark R1 of pass 1 done'), true);
+    check('repeat row: the dock names the row like any other', [has(spPlayerHtml(rp, 0, rrows.length, rrows), 'Mark row 1 done'), has(spPlayerHtml(rp, 0, rrows.length, rrows), 'of pass')], [true, false]);
 
     // ── Task 5: player card and chart region ──
     const wHtml = spPlayerHtml(p, 0, rows.length, rows);
@@ -249,6 +249,25 @@ function stepViewsSelfTest() {
     check('cell size that makes a chart run the full width (24 px minimum, 40 px maximum)',
       [spChartCellFor(432, 12), spChartCellFor(432, 23), spChartCellFor(800, 12), spChartCellFor(375, 12), spChartCellFor(375, 8)], [29, 24, 40, 24, 35]);
     check('cells never shrink below the minimum even on a very narrow screen', spChartCellFor(200, 12), 24);
+
+    // ── The playlist's main button follows the selected row, like the player's ──
+    const total9 = prow.length;
+    check('playlist dock: nothing selected elsewhere, it is the current row',
+      [has(spPlaylistDock(2, total9), 'Mark row 3 done'), has(spPlaylistDock(2, total9), 'spDone(3)')], [true, true]);
+    spViewedRow = 6;
+    const ahead = spPlaylistDock(2, total9);
+    spViewedRow = 2;
+    const behind = spPlaylistDock(3, total9);
+    spViewedRow = null;
+    check('playlist dock: follows the selected row, even inside a repeat',
+      [has(ahead, 'Mark row 6 done'), has(ahead, 'spDone(6)'), has(ahead, 'ui-dock-main--outline')], [true, true, false]);
+    check('playlist dock: a selected row that is already done offers "not done" (outlined)',
+      [has(behind, 'Mark row 2 not done'), has(behind, 'spMarkIncomplete(2)'), has(behind, 'ui-dock-main--outline')], [true, true, true]);
+    spViewedRow = 2;
+    const doneSection = spPlaylistDock(total9, total9);
+    spViewedRow = null;
+    check('playlist dock: a finished section still moves on once nothing is selected, and follows a selected row otherwise',
+      [has(spPlaylistDock(total9, total9), 'Next section') || has(spPlaylistDock(total9, total9), 'Finished!'), has(doneSection, 'Mark row 2 not done')], [true, true]);
 
     // ── App shell: the document never scrolls on step screens ──
     check('playlist: everything under the bar lives in one scroll container',

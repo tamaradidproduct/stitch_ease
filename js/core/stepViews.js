@@ -197,6 +197,12 @@ function spNextSectionButton() {
 }
 
 function spPlaylistDock(cursor, total) {
+  // The main button follows the selected row, as in the player: a done row offers "not done", any
+  // other "done". With nothing selected elsewhere it is the current row, then the way on to the next section.
+  const sel = spViewedRow !== null && spViewedRow >= 1 && spViewedRow <= total ? spViewedRow : null;
+  if (sel !== null) return sel <= cursor
+    ? spDockHtml(`Mark row ${sel} not done`, `spMarkIncomplete(${sel})`, 'outline')
+    : spDockHtml(`Mark row ${sel} done`, `spDone(${sel})`);
   if (cursor < total) return spDockHtml(`Mark row ${cursor + 1} done`, `spDone(${cursor + 1})`);
   const n = spNextSectionButton();
   return spDockHtml(n.label, n.call);
@@ -471,8 +477,7 @@ function spPlayerHtml(p, cursor, total, rows) {
   const v = Math.min(total, spViewedRow !== null ? spViewedRow : cursor + 1);
   const row = rows[v - 1];
   const done = v <= cursor;
-  const rl = row.step.kind === 'repeat' ? `R${row.rowInPass} of pass ${row.pass}` : `row ${v}`;
-  const label = done ? `Mark ${rl} not done` : `Mark ${rl} done`;
+  const label = done ? `Mark row ${v} not done` : `Mark row ${v} done`;
   const call = done ? `spMarkIncomplete(${v})` : `spDone(${v})`;
   const chart = spChartFor(p, row);
   return spTopBarHtml(p, cursor, total, { player: true, onBack: 'spClosePlayer()' }) +
