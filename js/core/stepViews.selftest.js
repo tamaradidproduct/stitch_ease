@@ -43,7 +43,9 @@ function stepViewsSelfTest() {
     // ── Task 5: player card and chart region ──
     const wHtml = spPlayerHtml(p, 0, rows.length, rows);
     check('card (no chart): row label once, CHECK shown, no count, no chart region',
-      [count(wHtml, 'ROW 1 OF 3'), has(wHtml, 'CHECK'), has(wHtml, 'class="ui-count"'), has(wHtml, 'sp-chart-region')], [1, true, false, false]);
+      [count(wHtml, 'Row 1 of 3'), has(wHtml, 'CHECK'), has(wHtml, 'class="ui-count"'), has(wHtml, 'sp-chart-region')], [1, true, false, false]);
+    check('the row heading sits above the card, outside it, in heading style',
+      [wHtml.indexOf('sp-head') > -1, wHtml.indexOf('sp-head') < wHtml.indexOf('sp-card'), has(spPlayerCardHtml(p, rows[0], 1, 3, false), 'Row 1 of 3'), has(wHtml, 'ROW 1 OF 3')], [true, true, false, false]);
     check('Setup is collapsed by default', has(wHtml, 'Cast on 88 sts'), false);
     spSetupOpen = true;
     check('Setup shows once opened', has(spPlayerHtml(p, 0, rows.length, rows), 'Cast on 88 sts'), true);
@@ -58,7 +60,7 @@ function stepViewsSelfTest() {
     spViewedRow = null;
     CHART_B = realChart;
     check('chart row: label, instruction, chart region and glossary button once each',
-      [count(cHtml, 'ROW 3 OF 12'), count(cHtml, 'k2, yo, k2tog — authored override'), count(cHtml, 'sp-chart-region'), count(cHtml, 'aria-label="Glossary"')], [1, 1, 1, 1]);
+      [count(cHtml, 'Row 3 of 12'), count(cHtml, 'k2, yo, k2tog — authored override'), count(cHtml, 'sp-chart-region'), count(cHtml, 'aria-label="Glossary"')], [1, 1, 1, 1]);
     check('chart row: no old strip or hero markup', [has(cHtml, 'sp-strip'), has(cHtml, 'sp-hero'), has(cHtml, 'sp-next')], [false, false, false]);
     check('legend line truncates to Knit + 3 stitches and counts the rest',
       [has(spLegendLine({ K: 1, P: 1, YO: 1, K2: 1, SK: 1, M1: 1 }), 'Knit'), has(spLegendLine({ K: 1, P: 1, YO: 1, K2: 1, SK: 1, M1: 1 }), '+2'), has(spLegendLine({ K: 1, P: 1 }), '+')], [true, true, false]);

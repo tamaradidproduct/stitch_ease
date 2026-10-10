@@ -14,12 +14,12 @@ Fields per case: **Area · Priority · Preconditions · Steps · Expected**.
 
 ## Player
 
-**TC-01 Row position appears once** · Player · P0
-- Preconditions: Step demo project, section **Chart**.
+**TC-01 Row position appears once, above the card** · Player · P0
+- Preconditions: Step demo project, section Chart.
 - Steps: tap row 3 in the playlist, then tap its instruction to open the player.
 - Expected:
-  - The card shows `ROW 3 OF 12` exactly once, with `RS · read right → left` (or WS) beside it.
-  - No second row number or "Row 3 of 12" appears anywhere else on the screen.
+  - `Row 3 of 12` is a heading above the card (outside it), with RS/WS and the reading direction beside it. It is clearly smaller than the instruction.
+  - It appears exactly once: no second row number anywhere on the screen, and nothing above the instruction inside the card.
 
 **TC-02 Setup is collapsed by default and toggles** · Player · P0
 - Preconditions: **Chart** section, row 1 (it has Setup text).

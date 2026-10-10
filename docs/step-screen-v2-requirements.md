@@ -46,7 +46,7 @@ Product requirements from the interview of 2026-10-09. They revise the step scre
 - The chart's own minimum is seven rows; it shows as many as fit.
 
 ### 3.3 Instruction card
-- **Row line:** `Row 4 of 44` once, with `RS` / `WS` and reading direction (`read right → left`). The row number is not repeated anywhere else on the screen.
+- **Row heading (player):** `Row 4 of 44` sits **above** the card, outside it, in heading style (18 px semibold, a step quieter than the instruction), with `RS` / `WS` and the reading direction (`read right → left`) beside it. The row number is not repeated anywhere else on the screen. (In the playlist the selected card keeps its small caps label inside the card.)
 - **Setup:** a quiet text toggle (`SETUP ▸`) directly above the instruction, so it reads as part of it. **Collapsed by default**; the person expands it, and it never changes on its own. Expanded text carries a thin accent rule on its left.
 - **Instruction:** the main content of the card and the most prominent text on the screen, larger than the section name and row line. Plain text on the card: no chip, pill or boxed panel around it.
 - **Stitch count:** a **muted label** ("88 sts"), not a chip. It sits below the instruction.

@@ -313,18 +313,22 @@ function spFullChartHtml(p, cursor, total, rows) {
 }
 
 // ── The player screen ──
-// The card at the top of the player: the row's position (once), its Setup (collapsed until
-// asked for), the instruction, and the count and Check pinned to the foot.
-function spPlayerCardHtml(p, row, v, total, hasChart) {
-  const co = spCallouts(row), rep = row.step.kind === 'repeat';
+// "Row 3 of 12" with the side and reading direction: a heading above the card, quieter than
+// the instruction. A repeat row has its own pass line instead.
+function spPlayerHeadHtml(row, v, total) {
   const cr = row.def.chartRow;
-  const rs = !rep && cr ? isRSRow(cr) : null;   // RS/WS belongs to the section's chart, not a motif
-  const where = rep ? `ROW ${row.rowInPass} OF ${row.R}` : `ROW ${v} OF ${total}`;
+  const rs = cr ? isRSRow(cr) : null;   // RS/WS belongs to the section's chart, not a motif
   const dir = rs === null ? '' : `<span class="sp-read">${rs ? 'RS · read right → left' : 'WS · read left → right'}</span>`;
+  return `<div class="sp-head"><h2 class="sp-head-t">Row ${v} of ${total}</h2>${dir}${spPassNote(row)}</div>`;
+}
+
+// The card under it: the row's Setup (collapsed until asked for), the instruction, and the
+// count and Check pinned to the foot.
+function spPlayerCardHtml(p, row, v, total, hasChart) {
+  const co = spCallouts(row);
   const setup = co.before.length
     ? uiToggleSection({ label: 'SETUP', open: spSetupOpen, onclick: 'spToggleSetup()', html: co.before.map(t => `<p>${t}</p>`).join('') }) : '';
   return `<article class="ui-card sp-card${hasChart ? '' : ' sp-card--nochart'}">
-    <div class="sp-card-top">${uiCapsLabel(where)}${dir}${spPassNote(row)}</div>
     ${setup}
     <p class="sp-ins">${spText(row)}</p>
     ${uiFacts({ count: spCount(row), check: co.after.join(' · ') || null })}
@@ -366,6 +370,6 @@ function spPlayerHtml(p, cursor, total, rows) {
   const call = done ? `spMarkIncomplete(${v})` : `spDone(${v})`;
   const chart = spChartFor(p, row);
   return spTopBarHtml(p, cursor, total, { onBack: 'spClosePlayer()' }) +
-    `<div class="sp-player">${row.step.kind === 'repeat' ? spRepeatCardHtml(rows.filter(r => r.step === row.step), row, v, !!chart) : spPlayerCardHtml(p, row, v, total, !!chart)}${chart ? spChartRegionHtml(p, row, chart) : ''}</div>` +
+    `<div class="sp-player">${row.step.kind === 'repeat' ? '' : spPlayerHeadHtml(row, v, total)}${row.step.kind === 'repeat' ? spRepeatCardHtml(rows.filter(r => r.step === row.step), row, v, !!chart) : spPlayerCardHtml(p, row, v, total, !!chart)}${chart ? spChartRegionHtml(p, row, chart) : ''}</div>` +
     spDockHtml(label, call, done ? 'outline' : undefined);
 }

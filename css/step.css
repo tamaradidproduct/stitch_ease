@@ -95,3 +95,7 @@ body.sp-on .content { padding: 0; }   /* the bars and cards bring their own gutt
 
 .sp-scroll { position: fixed; left: 0; right: 0; top: var(--sp-top, var(--h-bar)); bottom: var(--sp-bottom, var(--h-dock)); max-width: 28rem; margin: 0 auto; overflow-y: auto; overscroll-behavior: contain; padding-bottom: var(--s-4); }
 .sp-player { overscroll-behavior: contain; }
+
+/* Player heading above the card: a step quieter than the instruction (21px) */
+.sp-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s-1) var(--s-3); padding: var(--s-2) var(--s-1) 0; }
+.sp-head-t { margin: 0; font-size: var(--fs-heading); font-weight: var(--fw-semibold); color: var(--c-text); }
