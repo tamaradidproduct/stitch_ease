@@ -85,7 +85,7 @@ Product requirements from the interview of 2026-10-09. They revise the step scre
 
 - **In the playlist:** a repeat is one card for the whole block while it is current or selected: the pass line with − / +, the pass's rows, Setup, the end-of-pass count and Check, and a single `Open row ›` that opens the player on the selected row. Like any other row it is expanded only when it holds the selected row (the current row by default); otherwise it is one quiet line (`Repeat · 2 rows × 4`, tagged `CURRENT ROW · PASS n OF T` when the current row is inside it, with ✓ when done). The card's label carries the repeat's own summary (`REPEAT · 2 ROWS × 4`), not the section description.
 
-- **Feedback:** every change of progress is acknowledged. The new row eases in (about 0.2 s; none with Reduce Motion), a short vibration plays where the browser supports it (Android; iPhone Safari has none), and every button shows a pressed state. In the playlist the whole selected card opens its row, except its controls.
+- **Feedback:** every change of progress is acknowledged, and moving with ‹ › eases the new row in too (no vibration, nothing was marked). The new row eases in (about 0.2 s; none with Reduce Motion), a short vibration plays where the browser supports it (Android; iPhone Safari has none), and every button shows a pressed state. In the playlist the whole selected card opens its row, except its controls.
 
 ## 6. Glossary and the stitch sheet
 - The book icon in the strip under the card or chart opens a **bottom sheet** (not a page): `ON THIS ROW` lists the stitches the row uses with their definitions, `IN THIS PATTERN` lists the designer's own terms, and a `Full glossary ›` button opens the **dedicated glossary page**. Back from that page returns to the row.

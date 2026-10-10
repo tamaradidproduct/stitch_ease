@@ -214,6 +214,15 @@ function stepViewsSelfTest() {
     spNoteChange();
     check('a row change plays the transition once', [spTakeEnter(), spTakeEnter()], [true, false]);
 
+    // ── ‹ › browsing eases in too ──
+    spTakeEnter();
+    const bp = PHASES[0]; cur = 0;
+    spViewedRow = null; spBrowse(1);
+    check('browsing with › eases the next row in', spTakeEnter(), true);
+    spBrowse(-1);
+    check('browsing with ‹ eases the previous row in', spTakeEnter(), true);
+    spViewedRow = null; spTakeEnter();
+
     // ── App shell: the document never scrolls on step screens ──
     check('playlist: everything under the bar lives in one scroll container',
       [count(pl, 'class="sp-scroll"'), pl.indexOf('ui-top') < pl.indexOf('sp-scroll'), pl.indexOf('sp-scroll') < pl.indexOf('sp-row')], [1, true, true]);

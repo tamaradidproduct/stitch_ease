@@ -254,6 +254,7 @@ function spBrowse(delta) {
   const to = from + delta;
   if (to < 1 || to > total) return spBrowseSection(delta);
   spViewedRow = to === c + 1 ? null : to;
+  spNoteChange();   // the row you move to eases in, like after a change of progress
   spRender();
   spScrollToViewed();
 }
@@ -274,6 +275,7 @@ function spBrowseSection(delta) {
     const row = delta < 0 ? total : 1;
     spViewedRow = row === stepCursor(p) + 1 ? null : row;
     spPlayerOpen = keepPlayer;
+    spNoteChange();
     spRender();
   }
   spScrollToViewed();

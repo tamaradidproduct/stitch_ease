@@ -210,9 +210,9 @@ Fields per case: **Area · Priority · Preconditions · Steps · Expected**.
   - The card's label carries the repeat's own summary: `REPEAT · 2 ROWS × 4`.
 
 **TC-35 Feedback on every change of progress** · Player · P0
-- Steps: in the playlist and in the player, tap `Mark row N done`, then `Mark row N not done`; in a repeat tap + and −. Press and hold any button without releasing. Repeat with Reduce Motion switched on in the device settings.
+- Steps: in the playlist and in the player, tap `Mark row N done`, then `Mark row N not done`; in a repeat tap + and −; move between rows with ‹ and › (including across sections). Press and hold any button without releasing. Repeat with Reduce Motion switched on in the device settings.
 - Expected:
-  - Every change of progress is acknowledged: the next row's card (playlist) or the whole row screen (player) eases in with a short fade and rise (about a fifth of a second).
+  - Every change of progress, and every move with ‹ ›, is acknowledged: the next row's card (playlist) or the whole row screen (player) eases in with a short fade and rise (about a fifth of a second). Moving with ‹ › gives no vibration, since nothing was marked.
   - On Android a short vibration accompanies it (slightly longer for done, shorter for not done and pass −). iPhones have no vibration support in the browser, so there only the visual feedback shows.
   - While a button is pressed it looks pressed (darker or smaller) before anything else happens, including the −/+ pass buttons, the ‹ › buttons and the main button.
   - With Reduce Motion on there is no movement: the press state and the transition are skipped.
