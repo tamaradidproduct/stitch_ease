@@ -39,8 +39,11 @@ function choosePattern(patternId) {
 }
 
 function openSizeSheet(pat) {
+  // A custom pattern's size names were escaped once at import (like its name),
+  // so escaping again here would show "&amp;".
+  const safe = t => pat.custom ? (t || '') : escapeHtml(t);
   const rows = pat.sizes.map((s, i) => `<button class="btn size-opt" onclick="chooseSize('${pat.id}', ${i})">
-      <span class="size-opt-name">Size ${escapeHtml(s.name)}</span><span class="size-opt-sub">${escapeHtml(s.sub)}</span></button>`).join('');
+      <span class="size-opt-name">Size ${safe(s.name)}</span><span class="size-opt-sub">${safe(s.sub)}</span></button>`).join('');
   openSheet('Choose a size', `<p class="sheet-sub" style="margin:0 0 12px">${escapeHtml(pat.sizeHint || 'Every stitch count in the project follows the size you pick.')}</p><div class="size-list">${rows}</div>`);
 }
 

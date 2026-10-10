@@ -22,12 +22,119 @@ function loadCustomPatterns() {
   let list;
   try { list = JSON.parse(localStorage.getItem(CUSTOM_PATTERNS_KEY) || '[]'); }
   catch (e) { list = []; }
-  list.forEach(p => { p.custom = true; PATTERNS.push(p); });
+  list.forEach(p => { p.custom = true; attachSizeBuilder(p); PATTERNS.push(p); });
 }
 loadCustomPatterns();
 
 function saveCustomPatterns() {
   localStorage.setItem(CUSTOM_PATTERNS_KEY, JSON.stringify(PATTERNS.filter(p => p.custom)));
+}
+
+// ── Sizes ──
+// A CSV with a `sizes` cell (e.g. "XS/S|M/L") becomes a sized TEMPLATE, the
+// same shape hatsuki.js uses: `sizes` + `buildPhases(i)`, so the picker's size
+// sheet, proj.size, freezePattern and sync all work unchanged. Text in the
+// file writes each number that differs once, as {a|b|c}, one value per size in
+// the order of `sizes`; text without braces is the same for every size.
+//
+// A function can't be saved or synced, so the template stores the raw phases
+// (placeholders intact) under `sizedPhases` and buildPhases is rebuilt from
+// them by attachSizeBuilder() wherever a template enters PATTERNS.
+const SIZE_PLACEHOLDER = /\{([^{}]*)\}/g;
+
+function attachSizeBuilder(p) {
+  if (p && Array.isArray(p.sizes) && Array.isArray(p.sizedPhases)) {
+    const raw = p.sizedPhases;
+    p.buildPhases = i => resolveSizedPhases(raw, i);
+  }
+  return p;
+}
+
+// Resolve the raw phases for size i: drop steps (and repeat sub-rows) marked for
+// other sizes, pick the i-th value of every {a|b|c}, and drop any phase left
+// empty. Ids are never touched; `only` (size indices) is consumed here.
+function resolveSizedPhases(raw, i) {
+  const keep = o => !Array.isArray(o.only) || o.only.indexOf(i) !== -1;
+  const filtered = raw.map(ph => Object.assign({}, ph, {
+    entries: (ph.entries || []).filter(keep)
+      .map(e => e.rows ? Object.assign({}, e, { rows: e.rows.filter(keep) }) : e)
+      .filter(e => !e.rows || e.rows.length)
+  })).filter(ph => ph.entries.length);
+  const walk = (v, key) => {
+    if (typeof v === 'string') {
+      return key === 'id' ? v : v.replace(SIZE_PLACEHOLDER, (_, body) => {
+        const vals = body.split('|');
+        return i < vals.length ? vals[i].trim() : '';
+      });
+    }
+    if (Array.isArray(v)) return v.map(x => walk(x, key));
+    if (v && typeof v === 'object') {
+      const o = {};
+      Object.keys(v).forEach(k => { if (k !== 'only') o[k] = walk(v[k], k); });
+      return o;
+    }
+    return v;
+  };
+  const out = walk(filtered, '');
+  out.forEach(ph => ph.entries.forEach(e => {
+    if (typeof e.times === 'string') e.times = parseInt(e.times, 10) || 1;
+  }));
+  return out;
+}
+
+// `bullets` are |-separated, and so are a placeholder's values — only a | outside
+// braces separates bullets.
+function splitBullets(s, sized) {
+  if (!sized) return s.split('|');
+  const out = []; let depth = 0, cur = '';
+  for (const c of s) {
+    if (c === '{') depth++;
+    else if (c === '}') depth = Math.max(0, depth - 1);
+    if (c === '|' && depth === 0) { out.push(cur); cur = ''; } else cur += c;
+  }
+  out.push(cur);
+  return out;
+}
+
+function parseSizeNames(cell) {
+  const names = cell.split('|').map(s => s.trim());
+  if (names.length < 2) throw new Error('"sizes" needs at least two sizes separated by | (e.g. XS/S|M/L). Leave it empty for a pattern with one size.');
+  if (names.some(n => !n)) throw new Error('"sizes" has an empty size name.');
+  const seen = {};
+  names.forEach(n => {
+    const k = n.toLowerCase();
+    if (seen[k]) throw new Error(`"sizes" lists "${n}" twice.`);
+    seen[k] = 1;
+  });
+  return names;
+}
+
+const SIZED_FIELDS = ['phase_name', 'phase_desc', 'text', 'bullets', 'repeat_times', 'sub_row_text'];
+
+// for_sizes: which sizes a step (or a repeat's sub-row) belongs to, by name →
+// indices into `sizes`. Empty means every size.
+function parseForSizes(cell, sizeNames, line) {
+  if (!cell) return null;
+  if (!sizeNames) throw new Error(`Row ${line}: for_sizes needs a sizes cell on the first row.`);
+  const lower = sizeNames.map(n => n.toLowerCase());
+  return cell.split('|').map(n => n.trim()).filter(Boolean).map(n => {
+    const k = lower.indexOf(n.toLowerCase());
+    if (k === -1) throw new Error(`Row ${line}: for_sizes has "${n}", which is not in sizes (${sizeNames.join('|')}).`);
+    return k;
+  });
+}
+function checkPlaceholders(r, line, count) {
+  SIZED_FIELDS.forEach(f => {
+    const cell = r[f] || '';
+    let m; const re = new RegExp(SIZE_PLACEHOLDER.source, 'g');
+    while ((m = re.exec(cell))) {
+      const vals = m[1].split('|');
+      if (vals.length !== count)
+        throw new Error(`Row ${line}: {${m[1]}} has ${vals.length} value${vals.length === 1 ? '' : 's'}, expected ${count} (one per size).`);
+      if (vals.some(v => !v.trim()))
+        throw new Error(`Row ${line}: {${m[1]}} has an empty value — write every size out.`);
+    }
+  });
 }
 
 // ── CSV parsing ──
@@ -68,6 +175,9 @@ function buildPatternFromRows(rows) {
   // importPatternCsvText's call, not this function's — this only builds and
   // validates the shape of what the CSV describes.
 
+  const sizeRow = rows.find(r => r.sizes);
+  const sizeNames = sizeRow ? parseSizeNames(sizeRow.sizes) : null;
+
   const named = rows.find(r => r.pattern_name);
   const pattern = {
     id: patternId,
@@ -83,6 +193,8 @@ function buildPatternFromRows(rows) {
 
   rows.forEach((r, i) => {
     const line = i + 2; // header is row 1
+    if (sizeNames) checkPlaceholders(r, line, sizeNames.length);
+    const only = parseForSizes(r.for_sizes, sizeNames, line);
     if (r.pattern_id && r.pattern_id !== patternId)
       throw new Error(`Row ${line}: pattern_id "${r.pattern_id}" doesn't match "${patternId}" — one pattern per CSV.`);
     const phaseId = r.phase_id;
@@ -103,24 +215,33 @@ function buildPatternFromRows(rows) {
 
     if (kind === 'note' || kind === 'row') {
       const entry = { kind, id: entryId, text: escapeHtml(r.text || '') };
+      if (only) entry.only = only;
       if (kind === 'note' && r.bullets) {
-        entry.bullets = r.bullets.split('|').map(b => escapeHtml(b.trim())).filter(Boolean);
+        entry.bullets = splitBullets(r.bullets, !!sizeNames).map(b => escapeHtml(b.trim())).filter(Boolean);
       }
       phase.entries.push(entry);
     } else if (kind === 'repeat') {
       const repKey = phaseId + '::' + entryId;
       let entry = repeatByKey[repKey];
       if (!entry) {
-        entry = { kind: 'repeat', id: entryId, times: parseInt(r.repeat_times, 10) || 1, rows: [] };
+        const repeatTimes = r.repeat_times || '';
+        entry = {
+          kind: 'repeat',
+          id: entryId,
+          times: (sizeNames && repeatTimes.indexOf('{') !== -1) ? repeatTimes : (parseInt(repeatTimes, 10) || 1),
+          rows: []
+        };
         if (r.text) entry.text = escapeHtml(r.text);
         repeatByKey[repKey] = entry;
         phase.entries.push(entry);
       }
       if (r.sub_row_id || r.sub_row_text) {
-        entry.rows.push({
+        const sub = {
           id: r.sub_row_id || (entryId + '-' + (entry.rows.length + 1)),
           text: escapeHtml(r.sub_row_text || '')
-        });
+        };
+        if (only) sub.only = only;
+        entry.rows.push(sub);
       }
     } else {
       throw new Error(`Row ${line}: unknown kind "${kind}" (expected note, row, or repeat).`);
@@ -135,6 +256,25 @@ function buildPatternFromRows(rows) {
         throw new Error(`Repeat "${e.id}" in phase "${p.id}" has no sub-rows.`);
     });
   });
+  if (sizeNames) {
+    pattern.sizes = sizeNames.map(n => ({ name: escapeHtml(n), sub: '', badge: escapeHtml(n) }));
+    pattern.sizedPhases = pattern.phases;
+    delete pattern.phases;
+    attachSizeBuilder(pattern);
+    // Each size must still be a whole pattern: some phase left, and no two of
+    // its steps sharing an id (progress is keyed on ids).
+    pattern.sizes.forEach((sz, i) => {
+      const built = pattern.buildPhases(i);
+      if (!built.length) throw new Error(`Size "${sizeNames[i]}" has no steps — check for_sizes.`);
+      built.forEach(ph => {
+        const seen = {};
+        ph.entries.forEach(e => {
+          if (seen[e.id]) throw new Error(`Size "${sizeNames[i]}": phase "${ph.id}" has two steps with entry_id "${e.id}" — give steps that differ by size their own entry_id.`);
+          seen[e.id] = 1;
+        });
+      });
+    });
+  }
   return pattern;
 }
 
@@ -172,6 +312,7 @@ function putCustomPattern(pattern, updateId) {
     const idx = PATTERNS.findIndex(p => p.id === updateId);
     if (idx === -1 || !PATTERNS[idx].custom) throw new Error('That pattern is no longer in your library.');
     pattern.id = updateId;
+    dropSizedCache(updateId);
     PATTERNS[idx] = pattern;
   } else {
     pattern.id = newCustomPatternId(pattern.id);
@@ -290,6 +431,7 @@ function updateSharedNote() {
 function removeCustomPattern(id) {
   const idx = PATTERNS.findIndex(p => p.id === id && p.custom);
   if (idx === -1) return;
+  dropSizedCache(id);
   PATTERNS.splice(idx, 1);
   saveCustomPatterns();
   // A tombstone, not just an absence — see js/cloud/patternsync.js.
