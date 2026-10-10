@@ -15,6 +15,12 @@ peacock-tee-deploy/
   js/core/chart.js              ← chart tracker, zoom, scroll, changeChartRow
   js/core/ui.js                 ← shared UI builders: btnHtml, msgHtml, sheetBodyHtml, rowHtml, checkHtml, stepperBtnHtml, swatchHtml, chipHtml
   js/core/render.js             ← render*/stepHtml/openSheet/escapeHtml
+  js/core/ui.js                 ← generic UI components (top bar, dock, facts, toggle, card, icon button)
+  js/core/stepViews.js          ← step-screen markup (playlist, player, repeat, chart window)
+  js/core/player.js             ← step-screen view state and handlers
+  css/tokens.css                ← every design token; the ONLY file with raw colours/radii/fonts
+  css/ui.css, css/step.css      ← components and step screens, tokens only
+  scripts/check-tokens.mjs      ← lint: node scripts/check-tokens.mjs --all
   js/core/patternImport.js      ← on-device CSV import → custom pattern (pt3_custom_patterns)
   js/core/chartImport.js        ← on-device .stitchchart.json import → custom chart pattern
   js/core/pdf.js                ← the original pattern PDF (IndexedDB + the sheet)
@@ -192,17 +198,19 @@ HTML is fetched **network-first** (fresh page on each load when online; cache fa
 3. App detects `reg.waiting` → shows dark toast: "Update available · Update now"
 4. User taps → app posts `{ type: 'SKIP_WAITING' }` → SW `skipWaiting()` → `controllerchange` → reload
 
-## Key CSS variables (in `:root`)
+## Key CSS variables
+Defined in `css/tokens.css` (design direction: `docs/design-direction.md`). The legacy names the older screens use are bridged to the tokens there.
 ```css
---bg: #f5f2ed        /* page background */
---card: #fffefb      /* card/header background */
---border: #e0dbd2    /* borders */
---text: #2a2520      /* primary text */
---muted: #8a8178     /* secondary text */
---accent: #4a6b5a    /* green accent */
---ch-blue: #2563eb   /* chart active row / current row number */
+--c-bg #f4f4f2 · --c-card #fff · --c-paper · --c-line      /* surfaces and hairlines */
+--c-text · --c-soft · --c-muted                            /* text, strongest to quietest */
+--c-sage · --c-sage-strong · --c-sage-wash                 /* the one accent */
+--c-blue                                                   /* chart current-row number only */
+--r-card 12px · --r-control 10px · --r-small 8px · --r-sheet 16px
+--font-ui                                                  /* the only text family (sans serif) */
+--fs-* · --ls-* · --s-* · --h-* · --w-*                    /* type sizes, tracking, spacing, fixed sizes: no raw px in step/ui CSS */
 --cell-sz: 16px      /* chart cell size, user-adjustable */
 ```
+Legacy aliases: `--bg`, `--card`, `--border`, `--text`, `--muted`, `--accent`, `--accent-light`, `--ch-blue`.
 
 ## Key JS functions
 - `render()` — dispatcher: home / picker / project view
@@ -254,10 +262,13 @@ HTML is fetched **network-first** (fresh page on each load when online; cache fa
 Within a pattern, phase nav is at the bottom. On non-chart phases it's the fixed `.nav-btns` (first phase shows only "Next →" full-width; others "← Back" + "Next →"). On the chart phase it lives in the fixed `.chart-dock` alongside the row counter.
 
 ## Typography
-- Headings (pattern names, phase names, library card names): Georgia serif
-- Everything else: system sans-serif (`-apple-system, BlinkMacSystemFont, 'Segoe UI'`)
+- One sans-serif family everywhere, `var(--font-ui)` (Figtree if vendored, system font otherwise). No serif.
 
 ## What NOT to do
+- Don't put raw colours, radii or font names anywhere but `css/tokens.css` — use a token (`node scripts/check-tokens.mjs --all` enforces it)
+- Don't hand-write markup a `ui*` component already produces (`uiCard`, `uiTag`, `uiButton`, `uiFacts`…) and don't use inline `style` except for CSS custom properties
+- Don't use orange, coral or beige; the one accent is sage
+- Don't add a Mark/Done button to a playlist card — the dock's main button is the one primary action
 - Don't suggest "Add to Home Screen" on Android Chrome — owner can't do this and doesn't want it mentioned
 - Don't add the stats bar back (Steps Done / Phase / Complete) — removed intentionally
 - Don't change the `pt3_` localStorage prefix or drop any of the three migrations — would break saved progress

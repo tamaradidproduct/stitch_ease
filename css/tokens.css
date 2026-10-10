@@ -1,0 +1,124 @@
+/* Design tokens — the only file that may contain raw colours, radii and font names.
+   Everything else uses var(--…). Lint: node scripts/check-tokens.mjs
+   Direction: docs/design-direction.md */
+:root {
+  /* colour */
+  --c-bg: #f4f4f2;
+  --c-card: #ffffff;
+  --c-paper: #f8f8f6;
+  --c-line: #e4e4e0;
+  --c-text: #25272a;
+  --c-soft: #62666b;
+  --c-muted: #92969b;
+  --c-sage: #587a67;
+  --c-sage-strong: #2f4a3c;
+  --c-sage-wash: #e4eee4;
+  --c-cell: #efefec;
+  --c-well: #e6e6e2;
+  --c-cell-ink: #2c2e31;
+  --c-scrim: rgba(30, 32, 35, 0.38);
+  --c-blue: #2f63d6;
+
+
+  /* state colours */
+  --c-danger: #b3402f;
+  --c-danger-strong: #8e2f22;
+  --c-danger-line: #e8c9c4;
+  --c-danger-wash: #f9ecea;
+  --c-warn: #a97c22;
+  --c-warn-strong: #8a6417;
+  --c-warn-line: #c99a3f;
+  --c-blue-strong: #1d4ed8;
+  --c-sage-mid: #7a9e8a;
+  --c-shadow-s: rgba(0, 0, 0, 0.14);
+  --c-shadow-m: rgba(0, 0, 0, 0.2);
+  --c-press: rgba(0, 0, 0, 0.08);
+  --c-glass: rgba(255, 255, 255, 0.5);
+  --c-swatch-line: rgba(0, 0, 0, 0.2);
+
+  /* chart (the knitting chart's own palette) */
+  --ch-def-bg: #f8f9fb;
+  --ch-def-border: #bcc9d8;
+  --ch-def-symbol: #3d5170;
+  --ch-active-bg: var(--c-sage-wash);
+  --ch-active-border: var(--c-sage);
+  --ch-active-symbol: var(--c-sage-strong);
+  --ch-empty-bg: #dde1e7;
+  /* Distinct from --ch-blue on purpose — that's the mid-row drag marker's colour (see
+     .mid-row-line/.mid-row-handle), and a combined-chart's source-panel divider (.cc-seg-end)
+     needs to read as a different kind of line at a glance. */
+  --ch-purple: #8b5cf6;
+
+  /* shape */
+  --r-card: 12px;
+  --r-control: 10px;
+  --r-small: 8px;
+  --r-sheet: 16px;
+  --r-round: 50%;
+  --r-pill: 999px;
+  --r-cell: 4px;
+
+  /* space (multiples of 4) */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-2h: 6px;
+  --s-3: 12px;
+  --s-3h: 14px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+
+  /* type */
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-ui: 'Figtree', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --fs-instruction: 21px;
+  --fs-title: 16px;
+  --fs-heading: 18px;
+  --fs-body: 14px;
+  --fs-meta: 13px;
+  --fs-lead: 15px;
+  --fs-small: 12px;
+  --fs-caps: 11px;
+  --fs-micro: 10px;
+  --ls-caps: .12em;
+  --ls-label: .1em;
+  --ls-small: .08em;
+  --ls-tag: .04em;
+  --ls-hint: .02em;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  /* sizes */
+  --h-bar: 56px;
+  --h-btn: 54px;
+  --h-icon: 36px;
+  --h-chart-min: 205px;
+  --h-cell: 24px;
+  --h-cell-mini: 18px;
+  --h-dock: 86px;
+  --h-tap: 44px;
+  --w-column: 640px;
+  --w-navbtn: 52px;
+  --h-check: 22px;
+  --w-rownum: 58px;
+
+  /* legacy bridge: the app's older variables follow the tokens, which restyles the
+     screens that still use them without touching their selectors or layout */
+  --bg: var(--c-bg);
+  --card: var(--c-card);
+  --border: var(--c-line);
+  --text: var(--c-text);
+  --muted: var(--c-muted);
+  --accent: var(--c-sage);
+  --accent-light: var(--c-sage-wash);
+  --done-bg: var(--c-sage-wash);
+  --done-text: var(--c-sage-strong);
+  --ch-blue: var(--c-blue);
+  --accent-mid: var(--c-sage-mid);
+  --checkbox-done: var(--c-muted);
+  --phase-band-bg: var(--c-line);
+  --radius: var(--r-card);
+  --radius-sm: var(--r-small);
+}

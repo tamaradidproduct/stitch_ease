@@ -296,6 +296,9 @@ function scrollActiveIntoView(smooth) {
 
 function renderPhase() {
   const p = PHASES[cur];
+  // Step-model sections (js/core/steps.js) have their own playlist + player.
+  if (isStepSection(p)) { document.getElementById('phase-content').innerHTML = renderStepSection(p); return; }
+  leaveStepMode();
   const items = p.entries || p.steps || [];
   const totalRows = sectionRowCount(p, activeDoc);
   const doneRows = sectionRowsDone(p, progressCtx(), activeDoc);
@@ -577,7 +580,8 @@ function sheetPrompt(o) {
 // Context menu for resetting project progress.
 function showResetMenu(e) {
   if (e.preventDefault) e.preventDefault();
-  closeResetMenu(); // never stack two
+  // The trigger toggles: tapping it again (or anywhere outside the menu) closes it.
+  if (document.getElementById('reset-menu')) { closeResetMenu(); return; }
   const proj = activeProject();
   const phase = PHASES[cur];
   const menu = document.createElement('div');
@@ -591,7 +595,13 @@ function showResetMenu(e) {
       Reset all progress
     </button>
   `;
+  const scrim = document.createElement('div');
+  scrim.className = 'reset-menu-scrim';
+  scrim.id = 'reset-menu-scrim';
+  scrim.onclick = closeResetMenu;
+  document.body.appendChild(scrim);
   document.body.appendChild(menu);
+  document.body.classList.add('reset-menu-open');   // the ⋮ trigger shows ✕ while the menu is open
   const rect = e.target.getBoundingClientRect();
   const margin = 8;
   // Prefer below + right-aligned to the target, but clamp to the viewport on
@@ -611,9 +621,12 @@ function showResetMenu(e) {
 }
 
 function closeResetMenu() {
-  const m = document.getElementById('reset-menu');
+  const m = document.getElementById('reset-menu'), s = document.getElementById('reset-menu-scrim');
   if (m) m.remove();
+  if (s) s.remove();
+  document.body.classList.remove('reset-menu-open');
 }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeResetMenu(); });
 
 function confirmResetPhase(projectId, phaseName) {
   closeResetMenu();
@@ -740,6 +753,7 @@ function render() {
 }
 
 function leaveChartMode() {
+  leaveStepMode();
   document.body.classList.remove('chart-page');
   const dock = document.getElementById('chart-dock'); if (dock) dock.innerHTML = '';
 }
@@ -757,7 +771,7 @@ function renderProject() {
   // NB: coerce to a real boolean — classList.toggle(cls, undefined) *flips*
   // the class (WebIDL treats explicit undefined as "no force arg"), which made
   // every step toggle flip chart-page on/off on non-chart screens.
-  const isChart = !!PHASES[cur].hasChart;
+  const isChart = !!PHASES[cur].hasChart && !isStepSection(PHASES[cur]);
   document.body.classList.toggle('chart-page', isChart);
 
   if (isChart) {
@@ -911,7 +925,7 @@ function renderHeader() {
     return;
   }
   if (view === 'glossary') {
-    h.innerHTML = `<div class="header-top"><h1 class="pattern-h1"><button class="lib-back" onclick="goHome()" aria-label="Back">${BACK_CHEVRON_SVG}</button>Stitch glossary</h1></div>`;
+    h.innerHTML = `<div class="header-top"><h1 class="pattern-h1"><button class="lib-back" onclick="closeGlossary()" aria-label="Back">${BACK_CHEVRON_SVG}</button>Stitch glossary</h1></div>`;
     return;
   }
   const proj = activeProject();
@@ -929,6 +943,12 @@ function renderHeader() {
       <button class="proj-menu-btn" onclick="showResetMenu(event)" aria-label="Options" title="Reset progress">⋮</button>
     </div>`;
 }
+// Where Back from the glossary goes: the project it was opened from (so the knitter lands on
+// the row they left), or the library when it was opened from there.
+function glossaryReturnTo(fromView, projectId) {
+  return fromView === 'project' && projectId && projects.some(p => p.id === projectId && !p.deletedAt) ? projectId : null;
+}
+
 // Force the header to rebuild on next render (e.g. after a project rename,
 // where the view/project key is unchanged but the title text changed).
 function resetHeaderKey() { const h = document.getElementById('header'); if (h) h.dataset.key = ''; }

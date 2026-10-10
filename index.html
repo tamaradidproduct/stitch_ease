@@ -8,67 +8,18 @@
 <meta name="apple-mobile-web-app-title" content="Stitch Ease">
 <meta name="theme-color" content="#4a6b5a">
 <title>Stitch Ease</title>
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/ui.css">
+<link rel="stylesheet" href="css/step.css">
 <style>
   :root {
-    --bg: #f5f2ed;
-    --card: #fffefb;
-    --border: #e0dbd2;
-    --text: #2a2520;
-    --muted: #8a8178;
-    --accent: #4a6b5a;
-    --accent-light: #e8f0ec;
-    --accent-mid: #7a9e8a;
-    --done-bg: #e8f0ec;
-    --done-text: #2d5a3f;
-    --checkbox-done: #a3a19e;
-    --phase-band-bg: #e5e1da;
-    --radius: 12px;
-    --radius-sm: 8px;
     --cell-sz: 16px;
-    /* chart colours */
-    --ch-def-bg: #f8f9fb;
-    --ch-def-border: #bcc9d8;
-    --ch-def-symbol: #3d5170;
-    --ch-active-bg: #eff6ff;
-    --ch-active-border: #2563eb;
-    --ch-active-symbol: #2563eb;
-    --ch-empty-bg: #dde1e7;
-    --ch-blue: #2563eb;
-    /* Distinct from --ch-blue on purpose — that's the mid-row drag marker's
-       colour (see .mid-row-line/.mid-row-handle), and a combined-chart's
-       source-panel divider (.cc-seg-end) needs to read as a different kind
-       of line at a glance, not a second copy of the marker. */
-    --ch-purple: #8b5cf6;
-    /* semantic + pressed colours (were hardcoded hex across the file) */
-    --on-accent: #fff;
-    --text-pressed: #444;
-    --accent-pressed: #3c5a4b;
-    --ch-blue-pressed: #1d4ed8;
-    --danger: #a4553f;
-    --danger-pressed: #8e4634;
-    --danger-text: #8e4634;
-    --danger-bg: #f7ece8;
-    --danger-border: #e4c7bd;
-    --danger-strong: #8a3b32;
-    --warn: #a97c22;
-    --warn-border: #c99a3f;
-    --warn-strong: #8a6417;
-    /* elevation */
-    --shadow-xs: 0 1px 3px rgba(0,0,0,0.25);
-    --shadow-fab: 0 4px 14px rgba(0,0,0,0.22);
-    --shadow-menu: 0 4px 16px rgba(0,0,0,0.15);
-    --shadow-float: 0 4px 16px rgba(0,0,0,0.18);
-    --shadow-toast: 0 4px 16px rgba(0,0,0,0.12);
-    /* radii beyond --radius / --radius-sm */
-    --radius-xs: 6px;
-    --radius-lg: 20px;
-    --radius-pill: 999px;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
   body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-family: var(--font-ui);
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
@@ -142,9 +93,9 @@
     display: none;
     position: absolute; top: 50%; z-index: 16;
     width: 22px; height: 22px; margin-left: -11px; transform: translateY(-50%);
-    border-radius: 50%;
+    border-radius: var(--r-round);
     background: var(--ch-blue); border: 2px solid var(--card);
-    box-shadow: var(--shadow-xs);
+    box-shadow: 0 1px 3px var(--c-shadow-m);
     cursor: grab; touch-action: none;
   }
   .mid-row-handle:active { cursor: grabbing; }
@@ -169,7 +120,7 @@
 
   /* Account button — the only entry point to sign-in. */
   .acct-btn {
-    flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%;
+    flex-shrink: 0; width: 34px; height: 34px; border-radius: var(--r-round);
     border: 1px solid var(--border); background: var(--bg);
     color: var(--muted); cursor: pointer; padding: 0;
     display: flex; align-items: center; justify-content: center;
@@ -177,41 +128,34 @@
   }
   /* Signed in: the accent fill is the whole status indicator, so it reads at a
      glance without a label competing with the app title. */
-  .acct-btn.in { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .acct-btn.in { background: var(--accent); border-color: var(--accent); color: var(--c-card); }
   /* Signed in but unreachable — amber ring, not an error colour: nothing is
      wrong, the work is just not backed up yet. */
-  .acct-btn.off { border-color: var(--warn-border); color: var(--warn); }
+  .acct-btn.off { border-color: var(--c-warn-line); color: var(--c-warn); }
 
   /* Glossary button — same circular icon-button family as .acct-btn, sits
      just before it so the two read as a row of header utilities. */
   .glossary-btn {
-    flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%;
+    flex-shrink: 0; width: 34px; height: 34px; border-radius: var(--r-round);
     border: 1px solid var(--border); background: var(--bg);
     color: var(--muted); cursor: pointer; padding: 0;
     display: flex; align-items: center; justify-content: center;
   }
   .glossary-btn:active { background: var(--card); }
 
-  /* ── Row ── lead · main · trail (see rowHtml in js/core/ui.js).
-     --sm tightens the gap, --baseline aligns on text, --divided adds the
-     padding and the rule between stacked rows. Text styles stay with the
-     caller (.acct-email, .yarn-row-name, …) until the type scale is tokenised. */
-  .row { display: flex; align-items: center; gap: 12px; }
-  .row--sm { gap: 10px; }
-  .row--baseline { align-items: baseline; }
-  .row--divided { padding: 8px 0; }
-  .row--divided + .row--divided { border-top: 1px solid var(--border); }
-  .row-lead, .row-trail { flex-shrink: 0; }
-  .row-main { flex: 1; min-width: 0; }
-  .acct-row { margin-bottom: 4px; }
+  .acct-row { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
   .acct-avatar {
-    width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
-    background: var(--accent); color: var(--on-accent);
+    width: 40px; height: 40px; border-radius: var(--r-round); flex-shrink: 0;
+    background: var(--accent); color: var(--c-card);
     display: flex; align-items: center; justify-content: center;
     font-size: 15px; font-weight: 600;
   }
   .acct-email { font-size: 14px; color: var(--text); word-break: break-all; }
   .acct-status { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .acct-note {
+    font-size: 12px; color: var(--muted); line-height: 1.5;
+    margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--border);
+  }
   /* "Backed up 4 minutes ago", with the manual trigger beside it. Shown on
      every visit, not only on failure — a status nobody has seen working is one
      nobody can read when it breaks. */
@@ -220,28 +164,29 @@
     margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);
   }
   .acct-sync-when { font-size: 13px; color: var(--text); }
+  /* .sheet-btn is flex:1 for the paired full-width rows; here it sits beside a
+     line of text and has to be content-width instead. */
+  .sheet-btn.slim { flex: 0 0 auto; margin: 0; padding: 9px 16px; font-size: 13px; }
 
-  /* ── Inline message (see msgHtml in js/core/ui.js) ──
-     .msg is the text; --error / --ok are boxed, --note is a muted footnote
-     under a rule, --plain drops the rule and tightens it to sit under a heading. */
-  .msg { font-size: 13px; line-height: 1.45; margin-top: 12px; }
-  .msg--error, .msg--ok { border-radius: var(--radius); padding: 10px 12px; }
-  .msg--error { color: var(--danger-text); background: var(--danger-bg); border: 1px solid var(--danger-border); }
-  .msg--ok { color: var(--text); background: var(--accent-light); border: 1px solid var(--accent); }
-  .msg--note {
-    font-size: 12px; color: var(--muted); line-height: 1.5;
-    margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);
+  .acct-err {
+    font-size: 13px; line-height: 1.45; color: var(--c-danger-strong);
+    background: var(--c-danger-wash); border: 1px solid var(--c-danger-line); border-radius: var(--radius);
+    padding: 10px 12px; margin-top: 12px;
   }
-  .msg--plain { border: 0; margin-top: 8px; padding-top: 0; }
+  .acct-ok {
+    font-size: 13px; line-height: 1.45; color: var(--text);
+    background: var(--accent-light); border: 1px solid var(--accent);
+    border-radius: var(--radius); padding: 10px 12px; margin-top: 12px;
+  }
 
   /* Google's brand guidelines: white button, their four-colour G unmodified,
      and the wording left as "Continue with Google". */
   .google-btn {
     width: 100%; margin-top: 14px;
     display: flex; align-items: center; justify-content: center; gap: 10px;
-    background: #fff; color: #3c4043; border: 1px solid #dadce0;
+    background: var(--c-card); color: var(--c-text); border: 1px solid var(--c-line);
   }
-  .google-btn:active { background: #f7f8f8; }
+  .google-btn:active { background: var(--c-paper); }
   .google-btn svg { flex-shrink: 0; }
 
   /* "or" divider between the two sign-in paths */
@@ -257,7 +202,7 @@
   .proj-head { align-items: flex-start; gap: 8px; margin-bottom: 0; }
   .proj-heading { flex: 1; min-width: 0; }
   .proj-title {
-    font-family: Georgia, serif; font-style: italic; color: var(--accent);
+    font-family: var(--font-ui); font-weight: 600; color: var(--accent);
     font-size: 1.05rem; font-weight: 400; line-height: 1.25;
     letter-spacing: -0.01em; cursor: pointer;
   }
@@ -275,10 +220,14 @@
   .pp-pct { font-size: 12px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
   .pp-label { font-size: 8px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); margin-top: 1px; }
   .header h1 {
-    font-family: Georgia, 'Times New Roman', serif;
+    font-family: var(--font-ui);
     font-size: 1.25rem; font-weight: 400; color: var(--text); letter-spacing: -0.01em;
   }
-  .header h1 span { font-style: italic; color: var(--accent); }
+  .header h1 span { font-weight: 600; color: var(--accent); }
+  .header-badge {
+    font-size: 11px; font-weight: 500; color: var(--accent);
+    background: var(--accent-light); padding: 3px 8px; border-radius: var(--r-sheet);
+  }
 
   /* ── Pattern-title header (back to library) ── */
   .pattern-h1 { display: flex; align-items: center; gap: 6px; }
@@ -286,7 +235,7 @@
      chevrons read as the same control. */
   .lib-back {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 24px; height: 24px; border-radius: 50%;
+    width: 24px; height: 24px; border-radius: var(--r-round);
     border: 1px solid var(--border); background: var(--card);
     color: var(--muted); cursor: pointer; flex-shrink: 0; padding: 0;
     transition: background 0.15s;
@@ -295,52 +244,54 @@
 
   /* ── Library / pattern list ── */
   .lib-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 58px; }
-  /* ── Card ── the raised surface: card fill, hairline border, standard radius.
-     .card is the class; the "you are here" step and the project-title menu take
-     the same surface from the state/role selectors rather than from markup. */
-  .card, .step.active, .repeat-step.active, .reset-menu {
-    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-  }
   .lib-card {
     display: block; width: 100%; text-align: left;
-    padding: 16px; cursor: pointer;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; cursor: pointer;
     transition: background 0.15s, border-color 0.15s;
     font-family: inherit; color: inherit;
   }
   .lib-card:active { background: var(--bg); }
   .lib-card-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-  .lib-card-name { font-family: Georgia, serif; font-size: 1.2rem; color: var(--text); }
+  .lib-card-name { font-family: var(--font-ui); font-size: 1.2rem; color: var(--text); }
   .lib-card-pct { font-size: 13px; font-weight: 600; color: var(--accent); flex-shrink: 0; }
   .lib-card-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
   .lib-card-track {
-    height: 5px; background: var(--border); border-radius: 3px;
+    height: 5px; background: var(--border); border-radius: var(--r-cell);
     overflow: hidden; margin: 12px 0 6px;
   }
-  .lib-card-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.3s ease; }
+  .lib-card-fill { height: 100%; background: var(--accent); border-radius: var(--r-cell); transition: width 0.3s ease; }
   .lib-card-sub { font-size: 11px; color: var(--muted); }
   .lib-card-bottom { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .proj-actions { display: flex; gap: 4px; flex-shrink: 0; }
   .proj-act {
     font-size: 11px; color: var(--muted); background: none;
-    border: 1px solid var(--border); border-radius: var(--radius-xs);
+    border: 1px solid var(--border); border-radius: var(--r-small);
     padding: 3px 9px; cursor: pointer; font-family: inherit;
   }
   .proj-act:active { background: var(--bg); }
-  .proj-del { color: var(--danger); border-color: var(--danger-border); }
+  .proj-del { color: var(--c-danger); border-color: var(--c-danger-line); }
 
   /* New-project floating action button + empty/picker states */
   .fab-new {
     position: fixed; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom));
-    z-index: 60; width: 56px; height: 56px; border-radius: 50%;
-    background: var(--accent); color: var(--on-accent); border: none;
+    z-index: 60; width: 56px; height: 56px; border-radius: var(--r-round);
+    background: var(--accent); color: var(--c-card); border: none;
     font-size: 30px; font-weight: 300; line-height: 1; padding-bottom: 3px;
     display: flex; align-items: center; justify-content: center;
-    cursor: pointer; box-shadow: var(--shadow-fab);
+    cursor: pointer; box-shadow: 0 4px 14px var(--c-shadow-m);
     transition: background 0.15s, transform 0.12s;
   }
-  .fab-new:active { background: var(--accent-pressed); transform: scale(0.94); }
+  .fab-new:active { background: var(--c-sage-strong); transform: scale(0.94); }
   .home-empty { text-align: center; color: var(--muted); font-size: 14px; line-height: 1.6; padding: 24px 12px; }
   .picker-hint { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+  .picker-import-btn {
+    width: 100%; margin-top: 16px; padding: 13px; border-radius: var(--radius);
+    border: 1px solid var(--border); background: var(--card);
+    font-family: inherit; font-size: 14px; font-weight: 500;
+    color: var(--text); cursor: pointer;
+  }
+  .picker-import-btn:active { background: var(--bg); }
   .picker-import-sub { font-size: 12px; color: var(--muted); text-align: center; margin-top: 6px; }
 
   /* ── Chart import preview sheet ── */
@@ -353,7 +304,14 @@
   .imp-preview canvas { display: block; max-width: 100%; }
   .imp-dims { text-align: center; }
   .imp-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .imp-chip {
+    display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px;
+    border: 1px solid var(--border); border-radius: var(--r-pill); font-size: 12px; color: var(--text);
+  }
+  .imp-chip b { font-weight: 600; color: var(--muted); }
   .imp-chip-sym { width: 14px; height: 14px; color: var(--text); display: inline-block; }
+  .imp-swatch { width: 12px; height: 12px; border-radius: var(--r-cell); border: 1px solid var(--c-swatch-line); flex-shrink: 0; }
+  .imp-swatch-lg { width: 28px; height: 28px; border-radius: var(--r-small); }
   .imp-yarn { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
   .imp-yarn .sheet-input { flex: 1; margin: 0; }
   .imp-seg { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
@@ -362,14 +320,14 @@
     font-size: 13px; color: var(--text); cursor: pointer;
   }
   .imp-seg button + button { border-left: 1px solid var(--border); }
-  .imp-seg button[aria-checked="true"] { background: var(--text); color: var(--on-accent); }
+  .imp-seg button[aria-checked="true"] { background: var(--text); color: var(--c-card); }
   .imp-seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
   /* ── Phase switch control + tabs ── */
   .phase-name-row { display: flex; align-items: center; gap: 8px; }
   .phase-switch-btn {
     display: flex; align-items: center; justify-content: center;
-    width: 24px; height: 24px; border-radius: 50%;
+    width: 24px; height: 24px; border-radius: var(--r-round);
     border: 1px solid var(--border); background: var(--card);
     color: var(--muted); cursor: pointer; flex-shrink: 0; padding: 0;
     transition: background 0.15s;
@@ -386,13 +344,13 @@
   .phase-scroll::-webkit-scrollbar { display: none; }
   .phase-tab {
     white-space: nowrap; font-size: 12px; font-weight: 500; padding: 6px 13px;
-    border-radius: var(--radius-lg); border: 1px solid var(--border); background: transparent;
+    border-radius: var(--r-sheet); border: 1px solid var(--border); background: transparent;
     color: var(--muted); cursor: pointer; transition: all 0.15s;
     display: flex; align-items: center; gap: 5px;
   }
-  .phase-tab.active { background: var(--text); color: var(--on-accent); border-color: var(--text); }
+  .phase-tab.active { background: var(--text); color: var(--c-card); border-color: var(--text); }
   .phase-tab.complete { background: var(--done-bg); color: var(--done-text); border-color: transparent; }
-  .phase-tab .check-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--done-text); display: none; }
+  .phase-tab .check-dot { width: 6px; height: 6px; border-radius: var(--r-round); background: var(--done-text); display: none; }
   .phase-tab.complete .check-dot { display: block; }
 
   /* ── Content ── */
@@ -427,9 +385,17 @@
   /* ── Reset menu (context menu on project title) ── */
   .reset-menu {
     position: fixed; z-index: 250;
-    box-shadow: var(--shadow-menu);
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: 0 4px 16px var(--c-shadow-s);
     display: flex; flex-direction: column;
     min-width: 200px; overflow: hidden;
+  }
+  /* A transparent layer under the menu: a tap anywhere outside closes it, the trigger included. */
+  .reset-menu-scrim { position: fixed; inset: 0; z-index: 249; background: transparent; }
+  /* While the menu is open the ⋮ trigger reads as ✕ */
+  body.reset-menu-open .proj-menu-btn, body.reset-menu-open .ui-icon-btn--bare { position: relative; font-size: 0; }
+  body.reset-menu-open .proj-menu-btn::after, body.reset-menu-open .ui-icon-btn--bare::after {
+    content: '\2715'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 16px; color: var(--text);
   }
   .reset-menu-item {
     padding: 12px 16px; border: none; background: transparent; color: var(--text);
@@ -450,22 +416,22 @@
   /* ── Pattern-notes bottom sheet ── */
   .sheet-scrim {
     position: fixed; inset: 0; z-index: 300;
-    background: rgba(42, 37, 32, 0);
+    background: transparent;
     display: flex; align-items: flex-end;
     transition: background 0.25s ease;
   }
-  .sheet-scrim.open { background: rgba(42, 37, 32, 0.45); }
+  .sheet-scrim.open { background: var(--c-scrim); }
   .sheet {
     width: 100%; max-height: 70vh; display: flex; flex-direction: column;
-    background: var(--card); border-radius: 16px 16px 0 0;
+    background: var(--card); border-radius: var(--r-sheet) var(--r-sheet) 0 0;
     padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
-    box-shadow: 0 -6px 24px rgba(0,0,0,0.18);
+    box-shadow: 0 -6px 24px var(--c-shadow-m);
     transform: translateY(100%);
     transition: transform 0.28s ease;
   }
   .sheet-scrim.open .sheet { transform: translateY(0); }
   .sheet-grab {
-    width: 36px; height: 4px; border-radius: 2px;
+    width: 36px; height: 4px; border-radius: var(--r-cell);
     background: var(--border); margin: 4px auto 6px;
   }
   .sheet-head {
@@ -473,7 +439,7 @@
     padding: 4px 20px 10px;
     border-bottom: 1px solid var(--border);
   }
-  .sheet-title { font-family: Georgia, serif; font-size: 1.2rem; color: var(--text); }
+  .sheet-title { font-family: var(--font-ui); font-size: 1.2rem; color: var(--text); }
   .sheet-close {
     background: none; border: none; color: var(--muted);
     font-size: 16px; cursor: pointer; padding: 6px;
@@ -498,45 +464,24 @@
   .size-opt { flex: none; display: flex; justify-content: space-between; align-items: baseline; text-align: left; }
   .size-opt-sub { font-size: 12px; color: var(--muted); font-weight: 400; }
   .sheet-actions { display: flex; gap: 10px; margin-top: 18px; }
-  /* ── Button ── one component (see btnHtml in js/core/ui.js).
-     Variants: --primary (dark), --accent (green), --danger, --slim, --lg, --block.
-     .nav-btn and .picker-import-btn are no longer styles, only hooks for
-     context rules (.chart-dock .nav-btn).
-     Position matters: this sits where .sheet-btn used to, so it still beats
-     .google-btn and .size-opt on the cascade exactly as before. */
-  .btn {
+  .sheet-btn {
     flex: 1; padding: 13px; border-radius: var(--radius);
     border: 1px solid var(--border); background: var(--card);
     font-family: inherit; font-size: 14px; font-weight: 500;
     color: var(--text); cursor: pointer; transition: background 0.15s;
   }
-  .btn:active { background: var(--bg); }
-  .btn--lg { padding: 14px; }
-  .btn--block { width: 100%; }
-  .picker-import-btn { margin-top: 16px; }
-  .btn--primary {
-    background: var(--text); color: var(--on-accent); border-color: var(--text);
-  }
-  .btn--primary:active { background: var(--text-pressed); }
-  .btn--accent {
-    background: var(--accent); color: var(--on-accent); border-color: var(--accent);
-  }
-  .btn--accent:active { background: var(--accent-pressed); }
-  .btn--danger {
-    background: var(--danger); color: var(--on-accent); border-color: var(--danger);
-  }
-  .btn--danger:active { background: var(--danger-pressed); }
-  .btn:disabled { opacity: 0.45; cursor: default; }
-  /* .btn is flex:1 for the paired full-width rows; --slim sits beside a line of
-     text and has to be content-width instead. */
-  .btn--slim { flex: 0 0 auto; margin: 0; padding: 9px 16px; font-size: 13px; }
+  .sheet-btn.primary { background: var(--text); color: var(--c-card); border-color: var(--text); }
+  .sheet-btn.primary:active { background: var(--c-soft); }
+  .sheet-btn.danger { background: var(--c-danger); color: var(--c-card); border-color: var(--c-danger); }
+  .sheet-btn.danger:active { background: var(--c-danger-strong); }
+  .sheet-btn:disabled { opacity: 0.45; cursor: default; }
   /* The PDF "Open" is a real <a> — a user-gesture anchor click is the one path
      no popup blocker touches, and on Android Chrome it's what hands a blob:
      URL to the system viewer. It has to be dressed as the button it replaces. */
-  a.btn { display: flex; align-items: center; justify-content: center; }
-  /* The PDF "Open" is a real <a> — a user-gesture anchor click is the one path
-     no popup blocker touches, and on Android Chrome it's what hands a blob:
-     URL to the system viewer. It has to be dressed as the button it replaces. */
+  a.sheet-btn {
+    display: flex; align-items: center; justify-content: center;
+    text-decoration: none; box-sizing: border-box;
+  }
 
   /* ── Original pattern PDF (js/core/pdf.js) ── */
   .pdf-file {
@@ -549,7 +494,7 @@
   /* Where this file stands relative to the account. Accent = safe, amber =
      still only here — matching the account button's own two states. */
   .pdf-file-cloud { font-size: 12px; color: var(--accent); margin-top: 2px; }
-  .pdf-file-cloud.pending { color: var(--warn); }
+  .pdf-file-cloud.pending { color: var(--c-warn); }
   .pdf-retry { margin-top: 12px; }
   .pdf-retry .sheet-actions { margin-top: 8px; }
 
@@ -558,7 +503,7 @@
   .phase-folder.has-dot { position: relative; }
   .phase-folder.has-dot::after {
     content: ''; position: absolute; top: 0; right: 0;
-    width: 7px; height: 7px; border-radius: 50%;
+    width: 7px; height: 7px; border-radius: var(--r-round);
     background: var(--ch-blue); border: 1.5px solid var(--phase-band-bg);
   }
 
@@ -570,6 +515,7 @@
   }
   .acct-family-count { font-size: 12px; color: var(--muted); text-align: right; }
   .fam-list { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .fam-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
   .fam-email { font-size: 13px; color: var(--text); word-break: break-all; }
   .fam-role { font-size: 12px; color: var(--muted); flex-shrink: 0; }
   .acct-family .sheet-actions { margin-top: 12px; }
@@ -578,12 +524,12 @@
   .fam-code {
     margin-top: 14px; padding: 16px 12px;
     background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-family: var(--font-mono);
     font-size: 26px; letter-spacing: 0.18em; text-align: center; color: var(--text);
     word-break: break-all;
   }
   .fam-input {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-family: var(--font-mono);
     letter-spacing: 0.16em; text-transform: uppercase; text-align: center;
   }
 
@@ -598,13 +544,16 @@
   .acct-pdfs-head .chevron { transition: transform 0.2s ease; }
   .acct-pdfs-head.open .chevron { transform: rotate(180deg); }
   .acct-pdfs-list { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .acct-pdf-row { display: flex; align-items: center; gap: 10px; }
+  .acct-pdf-main { flex: 1; min-width: 0; }
   .acct-pdf-name { font-size: 13px; color: var(--text); }
   .acct-pdf-sub { font-size: 12px; color: var(--muted); word-break: break-all; }
   .acct-pdf-del {
     flex-shrink: 0; background: none; border: none; padding: 4px 2px;
-    font-family: inherit; font-size: 12px; color: var(--danger); cursor: pointer;
+    font-family: inherit; font-size: 12px; color: var(--c-danger); cursor: pointer;
   }
   .note-row {
+    display: flex; align-items: baseline; gap: 12px;
     padding: 10px 0;
     border-bottom: 1px dashed var(--border);
   }
@@ -621,12 +570,12 @@
   /* ── Stitch glossary ── */
   .glossary-search {
     width: 100%; box-sizing: border-box; padding: 10px 12px; margin-bottom: 18px;
-    border: 1px solid var(--border); border-radius: 10px; background: var(--card);
+    border: 1px solid var(--border); border-radius: var(--r-control); background: var(--card);
     color: var(--text); font-family: inherit; font-size: 15px;
   }
   .glossary-craft { margin-bottom: 24px; }
   .glossary-craft-name {
-    font-family: Georgia, serif; font-size: 1.2rem; color: var(--text);
+    font-family: var(--font-ui); font-size: 1.2rem; color: var(--text);
     padding-bottom: 6px; margin-bottom: 4px; border-bottom: 1px solid var(--border);
   }
   .glossary-group { margin-top: 14px; }
@@ -638,20 +587,20 @@
   /* ── Pattern-finished celebration screen ── */
   .finished-scrim {
     position: fixed; inset: 0; z-index: 400;
-    background: rgba(42, 37, 32, 0);
+    background: transparent;
     display: flex; align-items: center; justify-content: center;
     padding: 24px;
     transition: background 0.3s ease;
     overflow: hidden;
   }
-  .finished-scrim.open { background: rgba(42, 37, 32, 0.55); }
+  .finished-scrim.open { background: var(--c-scrim); }
   .finished-card {
     position: relative; z-index: 1;
     width: 100%; max-width: 340px;
-    background: var(--card); border-radius: var(--radius-lg);
+    background: var(--card); border-radius: var(--r-sheet);
     padding: 36px 28px 28px;
     text-align: center;
-    box-shadow: 0 12px 40px rgba(0,0,0,0.22);
+    box-shadow: 0 12px 40px var(--c-shadow-m);
     transform: scale(0.85) translateY(10px); opacity: 0;
     transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
   }
@@ -665,14 +614,22 @@
     60% { transform: scale(1.15) rotate(6deg); opacity: 1; }
     100% { transform: scale(1) rotate(0); }
   }
-  .finished-title { font-family: Georgia, serif; font-size: 1.35rem; color: var(--text); margin: 14px 0 6px; }
+  .finished-title { font-family: var(--font-ui); font-size: 1.35rem; color: var(--text); margin: 14px 0 6px; }
   .finished-sub { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 24px; }
   .finished-actions { display: flex; flex-direction: column; gap: 10px; }
+  .finished-btn {
+    padding: 13px; border-radius: var(--radius); font-size: 14px; font-weight: 500;
+    cursor: pointer; border: 1px solid var(--border); background: var(--card); color: var(--text);
+    transition: background 0.15s;
+  }
+  .finished-btn.primary { background: var(--accent); color: var(--c-card); border-color: var(--accent); }
+  .finished-btn:active { background: var(--bg); }
+  .finished-btn.primary:active { background: var(--c-sage-strong); }
 
   /* Confetti falls across the whole scrim, behind the card */
   .confetti-piece {
     position: absolute; top: -20px; z-index: 0;
-    border-radius: 2px; opacity: 0.95;
+    border-radius: var(--r-cell); opacity: 0.95;
     animation-name: confetti-fall;
     animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1);
     animation-fill-mode: forwards;
@@ -680,7 +637,7 @@
   @keyframes confetti-fall {
     to { transform: translateY(115vh) rotate(600deg); opacity: 0; }
   }
-  .phase-name { font-family: Georgia, serif; font-size: 1.35rem; font-weight: 400; color: var(--text); margin-bottom: 2px; }
+  .phase-name { font-family: var(--font-ui); font-size: 1.35rem; font-weight: 400; color: var(--text); margin-bottom: 2px; }
   .phase-desc { font-size: 12px; color: var(--muted); }
   body.chart-page .phase-header {
     background: var(--phase-band-bg);
@@ -707,24 +664,20 @@
      .step look above; only the active entry lifts off the page. Same
      background/border/radius as .lib-card elsewhere in the app. */
   .step.active {
-    padding: 14px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px;
     margin: 10px 0;
   }
   .step.active:active { background: var(--card); }
-  /* ── Check ── the tick box (see checkHtml / checkboxAttrs in js/core/ui.js).
-     Whether it is ticked comes from the ancestor (.step.done, .rep-row.done),
-     which is what render() already sets; --sm is the one inside repeat rows. */
-  .check {
-    width: 22px; height: 22px; border-radius: var(--radius-xs);
+  .step-circle {
+    width: 22px; height: 22px; border-radius: var(--r-small);
     border: 2px solid var(--muted); background: transparent;
     flex-shrink: 0; display: flex; align-items: center; justify-content: center;
     margin-top: 2px; transition: all 0.15s;
   }
-  .check--sm { width: 20px; height: 20px; border-radius: 5px; margin-top: 1px; }
-  .step.done .check, .rep-row.done .check { background: var(--checkbox-done); border-color: var(--checkbox-done); }
-  .check svg { display: none; }
-  .step.done .check svg, .rep-row.done .check svg { display: block; }
-  [role="checkbox"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .step.done .step-circle { background: var(--checkbox-done); border-color: var(--checkbox-done); }
+  .step-circle svg { display: none; }
+  .step.done .step-circle svg { display: block; }
   .step-body { flex: 1; min-width: 0; }
   .step-text { font-size: 16px; line-height: 1.5; color: var(--text); }
   .step.done .step-text { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--muted); }
@@ -739,7 +692,7 @@
   }
   .step-bullets li::before {
     content: ''; position: absolute; left: 3px; top: 8px;
-    width: 5px; height: 5px; border-radius: 50%; background: var(--accent);
+    width: 5px; height: 5px; border-radius: var(--r-round); background: var(--accent);
   }
   .step.done .step-bullets li { color: var(--done-text); }
   .step.done .step-bullets li::before { background: var(--accent-mid); }
@@ -765,7 +718,8 @@
      it automatically and lifts it onto the .lib-card-style surface below. */
   .repeat-step { cursor: default; }
   .repeat-step.active {
-    padding: 14px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px;
     margin: 10px 0;
   }
   .repeat-step.active:active { background: var(--card); }
@@ -794,7 +748,7 @@
   .repeat-tag {
     flex-shrink: 0; font-size: 10px; font-weight: 600; letter-spacing: 0.03em;
     text-transform: uppercase; color: var(--accent); background: var(--accent-light);
-    padding: 2px 7px; border-radius: var(--radius-lg); line-height: 1.4;
+    padding: 2px 7px; border-radius: var(--r-sheet); line-height: 1.4;
   }
   .step.done .repeat-tag { color: var(--muted); background: var(--bg); }
 
@@ -805,7 +759,7 @@
      so the button is a visual cue, not a second stop. */
   .repeat-expand-btn {
     display: flex; align-items: center; justify-content: center;
-    width: 24px; height: 24px; border-radius: 50%;
+    width: 24px; height: 24px; border-radius: var(--r-round);
     border: 1px solid var(--border); background: var(--card);
     color: var(--muted); cursor: pointer; flex-shrink: 0; padding: 0;
     transition: background 0.15s;
@@ -826,25 +780,16 @@
     min-width: 68px; text-align: center;
     font-variant-numeric: tabular-nums;
   }
-  /* ── Stepper button ── a round ± (see stepperBtnHtml in js/core/ui.js).
-     --sm is the quiet inline one beside a label; --lg is the chart dock's,
-     with --minus neutral and --plus blue. */
-  .stepper-btn {
-    border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    cursor: pointer; flex-shrink: 0; line-height: 1; transition: background 0.12s;
+  .rep-pass-btn {
+    width: 22px; height: 22px; border-radius: var(--r-round); border: none;
+    background: transparent; color: var(--accent);
+    font-size: 14px; font-weight: 400; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: background 0.12s; flex-shrink: 0;
   }
-  .stepper-btn--sm {
-    width: 22px; height: 22px; border: none; background: transparent; color: var(--accent);
-    font-size: 14px; font-weight: 400;
-  }
-  .stepper-btn--sm:active { background: rgba(0,0,0,0.08); }
-  .stepper-btn--lg { width: 44px; height: 44px; border: none; font-size: 26px; font-weight: 300; }
-  .stepper-btn--minus { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
-  .stepper-btn--minus:active { background: var(--border); }
-  .stepper-btn--plus { background: var(--ch-blue); color: var(--on-accent); }
-  .stepper-btn--plus:active { background: var(--ch-blue-pressed); }
+  .rep-pass-btn:active { background: var(--c-press); }
   .step.done .rep-pass-lbl,
-  .step.done .stepper-btn--sm { color: var(--muted); }
+  .step.done .rep-pass-btn { color: var(--muted); }
 
   .rep-rows { list-style: none; margin: 0; padding: 0; }
   .rep-row {
@@ -854,6 +799,15 @@
     cursor: pointer; transition: background 0.15s;
   }
   .rep-row + .rep-row { margin-top: 2px; }
+  .rep-check {
+    flex-shrink: 0; width: 20px; height: 20px; border-radius: var(--r-cell);
+    border: 2px solid var(--muted); background: transparent;
+    display: flex; align-items: center; justify-content: center;
+    margin-top: 1px; transition: all 0.15s;
+  }
+  .rep-row.done .rep-check { background: var(--checkbox-done); border-color: var(--checkbox-done); }
+  .rep-check svg { display: none; }
+  .rep-row.done .rep-check svg { display: block; }
   .rep-n {
     flex-shrink: 0; width: 16px; text-align: center;
     font-size: 11px; font-weight: 600; color: var(--muted);
@@ -892,6 +846,24 @@
   .round-hint.on .round-hint-lbl { color: var(--accent); }
   .round-hint.on .round-hint-txt { color: var(--done-text); font-weight: 500; }
 
+  .row-counter {
+    margin-top: 10px; background: var(--bg); border-radius: var(--radius-sm);
+    padding: 10px 12px; display: flex; align-items: center; gap: 10px;
+  }
+  .step.done .row-counter { background: var(--c-glass); }
+  .rc-label { flex: 1; font-size: 12px; color: var(--muted); }
+  .rc-controls { display: flex; align-items: center; gap: 12px; }
+  .rc-btn {
+    width: 32px; height: 32px; border-radius: var(--r-round);
+    border: 1px solid var(--border); background: var(--card);
+    font-size: 18px; color: var(--text); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 300; transition: background 0.1s;
+  }
+  .rc-btn:active { background: var(--accent-light); }
+  .rc-val { font-size: 18px; font-weight: 500; min-width: 28px; text-align: center; color: var(--text); }
+  .rc-target { font-size: 12px; color: var(--muted); }
+
   /* ── Nav buttons — fixed at bottom ── */
   .nav-btns {
     display: flex; gap: 10px;
@@ -899,6 +871,14 @@
     padding: 16px 1.25rem calc(16px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--border);
   }
+  .nav-btn {
+    flex: 1; padding: 14px; border-radius: var(--radius);
+    border: 1px solid var(--border); background: var(--card);
+    font-size: 14px; font-weight: 500; color: var(--text); cursor: pointer; transition: background 0.15s;
+  }
+  .nav-btn:active { background: var(--bg); }
+  .nav-btn.primary { background: var(--text); color: var(--c-card); border-color: var(--text); }
+  .nav-btn.primary:active { background: var(--c-soft); }
 
   /* ── Chart Tracker ── */
   .chart-tracker {
@@ -959,7 +939,7 @@
   .cc {
     width: var(--cell-sz); height: var(--cell-sz);
     border: 0.5px solid var(--ch-def-border);
-    border-radius: 1px;
+    border-radius: var(--r-cell);
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
     background: var(--ch-def-bg);
@@ -1026,35 +1006,26 @@
     display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; padding: 0;
     border: 0; background: none; font: inherit; cursor: pointer; text-align: left;
   }
-  /* ── Chip ── outlined pill label (see chipHtml in js/core/ui.js); --lead when
-     it starts with a swatch or icon, which wants less padding on that side. */
-  .chip {
-    display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px;
-    border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--card);
+  .yarn-chip {
+    display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 5px;
+    border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--card);
     font-size: 12px; color: var(--text);
   }
-  .chip--lead { padding: 3px 9px 3px 5px; }
-  .chip b { font-weight: 600; color: var(--muted); }
-  /* ── Swatch ── a colour sample (see swatchHtml in js/core/ui.js); the colour
-     arrives as an inline background. Sizes --xs 10 / --sm 12 / --md 14, --round
-     for a dot. The pickers (.yarn-pick, .color-edit-swatch, .color-swatch-opt)
-     are controls, not samples, and stay their own thing. */
-  .swatch {
-    display: inline-block; flex-shrink: 0; border: 1px solid rgba(0,0,0,.2);
-    width: 14px; height: 14px; border-radius: 3px;
-  }
-  .swatch--xs { width: 10px; height: 10px; border-radius: 2px; }
-  .swatch--sm { width: 12px; height: 12px; }
-  .swatch--round { border-radius: 50%; }
-  .yarn-chips:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-xs); }
+  .yarn-dot { width: 14px; height: 14px; border-radius: var(--r-round); border: 1px solid var(--c-swatch-line); }
+  .yarn-chips:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-small); }
+  .yarn-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
+  .yarn-row + .yarn-row { border-top: 1px solid var(--border); }
   .yarn-pick {
-    display: block; position: relative; width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0;
-    border: 1px solid rgba(0,0,0,.2); cursor: pointer; overflow: hidden;
+    position: relative; width: 44px; height: 44px; border-radius: var(--r-control); flex-shrink: 0;
+    border: 1px solid var(--c-swatch-line); cursor: pointer; overflow: hidden;
   }
   .yarn-pick input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
   .yarn-pick:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .yarn-row-name { font-size: 15px; color: var(--text); }
-  .recap-swatch { vertical-align: -1px; margin-right: 3px; }
+  .yarn-row-name { flex: 1; font-size: 15px; color: var(--text); }
+  .recap-swatch {
+    display: inline-block; width: 10px; height: 10px; border-radius: var(--r-cell);
+    border: 1px solid var(--c-swatch-line); vertical-align: -1px; margin-right: 3px;
+  }
 
   /* Row-number cell — same frame as a stitch cell (.cc: same --cell-sz box,
      border, background — it carries the .cc class itself, so it gets that
@@ -1104,8 +1075,8 @@
   }
   .chart-confirm-step:active { background: var(--bg); }
   .chart-confirm-step.done { background: var(--done-bg); }
-  .chart-confirm-step.done .check { background: var(--accent); border-color: var(--accent); }
-  .chart-confirm-step.done .check svg { display: block; }
+  .chart-confirm-step.done .step-circle { background: var(--accent); border-color: var(--accent); }
+  .chart-confirm-step.done .step-circle svg { display: block; }
   .chart-confirm-step.done .step-text { color: var(--done-text); text-decoration: line-through; text-decoration-color: var(--accent-mid); }
 
 
@@ -1129,7 +1100,7 @@
   .leg { display: flex; align-items: center; gap: 4px; }
   .leg-cc {
     width: 14px; height: 14px;
-    border: 0.5px solid var(--ch-def-border); border-radius: 1px;
+    border: 0.5px solid var(--ch-def-border); border-radius: var(--r-cell);
     background: var(--ch-def-bg);
     display: flex; align-items: center; justify-content: center;
     font-size: 9px; color: var(--ch-def-symbol); flex-shrink: 0;
@@ -1143,19 +1114,19 @@
   }
   .leg-swatch { border-color: var(--border); }
   /* A bare icon here read as decoration, not a button — a filled circular
-     chip (same affordance language as the .stepper-btn--lg pair below) makes it
+     chip (same affordance language as .cc-minus/.cc-plus below) makes it
      obviously tappable without needing a text label. */
   .color-edit-btn {
     margin-left: auto; width: 32px; height: 32px; padding: 0;
-    border-radius: 50%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--r-round); background: var(--bg); border: 1px solid var(--border);
     display: flex; align-items: center; justify-content: center;
     transition: background 0.15s, border-color 0.15s;
   }
   .color-edit-btn:active { background: var(--border); }
-  .color-edit-row { margin-bottom: 10px; }
+  .color-edit-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
   .color-edit-swatch {
     width: 36px; height: 36px; flex-shrink: 0; padding: 0; cursor: pointer;
-    border: 1px solid var(--border); border-radius: var(--radius-xs);
+    border: 1px solid var(--border); border-radius: var(--r-small);
   }
   .color-edit-name { flex: 1; margin: 0; }
   .color-grid {
@@ -1168,7 +1139,7 @@
   .color-grid[hidden] { display: none; }
   .color-swatch-opt {
     width: 100%; aspect-ratio: 1; padding: 0; cursor: pointer;
-    border: 1px solid var(--border); border-radius: var(--radius-xs);
+    border: 1px solid var(--border); border-radius: var(--r-small);
   }
   .color-swatch-opt:active { transform: scale(0.92); }
 
@@ -1194,6 +1165,10 @@
     font-size: 18px; font-weight: 700; color: var(--text);
     margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
   }
+  .recap-row-dot {
+    width: 14px; height: 14px; border-radius: var(--r-round); flex-shrink: 0;
+    border: 1px solid var(--border);
+  }
   .recap-section { margin-top: 10px; }
   .recap-section + .recap-section { padding-top: 10px; border-top: 1px dashed var(--border); }
   .recap-sub { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 2px; }
@@ -1204,6 +1179,17 @@
     border-top: 1px solid var(--border);
     padding: 8px 16px; gap: 0;
   }
+  .cc-ctrl {
+    width: 44px; height: 44px; border-radius: var(--r-round); border: none;
+    font-size: 26px; font-weight: 300;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0; transition: background 0.12s;
+    line-height: 1;
+  }
+  .cc-minus { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+  .cc-minus:active { background: var(--border); }
+  .cc-plus { background: var(--ch-blue); color: var(--c-card); }
+  .cc-plus:active { background: var(--c-blue-strong); }
 
   .cc-stats { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 0 12px; }
   .cc-stat-lbl { font-size: 11px; color: var(--muted); letter-spacing: 0.02em; }
@@ -1219,17 +1205,17 @@
   }
   #banner-stack > * { pointer-events: auto; }
   #update-banner {
-    background: var(--text); color: var(--on-accent);
+    background: var(--text); color: var(--c-card);
     border-radius: var(--radius); padding: 13px 16px;
     display: flex; align-items: center; justify-content: space-between;
     font-size: 14px; gap: 12px;
-    box-shadow: var(--shadow-float);
+    box-shadow: 0 4px 16px var(--c-shadow-m);
     animation: slide-up 0.25s ease;
   }
   @keyframes slide-up { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
   #update-banner button {
-    background: #fff; color: var(--text); border: none;
-    border-radius: 8px; padding: 7px 14px;
+    background: var(--c-card); color: var(--text); border: none;
+    border-radius: var(--r-small); padding: 7px 14px;
     font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; flex-shrink: 0;
   }
 
@@ -1237,16 +1223,16 @@
      dark: nothing is broken and nothing is lost, there is just a question
      waiting. Persistent until answered. */
   #conflict-banner {
-    background: var(--warn-strong); color: var(--on-accent);
+    background: var(--c-warn-strong); color: var(--c-card);
     border-radius: var(--radius); padding: 13px 16px;
     display: flex; align-items: center; justify-content: space-between;
     font-size: 14px; gap: 12px;
-    box-shadow: var(--shadow-float);
+    box-shadow: 0 4px 16px var(--c-shadow-m);
     animation: slide-up 0.25s ease;
   }
   #conflict-banner button {
-    background: #fff; color: var(--text); border: none;
-    border-radius: 8px; padding: 7px 14px;
+    background: var(--c-card); color: var(--text); border: none;
+    border-radius: var(--r-small); padding: 7px 14px;
     font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; flex-shrink: 0;
   }
 
@@ -1257,10 +1243,10 @@
      message. Raised only for the two states this device cannot resolve itself;
      an out-of-date row is converted on read (see upgradeLegacyRow). */
   .sync-banner {
-    background: var(--warn-strong); color: var(--on-accent);
+    background: var(--c-warn-strong); color: var(--c-card);
     border-radius: var(--radius); padding: 13px 16px;
     font-size: 14px; line-height: 1.45;
-    box-shadow: var(--shadow-float);
+    box-shadow: 0 4px 16px var(--c-shadow-m);
     animation: slide-up 0.25s ease;
   }
 
@@ -1268,7 +1254,7 @@
      offering the two values side by side. Tapping a value IS the answer. */
   .cfl-group { margin-top: 16px; }
   .cfl-proj {
-    font-family: Georgia, serif; font-size: 15px; color: var(--text);
+    font-family: var(--font-ui); font-size: 15px; color: var(--text);
     margin-bottom: 8px;
   }
   .cfl-row {
@@ -1297,12 +1283,12 @@
     padding: 10px 12px 10px 16px;
     display: flex; align-items: center; justify-content: space-between;
     font-size: 13.5px; gap: 12px;
-    box-shadow: var(--shadow-toast);
+    box-shadow: 0 4px 16px var(--c-shadow-s);
     animation: slide-up 0.25s ease;
   }
   #pattern-chip button {
-    background: var(--accent); color: var(--on-accent); border: none;
-    border-radius: 8px; padding: 7px 14px;
+    background: var(--accent); color: var(--c-card); border: none;
+    border-radius: var(--r-small); padding: 7px 14px;
     font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; flex-shrink: 0;
   }
   .pu-facts { margin-top: 12px; }
@@ -1314,10 +1300,10 @@
   /* ── Save-failure banner ── persistent and buttonless: the only fix is
      freeing space, which the user has to do themselves. */
   #save-error {
-    background: var(--danger-strong); color: var(--on-accent);
+    background: var(--c-danger-strong); color: var(--c-card);
     border-radius: var(--radius); padding: 13px 16px;
     font-size: 13.5px; line-height: 1.45;
-    box-shadow: var(--shadow-float);
+    box-shadow: 0 4px 16px var(--c-shadow-m);
     animation: slide-up 0.25s ease;
   }
 </style>
@@ -1355,12 +1341,16 @@
 <script src="js/patterns/sophie-hood.js"></script>
 <script src="js/patterns/where-are-the-leaves.js"></script>
 <script src="js/patterns/hatsuki.js"></script>
+<script src="js/core/convert.js"></script>
 <script src="js/core/storage.js"></script>
 <script src="js/core/rows.js"></script>
+<script src="js/core/steps.js"></script>
 <script src="js/core/chart.js"></script>
 <script src="js/core/yarns.js"></script>
-<script src="js/core/ui.js"></script>
 <script src="js/core/render.js"></script>
+<script src="js/core/ui.js"></script>
+<script src="js/core/stepViews.js"></script>
+<script src="js/core/player.js"></script>
 <script src="js/core/patternImport.js"></script>
 <script src="js/core/chartImport.js"></script>
 <script src="js/core/pdf.js"></script>
@@ -1369,6 +1359,13 @@
 <script src="js/cloud/family.js"></script>
 <script src="js/cloud/pdfsync.js"></script>
 <script src="js/cloud/patternsync.js"></script>
+<script>
+/* Dev only: open the app with ?demo to register the unshipped step-screen demo pattern
+   (js/core/steps.demo.selftest.js). Written with document.write, before app.js runs, so the
+   pattern exists by the time saved projects are opened. The file is not shipped, so a stray
+   ?demo in production is a harmless 404. */
+if (/[?&]demo\b/.test(location.search)) document.write('<scr' + 'ipt src="js/core/steps.demo.selftest.js"></scr' + 'ipt>');
+</script>
 <script src="js/core/app.js"></script>
 </body>
 </html>

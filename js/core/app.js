@@ -23,10 +23,19 @@ function startNewProject() {
   render();
 }
 
+let glossaryFrom = null;   // the project the glossary was opened from, if any
+
 function openGlossary() {
+  glossaryFrom = glossaryReturnTo(view, activeProjectId);
   view = 'glossary';
   window.scrollTo(0, 0);
   render();
+}
+
+function closeGlossary() {
+  const id = glossaryFrom;
+  glossaryFrom = null;
+  if (id) openProject(id); else goHome();
 }
 
 function choosePattern(patternId) {
@@ -328,7 +337,8 @@ function updateHeaderScrollState() {
   // The chart page's header is always visible — never let it hide, even if a
   // stray scroll event fires during a phase-transition race. Same treatment
   // while a focus-scroll is in flight (suppressHeaderHide) — see above.
-  if (document.body.classList.contains('chart-page') || suppressHeaderHide) {
+  // The step screens have their own bar, which stays put; the old header is not shown there.
+  if (document.body.classList.contains('chart-page') || document.body.classList.contains('sp-on') || suppressHeaderHide) {
     h.classList.remove('header-hidden');
     updatePhaseHeaderOffset();
     return;
@@ -364,6 +374,7 @@ migrateToProjects();
 migrateAddClocks();
 migrateAddPatternHash();
 migrateToEntries();
+migrateToStepCursors();
 loadGlobal();
 loadOutbox();
 loadSyncStatus();
