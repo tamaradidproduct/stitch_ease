@@ -28,7 +28,7 @@
           { kind: 'row', id: 'sd-w2', text: 'knit all' },
           { kind: 'row', id: 'sd-w3', text: 'purl all' },
         ] },
-      { id: 'sd-repeat', name: 'Repeat', desc: '4 passes × 2 rows',
+      { id: 'sd-repeat', name: 'Repeat', desc: 'A leaf panel worked in passes',
         steps: [
           { kind: 'repeat', id: 'sd-rep', times: 4, before: 'Switch to 4 mm.', after: '285 sts. Mid-front ≈ 22 cm.',
             motif: [['K','YO','SK','K','K2','YO','K','K'], ['P','P','P','P','P','P','P','P']],

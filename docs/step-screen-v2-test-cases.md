@@ -189,7 +189,9 @@ Fields per case: **Area · Priority · Preconditions · Steps · Expected**.
   - While the repeat is current or selected it is a single card: `REPEAT` and `Pass n of 4` with − / +, the pass's rows (tap one to look at it; the selected row is larger), Setup, the end-of-pass count and the Check, and one `Open row ›` button.
   - There is no separate stepper and no separate selected-row card for it.
   - `Open row ›` opens the player on the selected row, showing the same repeat card with the dock reading `Mark R2 of pass 2 done`.
-  - When the repeat is neither current nor selected it shows as one quiet line, `Repeat · 2 rows × 4` (with ✓ when done).
+  - Like any other row, the repeat is expanded only when it holds the selected row (the current row by default). When the current row is inside it but you have selected a different row elsewhere, it collapses to one quiet line, `Repeat · 2 rows × 4`, tagged `CURRENT ROW · PASS n OF 4`; only one card is ever open.
+  - A completed repeat is the same line with a ✓.
+  - The card's label carries the repeat's own summary: `REPEAT · 2 ROWS × 4`.
 
 **TC-24 Focus follows the selection** · Playlist · P0
 - Preconditions: **Chart** section in the playlist, window small enough that the list scrolls.

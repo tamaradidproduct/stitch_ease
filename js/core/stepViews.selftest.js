@@ -126,7 +126,21 @@ function stepViewsSelfTest() {
     spViewedRow = 2;
     const rPl2 = spPlaylistHtml(PHASES[1], 0, prow.length, prow);
     spViewedRow = null;
+    check('the repeat card carries its own summary (rows x passes) in the label', [has(rPl, 'REPEAT · 2 ROWS × 4'), has(rPl, '4 passes × 2 rows')], [true, false]);
     check('playlist repeat: Open row follows the selected row of the repeat', [count(rPl2, 'spOpenPlayer(2)'), has(rPl2, 'spOpenPlayer(1)')], [1, false]);
+
+    // ── Repeat modes: expanded only when it holds the selected row, like any other row ──
+    spViewedRow = 9;
+    const away = spPlaylistHtml(PHASES[1], 2, prow.length, prow);
+    spViewedRow = null;
+    check('repeat with the current row but the selection elsewhere: collapsed, tagged CURRENT ROW, and only one card is open',
+      [has(away, 'sp-card--repeat'), count(away, 'Open row'), has(away, 'Repeat · 2 rows × 4'), has(away, 'CURRENT ROW'), has(away, 'PASS 2 OF 4')], [false, 1, true, true, true]);
+    const here = spPlaylistHtml(PHASES[1], 2, prow.length, prow);
+    check('repeat holding the selection (the current row by default): expanded', [has(here, 'sp-card--repeat'), count(here, 'Open row')], [true, 1]);
+    spViewedRow = 2;
+    const other = spPlaylistHtml(PHASES[1], 2, prow.length, prow);
+    spViewedRow = null;
+    check('selecting a row of the repeat while the cursor is elsewhere expands it', has(other, 'sp-card--repeat'), true);
 
     // ── App shell: the document never scrolls on step screens ──
     check('playlist: everything under the bar lives in one scroll container',

@@ -78,7 +78,7 @@ Product requirements from the interview of 2026-10-09. They revise the step scre
 - **Chart:** the repeat's motif chart if it has one; otherwise hidden (§3.2).
 - Dock as §3.5, acting on the selected row.
 
-- **In the playlist:** a repeat is one card for the whole block while it is current or selected: the pass line with − / +, the pass's rows, Setup, the end-of-pass count and Check, and a single `Open row ›` that opens the player on the selected row. Otherwise it is one quiet line (`Repeat · 2 rows × 4`).
+- **In the playlist:** a repeat is one card for the whole block while it is current or selected: the pass line with − / +, the pass's rows, Setup, the end-of-pass count and Check, and a single `Open row ›` that opens the player on the selected row. Like any other row it is expanded only when it holds the selected row (the current row by default); otherwise it is one quiet line (`Repeat · 2 rows × 4`, tagged `CURRENT ROW · PASS n OF T` when the current row is inside it, with ✓ when done). The card's label carries the repeat's own summary (`REPEAT · 2 ROWS × 4`), not the section description.
 
 ## 6. Glossary
 - A **dedicated glossary**, reached from the legend's **Glossary ›** link and from the library home as today. No tap-to-define on instruction text or chart symbols (too fiddly on a small screen).

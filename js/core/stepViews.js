@@ -156,14 +156,15 @@ function spListHtml(rows, cursor, total) {
 function spRepeatHtml(block, cursor, total, sel) {
   const first = block[0].n, last = block[block.length - 1].n, step = block[0].step;
   const R = step.rows.length, T = step.times | 0;
-  const selIn = sel >= first && sel <= last, curIn = cursor + 1 >= first && cursor + 1 <= last;
-  if (!selIn && !curIn) {
-    const done = last <= cursor;
-    return `<article class="sp-row ${done ? 'done' : 'upcoming'}" onclick="spSelectRow(${first})">
-      <span class="sp-row-n">Repeat${done ? ' ✓' : ''}</span>
-      <span class="sp-row-t">Repeat · ${R} rows × ${T}<span class="sp-row-sub">${block.slice(0, R).map(spText).join(' · ')}</span></span></article>`;
+  const selIn = sel >= first && sel <= last;                 // like any row: open only when selected (the current row by default)
+  if (!selIn) {
+    const done = last <= cursor, curIn = cursor + 1 >= first && cursor + 1 <= last;
+    const pass = curIn ? block[cursor + 1 - first].pass : 0;
+    return `<article class="sp-row ${done ? 'done' : 'upcoming'}${curIn ? ' current' : ''}" onclick="spSelectRow(${curIn ? cursor + 1 : first})">
+      <span class="sp-row-n">R${first}–${last}${done ? ' ✓' : ''}</span>
+      <span class="sp-row-t">Repeat · ${R} rows × ${T}${curIn ? `<span class="sp-row-tag">CURRENT ROW · PASS ${pass} OF ${T}</span>` : ''}<span class="sp-row-sub">${block.slice(0, R).map(spText).join(' · ')}</span></span></article>`;
   }
-  const row = block[(selIn ? sel : cursor + 1) - first];
+  const row = block[sel - first];
   return spRepeatCardHtml(block, row, row.n, false, true);
 }
 
@@ -343,7 +344,7 @@ function spRepeatCardHtml(block, row, v, hasChart, inList) {
   const setup = co.before.length
     ? uiToggleSection({ label: 'SETUP', open: spSetupOpen, onclick: 'spToggleSetup()', html: co.before.map(t => `<p>${t}</p>`).join('') }) : '';
   return `<article class="ui-card ${inList ? 'sp-row selected' : 'sp-card'} sp-card--repeat${hasChart ? '' : ' sp-card--nochart'}"${inList ? ` data-row="${v}"` : ''}>
-    <div class="sp-pass-line">${uiCapsLabel('REPEAT')}<span class="sp-pass-n">Pass ${pass} of ${T}</span>
+    <div class="sp-pass-line">${uiCapsLabel('REPEAT · ' + row.R + ' ROWS × ' + T)}<span class="sp-pass-n">Pass ${pass} of ${T}</span>
       ${uiIconButton({ icon: '−', label: 'Previous pass', onclick: 'spPass(-1)' })}${uiIconButton({ icon: '+', label: 'Finish this pass', onclick: 'spPass(1)' })}</div>
     ${setup}
     <ul class="sp-rlist">${items}</ul>
