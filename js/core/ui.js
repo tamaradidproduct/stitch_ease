@@ -1,83 +1,141 @@
-// ─────────────────────────────────────────────
-// GENERIC UI COMPONENTS — pure (props) → HTML string.
+// Shared UI builders. Each returns an HTML string, so they work from the inline
+// onclick-and-innerHTML style the rest of the app uses. Function declarations
+// only — nothing here runs at load, so order against other scripts is free.
+
+// A button. `.btn` is the one component. Hand-written markup elsewhere uses the
+// same classes directly (class="btn btn--primary"); this is for new code.
 //
-// Styles are in css/ui.css and use only tokens from css/tokens.css. Text props
-// are escaped; props named `html` / `actions` / `chip` are trusted markup built
-// by the caller. No state, no DOM access: these are testable (ui.selftest.js)
-// and reusable by any screen. Docs: docs/design-direction.md
-// ─────────────────────────────────────────────
-
-const UI_CHEV_L = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15.75 19.5-7.5-7.5 7.5-7.5"/></svg>';
-const UI_CHEV_R = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>';
-const UI_CHEV_DOWN = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>';
-
-// A square icon-only button. `icon` is trusted markup; `dot` adds the "something is waiting" dot.
-function uiIconButton({ icon, label, onclick, dot }) {
-  return `<button class="ui-icon-btn${dot ? ' has-dot' : ''}" onclick="${onclick}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}">${icon}</button>`;
+//   label       plain text — escaped here
+//   labelHtml   trusted markup (an inline SVG, say) — NOT escaped; use instead of label
+//   variant     'primary' | 'accent' | 'danger', or an array with 'slim' | 'lg' | 'block'
+//   onclick     developer-authored JS, trusted; only the quote character is escaped
+//   id, href    href turns it into a real <a> (the PDF "Open" needs one — see pdf.js)
+//   disabled    boolean
+//   cls         extra classes, e.g. 'size-opt'
+//   attrs       extra raw attributes, e.g. 'data-reset="3"' — trusted
+function btnHtml(o) {
+  const variants = [].concat(o.variant || []).filter(Boolean);
+  const cls = ['btn'].concat(variants.map(v => 'btn--' + v), o.cls || []).join(' ');
+  const attr =
+    (o.id ? ` id="${escapeHtml(o.id)}"` : '') +
+    (o.onclick ? ` onclick="${String(o.onclick).replace(/"/g, '&quot;')}"` : '') +
+    (o.disabled ? ' disabled' : '') +
+    (o.attrs ? ' ' + o.attrs : '');
+  const inner = o.labelHtml != null ? o.labelHtml : escapeHtml(o.label == null ? '' : o.label);
+  if (o.href) {
+    return `<a class="${cls}" href="${escapeHtml(o.href)}" target="_blank" rel="noopener"${attr}>${inner}</a>`;
+  }
+  return `<button class="${cls}"${attr}>${inner}</button>`;
 }
 
-// Small tracked-out label: ROW 4 OF 24, INSTRUCTIONS.
-function uiCapsLabel(text) {
-  return `<span class="ui-caps">${escapeHtml(text)}</span>`;
+// An inline message: a boxed error or confirmation, or a muted footnote.
+//
+//   kind    'error' | 'ok' | 'note'
+//   text    plain text — escaped here
+//   html    trusted markup — NOT escaped; use instead of text
+//   plain   note only: no rule above it, tucked under the line before it
+//   id      optional element id
+function msgHtml(o) {
+  const cls = 'msg msg--' + o.kind + (o.plain ? ' msg--plain' : '');
+  const id = o.id ? ` id="${escapeHtml(o.id)}"` : '';
+  const inner = o.html != null ? o.html : escapeHtml(o.text == null ? '' : o.text);
+  return `<p class="${cls}"${id}>${inner}</p>`;
 }
 
-// A quiet text toggle with a body that shows only while open (Setup).
-function uiToggleSection({ label, open, onclick, html }) {
-  return `<div class="ui-toggle"><button class="ui-toggle-btn" onclick="${onclick}" aria-expanded="${!!open}">${escapeHtml(label)} ${open ? '▾' : '▸'}</button>` +
-    (open ? `<div class="ui-toggle-body">${html}</div>` : '') + '</div>';
+// A row of buttons: pass btnHtml() strings.
+function sheetActionsHtml(buttons) {
+  return `<div class="sheet-actions">${buttons.join('')}</div>`;
 }
 
-// The line at the foot of a card: the stitch count (muted label) and the designer's
-// Check (accent rule). Either may be absent; with neither, nothing is rendered.
-// `check` is pattern text — raw HTML by convention, already sanitised when a pattern
-// arrives by sync — so it is not escaped here, like an instruction.
-function uiFacts({ count, countLabel, check }) {
-  const hasCount = typeof count === 'number' && isFinite(count);
-  if (!hasCount && !check) return '';
-  return '<div class="ui-facts">' +
-    (hasCount ? `<span class="ui-count"><b>${count}</b> ${escapeHtml(countLabel || 'sts')}</span>` : '<span></span>') +
-    (check ? `<span class="ui-check"><b>CHECK</b> ${check}</span>` : '') + '</div>';
+// The content stack most sheets share, in the order they all read:
+//   message → detail → body → error → actions → note
+//
+//   message / messageHtml   the question or statement, escaped / trusted
+//   messageId               id on the message paragraph
+//   detail  / detailHtml    one muted line under it, escaped / trusted
+//   body                    trusted markup between detail and the rest (an input, a list)
+//   error                   plain text, shown as a boxed error
+//   actions                 array of btnHtml() strings
+//   note    / noteHtml      footnote under the actions, escaped / trusted
+//
+// A sheet whose order differs (a note above its buttons, two button rows)
+// composes msgHtml() and sheetActionsHtml() directly instead.
+function sheetBodyHtml(o) {
+  const part = (plain, trusted) => trusted != null ? trusted : (plain != null ? escapeHtml(plain) : null);
+  const message = part(o.message, o.messageHtml);
+  const detail = part(o.detail, o.detailHtml);
+  const note = part(o.note, o.noteHtml);
+  return [
+    message != null ? `<p class="sheet-msg"${o.messageId ? ` id="${escapeHtml(o.messageId)}"` : ''}>${message}</p>` : '',
+    detail != null ? `<p class="sheet-sub">${detail}</p>` : '',
+    o.body || '',
+    o.error != null ? msgHtml({ kind: 'error', text: o.error }) : '',
+    o.actions && o.actions.length ? sheetActionsHtml(o.actions) : '',
+    note != null ? msgHtml({ kind: 'note', html: note }) : '',
+  ].filter(Boolean).join('\n    ');
 }
 
-// Back · a title block · tally · actions. The block is an optional small project line over the
-// title; the title may be a button (onTitle) with a chevron (chevron), the project line its own
-// button (onProject). Pass neither handler and it is plain text.
-function uiTopBar({ project, title, tally, onBack, onTitle, onProject, chevron, strong, titleLabel, actions }) {
-  const proj = project
-    ? (onProject ? `<button class="ui-top-project ui-top-project--btn" onclick="${onProject}" aria-label="Rename project">${escapeHtml(project)}</button>` : `<span class="ui-top-project">${escapeHtml(project)}</span>`)
-    : '';
-  const ttl = `<span class="ui-top-title${strong ? ' ui-top-title--strong' : ''}">${escapeHtml(title)}${chevron ? ' ' + UI_CHEV_DOWN : ''}</span>`;
-  const block = onTitle
-    ? `<button class="ui-top-ttl" onclick="${onTitle}" aria-label="${escapeHtml(titleLabel || title)}">${proj}${ttl}</button>`
-    : `<div class="ui-top-ttl">${proj}${ttl}</div>`;
-  return `<header class="ui-top"><button class="ui-icon-btn" onclick="${onBack}" aria-label="Back">${UI_CHEV_L}</button>` + block +
-    (tally ? `<span class="ui-top-tally">${escapeHtml(tally)}</span>` : '') + (actions || '') + '</header>';
+// A horizontal row: something leading, the main content, something trailing.
+// Every slot is TRUSTED markup — the caller escapes whatever it interpolates.
+//
+//   lead / main / trail   markup for each slot; an empty slot is left out
+//   variant               'sm' | 'baseline' | 'divided', string or array
+//   cls, id               extra classes / element id
+function rowHtml(o) {
+  const cls = ['row'].concat([].concat(o.variant || []).filter(Boolean).map(v => 'row--' + v), o.cls || []).join(' ');
+  const slot = (name, html) => html != null && html !== '' ? `<div class="row-${name}">${html}</div>` : '';
+  return `<div class="${cls}"${o.id ? ` id="${escapeHtml(o.id)}"` : ''}>${slot('lead', o.lead)}${slot('main', o.main)}${slot('trail', o.trail)}</div>`;
 }
 
-// ‹ main › with an optional chip (browse chip) above the buttons.
-function uiDock({ label, onclick, variant, chip, onPrev, onNext }) {
-  return `<footer class="ui-dock">${chip || ''}<div class="ui-dock-in">` +
-    `<button class="ui-dock-nav" onclick="${onPrev || 'spBrowse(-1)'}" aria-label="Previous row">${UI_CHEV_L}</button>` +
-    `<button class="ui-dock-main${variant === 'outline' ? ' ui-dock-main--outline' : ''}" onclick="${onclick}">${escapeHtml(label)}</button>` +
-    `<button class="ui-dock-nav" onclick="${onNext || 'spBrowse(1)'}" aria-label="Next row">${UI_CHEV_R}</button></div></footer>`;
+// A round ± button.
+//   dir      'minus' | 'plus'
+//   size     'sm' (quiet, inline beside a label) | 'lg' (the chart dock's, coloured by dir)
+//   onclick  developer-authored JS, trusted
+//   label    plain-text aria-label — escaped here
+function stepperBtnHtml(o) {
+  const size = o.size || 'sm';
+  const cls = 'stepper-btn stepper-btn--' + size + (size === 'lg' ? ' stepper-btn--' + o.dir : '');
+  return `<button class="${cls}" onclick="${String(o.onclick).replace(/"/g, '&quot;')}" aria-label="${escapeHtml(o.label)}">${o.dir === 'plus' ? '+' : '\u2212'}</button>`;
 }
 
-function uiCard({ cls, html, tag, attrs }) {
-  const t = tag || 'div';
-  return `<${t} class="ui-card${cls ? ' ' + cls : ''}"${attrs ? ' ' + attrs : ''}>${html}</${t}>`;
+// The tick box itself. Ticked-ness is drawn from the ancestor's .done class,
+// so this carries no state of its own. Pass `sm` for the one inside repeat rows.
+// With `onclick` it is its own control and gets the checkbox role and keyboard
+// access; without, the element around it is the control (see checkboxAttrs).
+//   done / label   for the aria state and name; only used with onclick
+function checkHtml(o) {
+  o = o || {};
+  const cls = 'check' + (o.sm ? ' check--sm' : '');
+  if (!o.onclick) return `<div class="${cls}">${CHECK_SVG}</div>`;
+  return `<div class="${cls}"${checkboxAttrs(o.done)}${o.label ? ` aria-label="${escapeHtml(o.label)}"` : ''} onclick="${String(o.onclick).replace(/"/g, '&quot;')}">${CHECK_SVG}</div>`;
 }
 
-// A small status label beside a heading or a row ("Current", "Done").
-function uiTag(text, variant) {
-  return `<span class="ui-tag${variant ? ' ui-tag--' + variant : ''}">${escapeHtml(text)}</span>`;
+// Attributes that make a clickable element an operable checkbox: role, state,
+// and a tab stop. Spread into a tag: `<div${checkboxAttrs(done)} onclick=...>`.
+function checkboxAttrs(checked) {
+  return ` role="checkbox" aria-checked="${checked ? 'true' : 'false'}" tabindex="0"`;
 }
 
-// A plain labelled button; the look comes from `cls`.
-function uiButton({ label, onclick, cls, aria }) {
-  return `<button${cls ? ` class="${cls}"` : ''} onclick="${onclick}"${aria ? ` aria-label="${escapeHtml(aria)}"` : ''}>${escapeHtml(label)}</button>`;
+// Enter and Space press whatever checkbox has focus. The elements are divs and
+// list items with inline onclick, so the browser does not do this on its own.
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const t = e.target;
+  if (t && t.getAttribute && t.getAttribute('role') === 'checkbox') { e.preventDefault(); t.click(); }
+});
+
+// A colour sample.
+//   color   a CSS colour value — a hex or var(--yarn-0); escaped into the style attribute
+//   size    'xs' (10) | 'sm' (12) | default 14
+//   round   a dot instead of a rounded square
+//   cls     extra classes
+function swatchHtml(o) {
+  const cls = ['swatch'].concat(o.size ? 'swatch--' + o.size : [], o.round ? 'swatch--round' : [], o.cls || []).join(' ');
+  return `<span class="${cls}" style="background:${escapeHtml(o.color)}"></span>`;
 }
 
-// A short buzz where the browser allows it (Android); a quiet no-op elsewhere (iOS Safari has no vibration API).
-function uiHaptic(ms) {
-  try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* not available */ }
+// An outlined pill label. `html` is trusted markup (it often holds a swatch or
+// a <b> count); `lead` trims the padding on the side a swatch or icon sits.
+function chipHtml(o) {
+  return `<span class="chip${o.lead ? ' chip--lead' : ''}">${o.html}</span>`;
 }

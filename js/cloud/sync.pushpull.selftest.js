@@ -641,16 +641,12 @@ async function syncPushPullTest() {
 
     // c2 is times:7 over a single row, so 3 counted rounds is three full
     // passes standing on row 1 of the fourth.
-    // On the step model (schema 3) the same row also lands as one cursor per
-    // section — here Collar (3 passes + the row before them) and the 9 chart rows
-    // done — with each cursor's clock taken from the keys it came from.
-    const onSteps = (o, extra) => stepModelOn() ? Object.assign({}, o, extra) : o;
     check('a v1 row is converted on read, not skipped',
       readLocalProgress('v1proj').values,
-      onSteps({ 'n:m1': true, 'r:c3': true, 'rp:c2': { y: 3, z: 1 }, cur: 2, 'cr:chart': 10 }, { 'sc:col': 4, 'sc:chart': 9 }));
+      { 'n:m1': true, 'r:c3': true, 'rp:c2': { y: 3, z: 1 }, cur: 2, 'cr:chart': 10 });
     check('its clocks travel with it, into the new namespace',
       readLocalProgress('v1proj').clocks,
-      onSteps({ 'n:m1': 700, 'r:c3': 700, 'rp:c2': 700, cur: 700, 'cr:chart': 700 }, { 'sc:col': 700, 'sc:chart': 700 }));
+      { 'n:m1': 700, 'r:c3': 700, 'rp:c2': 700, cur: 700, 'cr:chart': 700 });
     // global_rows is derived in v2. Carrying its clock would be a timestamp
     // asserting an edit to a field that no longer exists.
     check('but the derived global_rows clock is left behind',
@@ -669,7 +665,7 @@ async function syncPushPullTest() {
       upgraded.schema_ver, PROGRESS_SCHEMA);
     check('and the upgraded values go up in the new namespace',
       { entries: upgraded.entries, cur: upgraded.cur },
-      { entries: onSteps({ 'n:m1': true, 'r:c3': true, 'rp:c2': { y: 3, z: 1 } }, { 'sc:col': 4, 'sc:chart': 9 }), cur: 2 });
+      { entries: { 'n:m1': true, 'r:c3': true, 'rp:c2': { y: 3, z: 1 } }, cur: 2 });
     // The v1 client's only copy of its own progress. Dropping it is a separate
     // decision, for when no v1 client can exist.
     check('the legacy columns are left alone, not cleared',
@@ -784,10 +780,6 @@ async function syncPushPullTest() {
     // Both halves matter and they pull in opposite directions. Too sensitive
     // and every typo fix freezes every project in the family; too blunt and a
     // renamed step silently moves someone's ticks onto the wrong rows.
-    // The pattern-version tests below exercise the OLD (entries) shape: hashes, adopt,
-    // frozen snapshots. Under ?steps=1 every pattern is converted, so they run with ?steps=0.
-    check('pattern-version tests need the old shape' + (stepModelOn() ? ' — skipped (run with ?steps=0)' : ''), true, true);
-    if (!stepModelOn()) {
     const REF = PATTERNS[0];
     const refHash = structHash(REF);
     const variant = fn => { const c = JSON.parse(JSON.stringify(REF)); fn(c); return structHash(c); };
@@ -930,8 +922,6 @@ async function syncPushPullTest() {
 
     } finally {
       PATTERNS[patIndex] = patBackup;   // undo the simulated deploy
-    }
-
     }
 
   } finally {

@@ -255,23 +255,6 @@ function syncSelfTest() {
     { values: { 'n:a': true, 'r:b': false, 'rp:a': { y: 12, z: 2 }, 'cr:yoke': 31, cur: 2 },
       clocks: { 'n:a': t1 } });
 
-  // Schema 3: a section's cursor and a task's flag cross the wire as plain
-  // ints / bools, so === in diffProgress() stays meaningful after Postgres.
-  check('splitFields: sc: is an int (never below 0), t: a bool',
-    splitFields({ 'sc:yoke': '12', 't:f1': 1, 'sc:neg': -3 }),
-    { entries: { 'sc:yoke': 12, 't:f1': true, 'sc:neg': 0 }, cur: 0, chart_rows: {} });
-  check('joinFields: sc: / t: keep their types',
-    joinFields({ entries: { 'sc:yoke': 12, 't:f1': true, 'r:a': false }, cur: 0, chart_rows: {}, clocks: {} }).values,
-    { 'sc:yoke': 12, 't:f1': true, 'r:a': false, cur: 0 });
-  check('a section cursor merges like any field: the newer clock wins, no conflict',
-    (() => { const r = diffProgress({ values: { 'sc:y': 4 }, clocks: { 'sc:y': t2 } }, { values: { 'sc:y': 9 }, clocks: { 'sc:y': t1 } }, { 'sc:y': t1 });
-             return { merged: r.merged, conflicts: r.conflicts.length }; })(),
-    { merged: { 'sc:y': 4 }, conflicts: 0 });
-  check('…and two devices on different rows of one section is a conflict, as the spec accepts',
-    (() => { const r = diffProgress({ values: { 'sc:y': 4 }, clocks: { 'sc:y': t2 } }, { values: { 'sc:y': 9 }, clocks: { 'sc:y': 4000 } }, { 'sc:y': t1 });
-             return r.conflicts.map(c => c.key); })(),
-    ['sc:y']);
-
   // Postgres column defaults mean a freshly-inserted row arrives with empty
   // objects and no clocks at all; that must read as "nothing set", not throw.
   check('joinFields on a defaulted/empty row',

@@ -212,8 +212,6 @@ function splitFields(values) {
     // position and the row are lost.
     if (k.indexOf('rp:') === 0)      entries[k] = normalizeRepeatValue(v);
     else if (k.indexOf('cr:') === 0) chart_rows[k.slice(3)] = v | 0;
-    else if (k.indexOf('sc:') === 0) entries[k] = Math.max(0, v | 0);
-    else if (k.indexOf('t:') === 0)  entries[k] = !!v;
     else if (k.indexOf('n:') === 0)  entries[k] = !!v;
     else if (k.indexOf('r:') === 0)  entries[k] = !!v;
     else if (k === 'cur')            cur = v | 0;
@@ -236,9 +234,7 @@ function joinFields(row) {
   const values = {};
   const entries = (row && row.entries) || {};
   Object.keys(entries).forEach(k => {
-    values[k] = k.indexOf('rp:') === 0 ? normalizeRepeatValue(entries[k])
-              : k.indexOf('sc:') === 0 ? Math.max(0, entries[k] | 0)
-              : !!entries[k];
+    values[k] = k.indexOf('rp:') === 0 ? normalizeRepeatValue(entries[k]) : !!entries[k];
   });
   const rows = (row && row.chart_rows) || {};
   Object.keys(rows).forEach(pid => { values[chartRowKey(pid)] = rows[pid] | 0; });
@@ -702,8 +698,8 @@ async function pushProgress(id, uid) {
   let remoteRow = remote;
   if (remote && !schemaMatches(remote)) {
     if (rowSchema(remote) > PROGRESS_SCHEMA) { noteSchemaMismatch(id, rowSchema(remote)); return 'drop'; }
-    const legacy = rowSchema(remote) < 2 ? await fetchLegacyColumns([id]) : {};
-    remoteRow = upgradeRow(remote, legacy[id]);
+    const legacy = await fetchLegacyColumns([id]);
+    remoteRow = upgradeLegacyRow(remote, legacy[id]);
     if (!remoteRow) { noteSchemaMismatch(id, rowSchema(remote)); return 'drop'; }
     logSync('info', 'progress ' + id + ' upgraded from schema v' + rowSchema(remote) + ' on push');
   }
@@ -872,23 +868,12 @@ function conflictLabel(c) {
   // labelling only ever resolves s:/c: keys, which converted sections do not
   // produce, so there is nothing for it to find there — but it must not throw
   // while walking past one.
-  const entries = phases.reduce((a, ph) => a.concat(ph.entries || [], (ph.steps || []).filter(s => s.kind === 'task')), []);
+  const entries = phases.reduce((a, ph) => a.concat(ph.entries || []), []);
   const findEntry = id => entries.find(x => x.id === id);
   const num = v => String(v);
 
   if (c.k === 'cur') {
     return { field: 'Section', fmt: v => (phases[v] && phases[v].name) || ('Section ' + ((v | 0) + 1)) };
-  }
-  // A section's cursor, said the way the playlist says it — "On row 12", not 11.
-  if (c.k.indexOf('sc:') === 0) {
-    const ph = phases.find(x => x.id === c.k.slice(3));
-    const total = ph ? stepsRowCount(ph, pat) : 0;
-    return { field: ph ? plainText(ph.name, 28) : 'Section',
-             fmt: v => (total && (v | 0) >= total) ? 'Finished (' + total + ' rows)' : 'On row ' + (((v | 0) + 1)) + (total ? ' of ' + total : '') };
-  }
-  if (c.k.indexOf('t:') === 0) {
-    const e = findEntry(c.k.slice(2));
-    return { field: (e && plainText(e.text)) || 'Task', fmt: v => (v ? 'Done' : 'Not done') };
   }
   if (c.k.indexOf('cr:') === 0) {
     const ph = phases.find(x => x.id === c.k.slice(3));
@@ -933,10 +918,7 @@ function conflictLabel(c) {
 // banner asking the user to update their other device, instead of progress
 // quietly going missing.
 // ─────────────────────────────────────────────
-// v3 = one cursor per section (`sc:<section>`, `t:<task>`) in place of per-row
-// keys. Tied to the step-model flag so a device that is not on it keeps writing,
-// and reading, exactly what it did.
-const PROGRESS_SCHEMA = stepModelOn() ? 3 : 2;
+const PROGRESS_SCHEMA = 2;
 
 function schemaMatches(row) { return ((row && row.schema_ver) | 0) === PROGRESS_SCHEMA; }
 function rowSchema(row) { return (row && row.schema_ver) | 0; }
@@ -1017,21 +999,11 @@ function upgradeLegacyClocks(v1, pattern) {
   return out;
 }
 
-// v1 maps into the ENTRIES shape. If the project's pattern is step-shaped, the
-// old shape it was converted from is used — but only when it really is the same
-// structure, since a snapshot that diverged cannot be mapped by guessing.
-function patternForV1Upgrade(projectId) {
-  const pat = patternForUpgrade(projectId);
-  if (!pat || !pat.phases.some(isStepSection)) return pat;
-  const old = legacyPatternFor(projects.find(p => p.id === projectId));
-  return old && structHash(convertPattern(old)) === structHash(pat) ? old : null;
-}
-
 // A v1 row (plus its legacy columns) rewritten in the v2 shape, or null if this
 // device cannot do it — which means the pattern is missing from this build, and
 // skipping is still correct.
 function upgradeLegacyRow(row, legacy) {
-  const pattern = patternForV1Upgrade(row.project_id);
+  const pattern = patternForUpgrade(row.project_id);
   if (!pattern) return null;
   const entries = seedEntryProgress({}, (legacy && legacy.steps) || {},
                                         (legacy && legacy.counters) || {}, pattern.phases);
@@ -1042,37 +1014,8 @@ function upgradeLegacyRow(row, legacy) {
     chart_rows: row.chart_rows || {},
     clocks: upgradeLegacyClocks(row.clocks, pattern),
     server_rev: row.server_rev,
-    schema_ver: 2
+    schema_ver: PROGRESS_SCHEMA
   };
-}
-
-// v2 → v3: the same progress, one cursor per section instead of one flag per
-// row. Derived from the keys the row already carries (cursorsFromLegacyProgress),
-// with each new key's clock taken from the old ones it was derived from, and the
-// old keys left in place. Null when this build does not have the pattern.
-function upgradeV2Row(row) {
-  const pattern = patternForUpgrade(row.project_id);
-  if (!pattern) return null;
-  // A pattern with no step sections (an imported one) has nothing to convert —
-  // its row is only renumbered, so it is not reported as a mismatch.
-  if (!pattern.phases.some(isStepSection)) return Object.assign({}, row, { schema_ver: PROGRESS_SCHEMA });
-  const entries = Object.assign({}, row.entries || {});
-  const derived = cursorsFromLegacyProgress(pattern, { entries: entries, chartRows: row.chart_rows || {} });
-  Object.assign(entries, derived.values);
-  const clocks = Object.assign({}, row.clocks || {}, clocksForCursors(derived, row.clocks));
-  return Object.assign({}, row, { entries: entries, clocks: clocks, schema_ver: PROGRESS_SCHEMA });
-}
-
-// Any older row → this build's schema, or null if it cannot be done here.
-function upgradeRow(row, legacy) {
-  const v = rowSchema(row);
-  if (v >= PROGRESS_SCHEMA) return row;
-  let r = row;
-  if (v < 2) {
-    r = upgradeLegacyRow(row, legacy);
-    if (!r) return null;
-  }
-  return PROGRESS_SCHEMA >= 3 ? upgradeV2Row(r) : r;
 }
 
 // The legacy columns for specific projects, fetched only when a v1 row is
@@ -1442,7 +1385,7 @@ async function pull(reason) {
     // while awaiting. Costs nothing once no v1 rows remain, which is the point.
     let legacyById = {};
     const legacyIds = (remoteProgress || [])
-      .filter(r => rowSchema(r) < 2).map(r => r.project_id);
+      .filter(r => rowSchema(r) < PROGRESS_SCHEMA).map(r => r.project_id);
     if (legacyIds.length) {
       try {
         legacyById = await fetchLegacyColumns(legacyIds);
@@ -1462,7 +1405,7 @@ async function pull(reason) {
         // Newer than this build: genuinely nothing to do but reload.
         // Older: convert it, unless the pattern is missing from this build.
         const upgraded = rowSchema(row) < PROGRESS_SCHEMA
-          ? upgradeRow(row, legacyById[row.project_id]) : null;
+          ? upgradeLegacyRow(row, legacyById[row.project_id]) : null;
         if (!upgraded) {
           noteSchemaMismatch(row.project_id, rowSchema(row));
           if (rev < minSkipped) minSkipped = rev;
