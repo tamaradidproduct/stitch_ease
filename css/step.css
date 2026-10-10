@@ -139,3 +139,5 @@ body.sp-on .content { padding: 0; }   /* the bars and cards bring their own gutt
 .sp-tag--done { background: var(--c-paper); color: var(--c-muted); box-shadow: inset 0 0 0 1px var(--c-line); }
 .sp-row.selected .sp-card-top { align-items: center; justify-content: flex-start; gap: var(--s-2); }
 .sp-card-top-r { margin-left: auto; display: inline-flex; gap: var(--s-2); align-items: baseline; }
+
+.sheet-actions--col { flex-direction: column; }

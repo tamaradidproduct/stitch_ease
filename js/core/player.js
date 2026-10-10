@@ -23,7 +23,6 @@ let spChartRows = 7;         // rows the chart window shows (fitted to the scree
 let spChartWatched = null;
 let spChartWatch = null;     // ResizeObserver on the chart area, so a changing screen height refits it
 let spSetupOpen = false;     // the player card's Setup toggle (collapsed until asked for)
-let spChartOpen = false;    // the full chart screen
 let spKey = null;           // project|section the view state belongs to
 
 // ── Rows, flattened ──
@@ -81,7 +80,7 @@ function spCallouts(row) {
 
 function spSyncKey() {
   const key = activeProjectId + '|' + (PHASES[cur] && PHASES[cur].id);
-  if (key !== spKey) { spKey = key; spViewedRow = null; spPlayerOpen = false; spNotesOpen = spEnterNotes(); spChartOpen = false; spSetupOpen = false; }
+  if (key !== spKey) { spKey = key; spViewedRow = null; spPlayerOpen = false; spNotesOpen = spEnterNotes(); spSetupOpen = false; }
 }
 
 // null means "on the cursor row" — also when the viewed row is dropped back
@@ -91,10 +90,6 @@ function spBrowsing(cursor, total) {
 }
 
 // ── Markup ──
-
-const BACK_CHEV = (typeof BACK_CHEVRON_SVG !== 'undefined') ? BACK_CHEVRON_SVG : '‹';
-const SP_CHEV_L = UI_CHEV_L;
-const SP_CHEV_R = UI_CHEV_R;
 
 // ── Chart window (inside the player) and the full chart screen ──
 //
@@ -117,11 +112,6 @@ function spChartFor(p, row) {
   return st.kind === 'repeat' && st.motif && st.motif[0] && row.def.chartRow ? st.motif : null;
 }
 
-function spChartRowToN(rows, chartRow) {
-  const i = rows.findIndex(r => r.step.kind === 'row' && r.def.chartRow === chartRow);
-  return i < 0 ? null : i + 1;
-}
-
 function spInnerHtml(p) {
   const rows = spRowsFor(p);
   const total = rows.length;
@@ -130,7 +120,6 @@ function spInnerHtml(p) {
     return spTopBarHtml(p, 0, 0) + '<div class="sp-scroll">' + spListHeadHtml(p) + spNotesHtml(p) + spTasksHtml(p) + '</div>' + spRowlessDock();
   }
   if (spViewedRow !== null && (spViewedRow < 1 || spViewedRow > total)) spViewedRow = null;
-  if (spChartOpen && spPlayerOpen && spHasChart(p, rows[0])) return spFullChartHtml(p, cursor, total, rows);
   if (spPlayerOpen && (cursor < total || spViewedRow !== null)) return spPlayerHtml(p, cursor, total, rows);
   return spPlaylistHtml(p, cursor, total, rows) + spPlaylistDock(cursor, total);
 }
@@ -313,35 +302,6 @@ function spBackToCurrent() {
   spScrollToViewed();
 }
 
-function spOpenChart() { spChartOpen = true; spRender(); window.scrollTo({ top: 0 }); spFcRecenter(); }
-function spCloseChart() { spChartOpen = false; spRender(); window.scrollTo({ top: 0 }); }
-
-// Tapping a chart row looks at it — class swaps only, so a 100-row chart is not
-// rebuilt on every tap.
-function spFcTap(chartRow) {
-  const p = PHASES[cur], c = stepCursor(p);
-  const n = spChartRowToN(spRowsFor(p), chartRow);
-  if (!n) return;
-  spViewedRow = n === c + 1 ? null : n;
-  document.querySelectorAll('.sp-fc-row.viewing').forEach(e => e.classList.remove('viewing'));
-  const el = document.querySelector('.sp-fc-row[data-r="' + chartRow + '"]');
-  if (el && n !== c + 1) el.classList.add('viewing');
-  const back = document.getElementById('sp-fc-back');
-  if (back) back.textContent = 'Back to row ' + n;
-}
-
-function spZoom(d) {
-  cellSz = Math.max(10, Math.min(32, cellSz + d));
-  const fc = document.getElementById('sp-fc');
-  if (fc) fc.style.setProperty('--cell-sz', cellSz + 'px');
-  save();
-}
-
-function spFcRecenter() {
-  const el = document.querySelector('.sp-fc-row.active');
-  if (el) el.scrollIntoView({ block: 'center' });
-}
-
 // The glossary button: a bottom sheet with this row's stitches and the pattern's own notes, and a
 // way on to the whole glossary. Looking only.
 function openStitchSheet() {
@@ -391,14 +351,7 @@ function spRangeQuestion(from, to, what) {
 
 // The section name in the top bar opens this: the section's notes, then every
 // section to switch to. Looking only — nothing here changes progress.
-function spOpenSectionSheet() {
-  const p = PHASES[cur];
-  const notes = (p.notes || []).length
-    ? '<p class="sheet-sub">' + p.notes.map(n => n).join('</p><p class="sheet-sub">') + '</p>' : '';
-  const list = PHASES.map((s, i) =>
-    `<button class="sheet-btn${i === cur ? ' primary' : ''}" onclick="closeSheet(); go(${i})">${escapeHtml(s.name)}</button>`).join('');
-  openSheet(p.name, notes + '<div class="sheet-actions" style="flex-direction:column">' + list + '</div>');
-}
+function spOpenSectionSheet() { openSheet(spName(PHASES[cur].name), spSectionSheetHtml()); }
 
 // ── Progress (explicit actions only) ──
 

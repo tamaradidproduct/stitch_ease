@@ -10,11 +10,6 @@
 
 const STEP_VIEWS = true;
 
-// "2 / 12 rows · 17%" — the one progress figure for the section.
-function spProgressText(cursor, total) {
-  return cursor + ' / ' + total + ' rows · ' + (total ? Math.round(cursor / total * 100) : 0) + '%';
-}
-
 // gap: the designs show one notes card; the spec wants section notes
 // collapsible. Collapsed by default so a long materials list doesn't push the
 // rows off the screen.
@@ -26,16 +21,6 @@ function spNotesHtml(p) {
       <span>Section notes</span><span class="sp-notes-hint">${spNotesOpen ? 'hide' : 'view'}</span></button>
     ${spNotesOpen ? '<div class="sp-notes-body">' + notes.map(n => '<p>' + n + '</p>').join('') + '</div>' : ''}
   </div>`;
-}
-
-function spSetupPill(text) {
-  return `<div class="sp-pill"><span class="sp-dot"></span><span class="sp-pill-k">Setup:</span><span class="sp-pill-t">${text}</span></div>`;
-}
-
-// The `after` checkpoint — labelled like the Setup line rather than marked with
-// an icon, so it reads as the same kind of thing: a note about this row.
-function spCheckChip(text) {
-  return `<div class="sp-pill"><span class="sp-dot"></span><span class="sp-pill-k">Check:</span><span class="sp-pill-t">${text}</span></div>`;
 }
 
 // gap: the designs have no browse indicator; this is the spec's chip, styled
@@ -52,11 +37,11 @@ function spPassNote(row) {
 
 // A three-row slice of the chart (the row above, the row, the row below) inside
 // the selected card, so the playlist shows the stitches without opening the
-// player. Tapping it opens the player.
+// player. The card around it opens the player (spCardTap), so this wrapper has no handler of its own.
 function spMiniChartHtml(p, row) {
   const chart = spChartFor(p, row);
   if (!chart) return '';
-  return `<div class="sp-mc-wrap" onclick="spOpenPlayer(${row.n})">${spChartWindowHtml(row.def.chartRow, [], 1, chart)}</div>`;
+  return `<div class="sp-mc-wrap">${spChartWindowHtml(row.def.chartRow, [], 1, chart)}</div>`;
 }
 
 // Same aim as the player's chart window: a wide chart opens at the end the row
@@ -102,7 +87,7 @@ function spRowHtml(row, cursor, total) {
 function spTasksHtml(p) {
   const tasks = sectionSteps(p, activeDoc).filter(s => s.kind === 'task');
   return `<section class="sp-list"><div class="sp-list-head"><span>Checklist</span></div>` +
-    tasks.map((t, i) => `<label class="sp-task${taskDone(t) ? ' done' : ''}" onclick="spToggleTask(${i}); return false;">
+    tasks.map((t, i) => `<label class="sp-task${taskDone(t) ? ' done' : ''}" role="checkbox" aria-checked="${taskDone(t)}" tabindex="0" onclick="spToggleTask(${i}); return false;">
       <span class="sp-check">${taskDone(t) ? '✓' : ''}</span><span>${t.text || ''}</span></label>`).join('') + '</section>';
 }
 
@@ -126,6 +111,10 @@ function spPdfButton() {
 // rename) — the section is named, and switched, at the head of the list. In the player (opts.player)
 // the project's name sits small over the section's name, which is just a label there: no switching.
 // opts.onBack: where the chevron goes (the library by default).
+// Pattern and section names arrive already escaped when they were imported and raw when they are
+// built in. Unescaping first makes escaping them again safe either way.
+function spName(s) { return unescapeBasicHtml(s || ''); }
+
 function spTopBarHtml(p, cursor, total, opts) {
   const o = opts || {};
   const proj = typeof activeProject === 'function' ? activeProject() : null;
@@ -137,8 +126,18 @@ function spTopBarHtml(p, cursor, total, opts) {
     actions: spPdfButton() + '<button class="ui-icon-btn ui-icon-btn--bare" onclick="showResetMenu(event)" aria-label="Options">⋮</button>',
   };
   return o.player
-    ? uiTopBar(Object.assign({ project: name, onProject: rename, title: p.name }, common))
+    ? uiTopBar(Object.assign({ project: name, onProject: rename, title: spName(p.name) }, common))
     : uiTopBar(Object.assign({ title: name, onTitle: rename, titleLabel: 'Rename project', strong: true }, common));
+}
+
+// The section sheet: the section's notes, then every section to switch to.
+function spSectionSheetHtml() {
+  const p = PHASES[cur];
+  const notes = (p.notes || []).length
+    ? '<p class="sheet-sub">' + p.notes.join('</p><p class="sheet-sub">') + '</p>' : '';
+  const list = PHASES.map((s, i) =>
+    `<button class="sheet-btn${i === cur ? ' primary' : ''}" onclick="closeSheet(); go(${i})">${escapeHtml(spName(s.name))}</button>`).join('');
+  return notes + '<div class="sheet-actions sheet-actions--col">' + list + '</div>';
 }
 
 // Rows in order. A repeat block is drawn as one unit: while it is the one being
@@ -181,7 +180,7 @@ function spPlaylistHtml(p, cursor, total, rows) {
 // The head of the list: the section's name with its switcher, then its description. The progress
 // lives in the top bar's tally, so it is not repeated here.
 function spListHeadHtml(p) {
-  return `<div class="sp-lh"><button class="sp-sec-btn" onclick="spOpenSectionSheet()" aria-label="Switch section">${escapeHtml(p.name)} ${UI_CHEV_DOWN}</button>` +
+  return `<div class="sp-lh"><button class="sp-sec-btn" onclick="spOpenSectionSheet()" aria-label="Switch section">${escapeHtml(spName(p.name))} ${UI_CHEV_DOWN}</button>` +
     (p.desc ? `<p class="sp-lh-desc">${p.desc}</p>` : '') + '</div>';
 }
 
@@ -212,7 +211,7 @@ function spPlaylistDock(cursor, total) {
 function spRowlessDock() {
   const n = spNextSectionButton();
   return `<footer class="ui-dock"><div class="ui-dock-in">
-    ${cur > 0 ? `<button class="ui-dock-nav" onclick="go(${cur - 1})" aria-label="Previous section">${SP_CHEV_L}</button>` : ''}
+    ${cur > 0 ? `<button class="ui-dock-nav" onclick="go(${cur - 1})" aria-label="Previous section">${UI_CHEV_L}</button>` : ''}
     <button class="ui-dock-main" onclick="${n.call}">${n.label}</button>
   </div></footer>`;
 }
@@ -395,30 +394,6 @@ function spChartWindowHtml(chartRow, after, span, chart) {
     <div class="sp-cw-scroll"${mini ? '' : ' id="sp-cw-scroll" onscroll="spChartSide()"'}><div class="sp-cw">
       <div class="sp-cw-head" style="${cols}"><span></span>${head}<span></span></div>${rowsHtml}</div></div>
   </section>`;
-}
-
-function spFullChartHtml(p, cursor, total, rows) {
-  const n = CHART_B.length, N = CHART_B[0].length;
-  const curRow = rows[cursor] && rows[cursor].def.chartRow;
-  const viewRow = spViewedRow !== null && rows[spViewedRow - 1] ? rows[spViewedRow - 1].def.chartRow : null;
-  const types = {};
-  let body = '';
-  for (let r = n; r >= 1; r--) {
-    const active = r === curRow;
-    body += `<div class="sp-fc-row${active ? ' active' : ''}${r === viewRow ? ' viewing' : ''}" data-r="${r}" onclick="spFcTap(${r})">
-      <span class="sp-fc-n l">${r}</span><div class="sp-fc-cells">${spCellsHtml(r, active, types, -1)}</div><span class="sp-fc-n">${r}</span></div>`;
-  }
-  const v = Math.min(total, spViewedRow !== null ? spViewedRow : cursor + 1);
-  const pal = p.colorPalette && typeof openColorSheet === 'function';
-  return spTopBarHtml(p, cursor, total, { onBack: 'spCloseChart()' }) +
-    (typeof yarnChipsHtml === 'function' && p.colorPalette ? yarnChipsHtml(p) : '') +
-    `<div class="sp-fc-tools">
-      <button onclick="spZoom(-2)" aria-label="Zoom out">A−</button><button onclick="spZoom(2)" aria-label="Zoom in">A+</button>
-      <button onclick="spFcRecenter()" aria-label="Centre on the current row">Current row</button>
-      ${pal ? '<button onclick="openColorSheet()" aria-label="Edit yarn colours">Colours</button>' : ''}</div>
-    <div class="sp-fc-scroll"><div class="sp-fc" id="sp-fc" style="--cell-sz:${cellSz}px">${body}</div></div>
-    ${spLegendLine(types)}` +
-    `<footer class="ui-dock"><div class="ui-dock-in"><button class="ui-dock-main" id="sp-fc-back" onclick="spCloseChart()">Back to row ${v}</button></div></footer>`;
 }
 
 // ── The player screen ──

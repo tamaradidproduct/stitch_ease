@@ -309,6 +309,21 @@ function stepViewsSelfTest() {
       spDone(3);
       check('confirm copy for marking rows ahead', asked && [asked.title, asked.confirmLabel], ['Mark rows 1–3 done?', 'Mark done']);
     } finally { sheetConfirm = realConfirm; setStepCursor(p, 0); }
+    // ── review pass: bugs ──
+    const realName = p.name;
+    try {
+      p.name = 'Tee &amp; Co';   // imported names are stored already escaped
+      check('names: top bar does not double-escape', has(spPlayerHtml(p, 0, rows.length, rows), '&amp;amp;'), false);
+      check('names: list head does not double-escape', has(spListHeadHtml(p), '&amp;amp;'), false);
+      check('names: list head still shows the ampersand', has(spListHeadHtml(p), 'Tee &amp; Co'), true);
+      p.name = '<b>x</b>';
+      check('names: markup in a name is neutralised', has(spListHeadHtml(p), '<b>x'), false);
+    } finally { p.name = realName; }
+    const sel = spPlaylistHtml(p, 0, rows.length, rows);
+    check('selected card: the mini chart does not open the player a second time', has(sel, 'class="sp-mc-wrap" onclick'), false);
+    check('section sheet: no inline style', has(spSectionSheetHtml(), 'style='), false);
+    const tasksP = PHASES.find(s => sectionSteps(s, activeDoc).some(t => t.kind === 'task'));
+    if (tasksP) check('checklist: rows are checkboxes', has(spTasksHtml(tasksP), 'role="checkbox"') && has(spTasksHtml(tasksP), 'aria-checked='), true);
   } finally {
     Object.keys(snap).forEach(k => localStorage.setItem(k, snap[k]));
     for (let i = localStorage.length - 1; i >= 0; i--) { const k = localStorage.key(i); if (/^pt3_/.test(k) && !(k in snap)) localStorage.removeItem(k); }
