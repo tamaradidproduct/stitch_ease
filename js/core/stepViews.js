@@ -229,6 +229,12 @@ function spLegendLine(types) {
 // everything that shows a count hides it when this is null.
 function spCount(row) { return null; }
 
+// The count at the end of a pass: the last row of that pass, null when it has none.
+function spPassEndCount(block, pass) {
+  const rows = block.filter(b => b.pass === pass);
+  return rows.length ? spCount(rows[rows.length - 1]) : null;
+}
+
 function spCellsHtml(r, active, types, mark, chart) {
   chart = chart || CHART_B;
   const colors = chart === CHART_B ? chartColorRow(r) : null;
@@ -316,6 +322,27 @@ function spPlayerCardHtml(p, row, v, total, hasChart) {
   </article>`;
 }
 
+// The player's card for a repeat row: the pass line (− / + are progress actions), every row
+// of the viewed pass as a tappable look, Setup, and the count at the end of the pass.
+function spRepeatCardHtml(block, row, v, hasChart) {
+  const T = row.passes, pass = row.pass, co = spCallouts(row);
+  const rows = block.filter(b => b.pass === pass);
+  const items = rows.map(b => {
+    const n = spCount(b);
+    return `<li class="sp-rrow${b.n === v ? ' sel' : ''}${b.n <= stepCursor(PHASES[cur]) ? ' done' : ''}" data-row="${b.n}" onclick="spSelectRow(${b.n})">
+      <span class="sp-rrow-n">R${b.rowInPass}</span><span class="sp-rrow-t">${spText(b)}</span>${n === null ? '' : `<span class="sp-rrow-c">${n}</span>`}</li>`;
+  }).join('');
+  const setup = co.before.length
+    ? uiToggleSection({ label: 'SETUP', open: spSetupOpen, onclick: 'spToggleSetup()', html: co.before.map(t => `<p>${t}</p>`).join('') }) : '';
+  return `<article class="ui-card sp-card sp-card--repeat${hasChart ? '' : ' sp-card--nochart'}">
+    <div class="sp-pass-line">${uiCapsLabel('REPEAT')}<span class="sp-pass-n">Pass ${pass} of ${T}</span>
+      ${uiIconButton({ icon: '−', label: 'Previous pass', onclick: 'spPass(-1)' })}${uiIconButton({ icon: '+', label: 'Finish this pass', onclick: 'spPass(1)' })}</div>
+    ${setup}
+    <ul class="sp-rlist">${items}</ul>
+    ${uiFacts({ count: spPassEndCount(block, pass), countLabel: 'sts at end of pass ' + pass, check: co.after.join(' · ') || null })}
+  </article>`;
+}
+
 // The chart fills the rest of the screen, edge to edge; the legend sits beneath it.
 function spChartRegionHtml(p, row, chart) {
   return `<section class="sp-chart-region">${spChartWindowHtml(row.def.chartRow, [], 'all', chart)}${spLegendLine(spChartTypes(chart))}</section>`;
@@ -330,6 +357,6 @@ function spPlayerHtml(p, cursor, total, rows) {
   const call = done ? `spMarkIncomplete(${v})` : `spDone(${v})`;
   const chart = spChartFor(p, row);
   return spTopBarHtml(p, cursor, total, { onBack: 'spClosePlayer()' }) +
-    `<div class="sp-player">${spPlayerCardHtml(p, row, v, total, !!chart)}${chart ? spChartRegionHtml(p, row, chart) : ''}</div>` +
+    `<div class="sp-player">${row.step.kind === 'repeat' ? spRepeatCardHtml(rows.filter(r => r.step === row.step), row, v, !!chart) : spPlayerCardHtml(p, row, v, total, !!chart)}${chart ? spChartRegionHtml(p, row, chart) : ''}</div>` +
     spDockHtml(label, call, done ? 'outline' : undefined);
 }

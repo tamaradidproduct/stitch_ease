@@ -20,6 +20,8 @@ function uiSelfTest() {
   check('uiFacts renders the check as given (pattern text is pre-sanitised)', has(uiFacts({ check: 'a <i>x</i>' }), 'a <i>x</i>'), true);
   check('uiFacts zero is a count', has(uiFacts({ count: 0 }), '<b>0</b> sts'), true);
 
+  check('uiFacts takes a count label', has(uiFacts({ count: 70, countLabel: 'sts at end of pass 3' }), 'sts at end of pass 3'), true);
+
   const closed = uiToggleSection({ label: 'SETUP', open: false, onclick: 'tog()', html: 'BODY' });
   const opened = uiToggleSection({ label: 'SETUP', open: true, onclick: 'tog()', html: 'BODY' });
   check('toggle closed: arrow ▸, no body', [has(closed, '▸'), has(closed, 'BODY')], [true, false]);

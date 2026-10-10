@@ -63,6 +63,24 @@ function stepViewsSelfTest() {
     check('legend line truncates to Knit + 3 stitches and counts the rest',
       [has(spLegendLine({ K: 1, P: 1, YO: 1, K2: 1, SK: 1, M1: 1 }), 'Knit'), has(spLegendLine({ K: 1, P: 1, YO: 1, K2: 1, SK: 1, M1: 1 }), '+2'), has(spLegendLine({ K: 1, P: 1 }), '+')], [true, true, false]);
 
+    // ── Task 6: repeat state in the player ──
+    const rpR = spRowsFor(PHASES[1]);
+    const rep1 = spPlayerHtml(PHASES[1], 0, rpR.length, rpR);
+    check('repeat: pass line with − / +, only the viewed pass\'s rows, no count or end-of-pass line yet',
+      [has(rep1, 'Pass 1 of 4'), has(rep1, 'spPass(-1)'), has(rep1, 'spPass(1)'), has(rep1, 'aria-label="Previous pass"'), count(rep1, 'data-row='), has(rep1, 'sp-rrow-c'), has(rep1, 'at end of pass')],
+      [true, true, true, true, 2, false, false]);
+    check('repeat: rows are tappable looks, one is selected', [has(rep1, 'spSelectRow(2)'), count(rep1, 'sp-rrow sel')], [true, 1]);
+    check('repeat with a motif draws the chart region', has(rep1, 'sp-chart-region'), true);
+    spViewedRow = 5;
+    check('repeat: the pass follows the viewed row', has(spPlayerHtml(PHASES[1], 0, rpR.length, rpR), 'Pass 3 of 4'), true);
+    const realCountFn = spCount;
+    spCount = () => 70;
+    const rep3 = spPlayerHtml(PHASES[1], 0, rpR.length, rpR);
+    spCount = realCountFn; spViewedRow = null;
+    check('repeat with counts: a count per row and the count at the end of the pass',
+      [count(rep3, 'sp-rrow-c'), has(rep3, 'at end of pass 3'), has(rep3, '<b>70</b>')], [2, true, true]);
+    check('spPassEndCount is null when the last row has no count', spPassEndCount(rpR.filter(r => r.step === rpR[0].step), 1), null);
+
     const realConfirm = sheetConfirm;
     let asked = null;
     sheetConfirm = o => { asked = o; };
