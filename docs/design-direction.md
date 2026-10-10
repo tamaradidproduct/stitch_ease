@@ -32,7 +32,7 @@ The visual language of the step screen v2 prototype (`docs/prototypes/step-scree
 | Role | Size |
 |---|---|
 | Instruction (main content) | 21–25 px, 500 |
-| Section title in the bar | 16 px, 600 |
+| Section title in the bar | 16 px, 500, `--c-soft` (quiet; the row heading is stronger) |
 | Button label | 15–16 px, 600 |
 | Body, setup text | 14–15 px |
 | Counts, secondary | 13 px |
