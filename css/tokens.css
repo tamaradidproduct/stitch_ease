@@ -74,7 +74,15 @@
   --fs-heading: 18px;
   --fs-body: 14px;
   --fs-meta: 13px;
+  --fs-lead: 15px;
+  --fs-small: 12px;
   --fs-caps: 11px;
+  --fs-micro: 10px;
+  --ls-caps: .12em;
+  --ls-label: .1em;
+  --ls-small: .08em;
+  --ls-tag: .04em;
+  --ls-hint: .02em;
   --fw-regular: 400;
   --fw-medium: 500;
   --fw-semibold: 600;

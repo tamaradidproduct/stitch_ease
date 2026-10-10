@@ -6,11 +6,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export function findViolations(text) {
+// strict also flags raw type sizes, letter-spacing and inline styles: the step-screen files hold to it,
+// the legacy index.html (checked with --all) only to colours, radii and font names.
+export function findViolations(text, strict = true) {
   const out = [];
   for (const m of text.matchAll(/(?<![&\w])#[0-9a-fA-F]{3,8}\b/g)) out.push('raw colour ' + m[0]);
   for (const m of text.matchAll(/rgba?\(/g)) out.push('raw colour ' + m[0]);
   for (const m of text.matchAll(/border-radius\s*:\s*[^;"]*\d+px/g)) out.push('raw radius ' + m[0].trim());
+  if (strict) for (const m of text.matchAll(/font-size\s*:\s*[\d.]+px/g)) out.push('raw font size ' + m[0].trim());
+  if (strict) for (const m of text.matchAll(/letter-spacing\s*:\s*-?[\d.]+(?:em|px)/g)) out.push('raw letter-spacing ' + m[0].trim());
+  if (strict) for (const m of text.matchAll(/style="[^"]*"/g)) { if (!/^style="\s*(?:--[\w-]+\s*:[^;"]*;?\s*)+"$/.test(m[0])) out.push('inline style ' + m[0].trim()); }
   for (const m of text.matchAll(/font-family\s*:\s*(?!\s*(?:var\(|inherit))[^;"]+/g)) out.push('raw font ' + m[0].trim());
   return out;
 }
@@ -21,6 +26,12 @@ if (process.argv.includes('--selftest')) {
   const cases = [
     ['hex colour', 'color: #fff;', 1],
     ['rgba', 'background: rgba(0,0,0,.4);', 1],
+    ['px font size', 'font-size: 15px;', 1],
+    ['token font size', 'font-size: var(--fs-lead);', 0],
+    ['em letter-spacing', 'letter-spacing: .1em;', 1],
+    ['token letter-spacing', 'letter-spacing: var(--ls-label);', 0],
+    ['inline layout style', '<div style="flex-direction:column">', 1],
+    ['inline custom property is fine', '<div style="--cw-cols:1px">', 0],
     ['px radius', 'border-radius: 12px;', 1],
     ['font name', 'font-family: Georgia, serif;', 1],
     ['token colour', 'color: var(--c-card);', 0],
@@ -84,7 +95,7 @@ for (const f of files) {
     text = '\n'.repeat(before) + text.slice(a, b);
   }
   text.split('\n').forEach((line, i) => {
-    findViolations(line).forEach(v => { console.log(`${f}:${i + 1} ${v}`); n++; });
+    findViolations(line, f !== 'index.html').forEach(v => { console.log(`${f}:${i + 1} ${v}`); n++; });
   });
 }
 console.log(n ? `${n} violation(s)` : 'tokens ok');

@@ -25,7 +25,7 @@ body.sp-on .content { padding: 0; }   /* the bars and cards bring their own gutt
 /* The window never scrolls vertically (a full-chart view comes later); sideways it does. */
 .sp-cw-scroll { flex: 1; min-height: 0; overflow-x: auto; overflow-y: hidden; background: var(--c-well); }
 .sp-cw { display: flex; flex-direction: column; gap: 2px; width: max-content; min-width: 100%; min-height: 100%; justify-content: center; align-items: stretch; padding: var(--s-2) 0 var(--s-3); user-select: none; }
-.sp-cw-head, .sp-cw-row { display: grid; justify-content: center; align-items: center; gap: 2px; text-align: center; }
+.sp-cw-head, .sp-cw-row { display: grid; grid-template-columns: var(--cw-cols); justify-content: center; align-items: center; gap: 2px; text-align: center; }
 .sp-cw-head { padding-bottom: var(--s-1); font-size: var(--fs-caps); color: var(--c-muted); }
 .sp-cw-n { font-size: var(--fs-caps); color: var(--c-muted); text-align: center; }
 .sp-cw-row { opacity: .5; padding: 1px 0; }
@@ -49,12 +49,12 @@ body.sp-on .content { padding: 0; }   /* the bars and cards bring their own gutt
 /* Repeat state */
 .sp-repeat-label { margin-bottom: var(--s-1); }
 .sp-pass-line { display: flex; align-items: center; gap: var(--s-3); margin-bottom: var(--s-3); }
-.sp-pass-n { flex: 1; font-size: 18px; font-weight: var(--fw-semibold); }
+.sp-pass-n { flex: 1; font-size: var(--fs-heading); font-weight: var(--fw-semibold); }
 .sp-rlist { list-style: none; margin: var(--s-2) 0 var(--s-4); padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.sp-rrow { display: flex; align-items: baseline; gap: var(--s-3); padding: var(--s-3) var(--s-3); border-radius: var(--r-small); font-size: 15px; line-height: 1.4; color: var(--c-soft); cursor: pointer; }
+.sp-rrow { display: flex; align-items: baseline; gap: var(--s-3); padding: var(--s-3) var(--s-3); border-radius: var(--r-small); font-size: var(--fs-lead); line-height: 1.4; color: var(--c-soft); cursor: pointer; }
 .sp-rrow.sel { background: var(--c-paper); box-shadow: inset 0 0 0 1px var(--c-line); color: var(--c-text); font-size: var(--fs-instruction); font-weight: var(--fw-medium); line-height: 1.3; }
 .sp-rrow.done { color: var(--c-muted); }
-.sp-rrow-n { width: 24px; flex: none; font-size: var(--fs-caps); font-weight: var(--fw-bold); letter-spacing: .08em; }
+.sp-rrow-n { width: 24px; flex: none; font-size: var(--fs-caps); font-weight: var(--fw-bold); letter-spacing: var(--ls-small); }
 .sp-rrow-t { flex: 1; }
 .sp-rrow-c { flex: none; font-size: var(--fs-meta); font-weight: var(--fw-regular); color: var(--c-muted); }
 .sp-rrow.sel .sp-rrow-c { color: var(--c-sage-strong); font-weight: var(--fw-bold); }
@@ -63,29 +63,29 @@ body.sp-on .content { padding: 0; }   /* the bars and cards bring their own gutt
 .sp-lh { padding: var(--s-1) var(--s-4) var(--s-3); }
 .sp-lh-desc { margin: 0; font-size: var(--fs-body); line-height: 1.5; color: var(--c-soft); }
 .sp-notes { margin: 0 var(--s-4) var(--s-3); background: var(--c-card); border: 1px solid var(--c-line); border-radius: var(--r-card); }
-.sp-notes-head { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: var(--s-3) 14px; background: none; border: 0; font: inherit; font-size: var(--fs-caps); font-weight: var(--fw-bold); letter-spacing: .1em; text-transform: uppercase; color: var(--c-soft); cursor: pointer; }
-.sp-notes-hint { font-size: 12px; font-weight: var(--fw-medium); letter-spacing: .02em; text-transform: none; color: var(--c-sage-strong); }
+.sp-notes-head { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: var(--s-3) 14px; background: none; border: 0; font: inherit; font-size: var(--fs-caps); font-weight: var(--fw-bold); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--c-soft); cursor: pointer; }
+.sp-notes-hint { font-size: var(--fs-small); font-weight: var(--fw-medium); letter-spacing: var(--ls-hint); text-transform: none; color: var(--c-sage-strong); }
 .sp-notes-body { padding: 0 14px var(--s-3); font-size: var(--fs-body); line-height: 1.5; color: var(--c-soft); }
 .sp-notes-body p { margin: 0 0 var(--s-2); }
 .sp-list { padding: 0 var(--s-4); max-width: 28rem; margin: 0 auto; }
-.sp-row { display: flex; align-items: baseline; gap: var(--s-3); padding: 13px var(--s-1); border-bottom: 1px solid var(--c-line); font-size: 15px; line-height: 1.4; cursor: pointer; }
+.sp-row { display: flex; align-items: baseline; gap: var(--s-3); padding: 13px var(--s-1); border-bottom: 1px solid var(--c-line); font-size: var(--fs-lead); line-height: 1.4; cursor: pointer; }
 .sp-row.selected { display: flex; flex-direction: column; align-items: stretch; gap: 0; margin: var(--s-3) 0; padding: var(--s-5) var(--s-5) var(--s-4); cursor: default; }
 .sp-row.selected .sp-ins { cursor: pointer; margin-bottom: var(--s-4); }
 .sp-row-n { width: 58px; flex: none; white-space: nowrap; font-size: var(--fs-body); font-weight: var(--fw-bold); color: var(--c-text); }
 .sp-row-t { flex: 1; }
 .sp-row-c { flex: none; font-size: var(--fs-meta); color: var(--c-muted); }
-.sp-row-tag { display: block; margin-top: 2px; font-size: 10px; font-weight: var(--fw-bold); letter-spacing: .1em; color: var(--c-sage-strong); }
+.sp-row-tag { display: block; margin-top: 2px; font-size: var(--fs-micro); font-weight: var(--fw-bold); letter-spacing: var(--ls-label); color: var(--c-sage-strong); }
 .sp-row.done { color: var(--c-muted); }
 .sp-row.done .sp-row-n { color: var(--c-muted); }
 .sp-open-btn { height: 44px; margin-top: var(--s-3); background: var(--c-card); color: var(--c-soft); border: 0; border-radius: var(--r-control); box-shadow: 0 0 0 1px var(--c-line); font: inherit; font-size: var(--fs-body); font-weight: var(--fw-medium); cursor: pointer; }
 .sp-mc-wrap { margin: 0 calc(-1 * var(--s-5)) var(--s-4); border-top: 1px solid var(--c-line); border-bottom: 1px solid var(--c-line); cursor: pointer; }
 .sp-mc-wrap .sp-cw-scroll { overflow-x: auto; }
-.sp-browse { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); margin: 0 var(--s-4) var(--s-2); padding: var(--s-2) var(--s-2) var(--s-2) 14px; background: var(--c-line); border-radius: var(--r-control); font-size: 12.5px; color: var(--c-soft); }
-.sp-browse button { padding: 6px var(--s-3); background: var(--c-sage-strong); color: var(--c-card); border: 0; border-radius: var(--r-small); font: inherit; font-size: 12px; font-weight: var(--fw-semibold); cursor: pointer; }
-.sp-list-head { display: flex; justify-content: space-between; padding: var(--s-2) 0; font-size: var(--fs-caps); font-weight: var(--fw-bold); letter-spacing: .12em; text-transform: uppercase; color: var(--c-soft); }
-.sp-task { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3) var(--s-1); border-bottom: 1px solid var(--c-line); font-size: 15px; cursor: pointer; }
+.sp-browse { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); margin: 0 var(--s-4) var(--s-2); padding: var(--s-2) var(--s-2) var(--s-2) 14px; background: var(--c-line); border-radius: var(--r-control); font-size: var(--fs-meta); color: var(--c-soft); }
+.sp-browse button { padding: 6px var(--s-3); background: var(--c-sage-strong); color: var(--c-card); border: 0; border-radius: var(--r-small); font: inherit; font-size: var(--fs-small); font-weight: var(--fw-semibold); cursor: pointer; }
+.sp-list-head { display: flex; justify-content: space-between; padding: var(--s-2) 0; font-size: var(--fs-caps); font-weight: var(--fw-bold); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--c-soft); }
+.sp-task { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3) var(--s-1); border-bottom: 1px solid var(--c-line); font-size: var(--fs-lead); cursor: pointer; }
 .sp-task.done { color: var(--c-muted); text-decoration: line-through; }
-.sp-check { width: 22px; height: 22px; flex: none; display: inline-flex; align-items: center; justify-content: center; border: 1.5px solid var(--c-muted); border-radius: var(--r-cell); font-size: 14px; color: var(--c-card); }
+.sp-check { width: 22px; height: 22px; flex: none; display: inline-flex; align-items: center; justify-content: center; border: 1.5px solid var(--c-muted); border-radius: var(--r-cell); font-size: var(--fs-body); color: var(--c-card); }
 .sp-task.done .sp-check { background: var(--c-sage-strong); border-color: var(--c-sage-strong); }
 
 .sp-row-sub { display: block; margin-top: 2px; font-size: var(--fs-meta); color: var(--c-muted); }
@@ -99,7 +99,7 @@ body.sp-on .content { padding: 0; }   /* the bars and cards bring their own gutt
 
 .sp-legend--bare { border: 1px solid var(--c-line); border-radius: var(--r-card); background: var(--c-card); }
 
-.sp-sh-h { margin: var(--s-4) 0 var(--s-1); font-size: var(--fs-caps); font-weight: var(--fw-bold); letter-spacing: .12em; color: var(--c-muted); }
+.sp-sh-h { margin: var(--s-4) 0 var(--s-1); font-size: var(--fs-caps); font-weight: var(--fw-bold); letter-spacing: var(--ls-caps); color: var(--c-muted); }
 .sp-sh-full { margin-top: var(--s-5); width: 100%; }
 
 .sp-mini .sp-cw-row .cc { width: var(--h-cell-mini); height: var(--h-cell-mini); }
@@ -135,7 +135,7 @@ body.sp-on .content { padding: 0; }   /* the bars and cards bring their own gutt
 /* Row names are a first-class piece of information: a real heading on the selected card, a strong
    label on the plain rows, and the status as a small tag. */
 .sp-row-h { margin: 0; font-size: var(--fs-title); font-weight: var(--fw-semibold); color: var(--c-soft); }
-.sp-tag { display: inline-block; padding: 2px var(--s-2); background: var(--c-sage-wash); color: var(--c-sage-strong); border-radius: var(--r-small); font-size: var(--fs-caps); font-weight: var(--fw-bold); letter-spacing: .04em; vertical-align: 1px; }
+.sp-tag { display: inline-block; padding: 2px var(--s-2); background: var(--c-sage-wash); color: var(--c-sage-strong); border-radius: var(--r-small); font-size: var(--fs-caps); font-weight: var(--fw-bold); letter-spacing: var(--ls-tag); vertical-align: 1px; }
 .sp-tag--done { background: var(--c-paper); color: var(--c-muted); box-shadow: inset 0 0 0 1px var(--c-line); }
 .sp-row.selected .sp-card-top { align-items: center; justify-content: flex-start; gap: var(--s-2); }
 .sp-card-top-r { margin-left: auto; display: inline-flex; gap: var(--s-2); align-items: baseline; }

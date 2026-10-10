@@ -381,18 +381,18 @@ function spChartWindowHtml(chartRow, after, span, chart) {
   const mini = span === 1;
   // Cells are fixed squares (never stretched or squeezed to fit): a chart wider than the screen scrolls sideways.
   const cell = mini ? 'var(--h-cell-mini)' : 'var(--h-cell)', num = mini ? 'var(--h-cell-mini)' : 'var(--h-cell)';
-  const cols = `grid-template-columns:${num} repeat(${N}, ${cell}) ${num}`;
+  const cols = `${num} repeat(${N}, ${cell}) ${num}`;   // the one computed value: set once on .sp-cw
   const head = Array.from({ length: N }, (_, i) => `<span>${N - i}</span>`).join('');
   const types = {};
   let rowsHtml = '';
   for (let r = last; r >= first; r--) {
     const active = r === chartRow, d = Math.min(3, Math.abs(r - chartRow));
-    rowsHtml += `<div class="sp-cw-row${active ? ' active' : ' d' + d}" style="${cols}">
+    rowsHtml += `<div class="sp-cw-row${active ? ' active' : ' d' + d}">
       <span class="sp-cw-n">${r}</span>${spCellsHtml(r, active, types, active && chart === CHART_B ? spMarkCol(N) : -1, chart)}<span class="sp-cw-n">${r}</span></div>`;
   }
   return `<section class="sp-cw-wrap${mini ? ' sp-mini' : ''}">
-    <div class="sp-cw-scroll"${mini ? '' : ' id="sp-cw-scroll" onscroll="spChartSide()"'}><div class="sp-cw">
-      <div class="sp-cw-head" style="${cols}"><span></span>${head}<span></span></div>${rowsHtml}</div></div>
+    <div class="sp-cw-scroll"${mini ? '' : ' id="sp-cw-scroll" onscroll="spChartSide()"'}><div class="sp-cw" style="--cw-cols:${cols}">
+      <div class="sp-cw-head"><span></span>${head}<span></span></div>${rowsHtml}</div></div>
   </section>`;
 }
 
