@@ -69,33 +69,33 @@ function spAimMini() {
   el.scrollLeft = row && row.step.kind === 'row' && row.def.chartRow && !isRSRow(row.def.chartRow) ? 0 : el.scrollWidth;
 }
 
-// The white card is the SELECTED row — the current one by default, or whichever
-// row has been tapped / stepped to. The current row, when not selected, is an
-// ordinary row marked "Current row".
+// The selected row — the current one by default, or whichever has been tapped / stepped to —
+// is the white card: label, instruction, a three-row chart preview, and the count and Check at
+// the foot. Every other row is a plain line. Marking is the dock's job, not the card's.
 function spRowHtml(row, cursor, total) {
   const done = row.n <= cursor, current = row.n === cursor + 1;
   const selected = (spViewedRow !== null ? spViewedRow : cursor + 1) === row.n;
   const text = spText(row), co = spCallouts(row);
-  const status = current ? '<span class="sp-badge dark">Current row</span>' : done ? '<span class="sp-badge">Completed</span>' : '';
+  const rep = row.step.kind === 'repeat';
+  const cnt = spCount(row);
   if (selected) {
-    const open = row.step.kind === 'repeat' ? '' : ` onclick="spOpenPlayer(${row.n})"`;
-    return `<article class="sp-row selected" data-row="${row.n}">
-      <div class="sp-row-top"><div class="sp-row-lbl"><b>${spLabel(row)}</b>${row.step.kind === 'repeat' ? '' : spPassNote(row)}</div>${status}</div>
-      ${co.before.map(spSetupPill).join('')}
-      <p class="sp-row-text big"${open}>${text}</p>
+    const cr = row.def.chartRow;
+    const rs = !rep && cr && spHasChart(PHASES[cur], row) ? (isRSRow(cr) ? 'RS' : 'WS') : '';
+    const setup = co.before.length
+      ? uiToggleSection({ label: 'SETUP', open: spSetupOpen, onclick: 'spToggleSetup()', html: co.before.map(t => `<p>${t}</p>`).join('') }) : '';
+    return `<article class="ui-card sp-row selected" data-row="${row.n}">
+      <div class="sp-card-top">${uiCapsLabel('ROW ' + row.n + (current ? ' · CURRENT' : done ? ' · DONE' : ''))}${rs ? `<span class="sp-read">${rs}</span>` : ''}${rep ? '' : spPassNote(row)}</div>
+      ${setup}
+      <p class="sp-ins"${rep ? '' : ` onclick="spOpenPlayer(${row.n})"`}>${text}</p>
       ${spMiniChartHtml(PHASES[cur], row)}
-      ${co.after.map(spCheckChip).join('')}
-      <div class="sp-row-actions">
-        ${(PHASES[cur].notes || []).length ? '<button class="sp-note-btn" onclick="spToggleNotes()">Note</button>' : '<span></span>'}
-        ${done ? `<button class="sp-done-btn" onclick="spMarkIncomplete(${row.n})">Mark incomplete</button>`
-               : `<button class="sp-done-btn" onclick="spDone(${row.n})">Mark done</button>`}
-      </div></article>`;
+      ${uiFacts({ count: cnt, check: co.after.join(' · ') || null })}
+      <button class="sp-open-btn" onclick="spOpenPlayer(${row.n})">Open row ›</button>
+    </article>`;
   }
   return `<article class="sp-row ${done ? 'done' : 'upcoming'}${current ? ' current' : ''}" data-row="${row.n}" onclick="spSelectRow(${row.n})">
-    <div class="sp-row-top"><div class="sp-row-lbl"><span>${spLabel(row)}</span>${row.step.kind === 'repeat' ? '' : spPassNote(row)}</div>${status}</div>
-    <p class="sp-row-text">${text}</p>
-    ${co.before.map(t => '<p class="sp-row-aside"><b>Setup:</b> ' + t + '</p>').join('')}
-    ${co.after.map(t => '<p class="sp-row-aside"><b>Check:</b> ' + t + '</p>').join('')}
+    <span class="sp-row-n">${spLabel(row)}${done ? ' ✓' : ''}</span>
+    <span class="sp-row-t">${text}${current ? '<span class="sp-row-tag">CURRENT ROW</span>' : ''}</span>
+    ${cnt === null ? '' : `<span class="sp-row-c">${cnt}</span>`}
   </article>`;
 }
 
@@ -173,9 +173,15 @@ function spRepeatHtml(block, cursor, total, sel) {
 }
 
 function spPlaylistHtml(p, cursor, total, rows) {
-  return spTopBarHtml(p, cursor, total) + spNotesHtml(p) +
-    `<section class="sp-list"><div class="sp-list-head"><span>Instructions</span><span>${p.hasChart ? 'RS / WS playlist' : ''}</span></div>` +
-    spListHtml(rows, cursor, total) + '</section>';
+  return spTopBarHtml(p, cursor, total) + spListHeadHtml(p, cursor, total) + spNotesHtml(p) +
+    `<section class="sp-list">` + spListHtml(rows, cursor, total) + '</section>';
+}
+
+// INSTRUCTIONS · progress, a thin bar, and the section's description.
+function spListHeadHtml(p, cursor, total) {
+  const pct = total ? Math.round(cursor / total * 100) : 0;
+  return `<div class="sp-lh"><div class="sp-lh-r1">${uiCapsLabel('INSTRUCTIONS')}<span class="sp-lh-pg"><b>${cursor}</b> / ${total} rows · ${pct}%</span></div>
+    <div class="sp-lh-bar"><i style="width:${pct}%"></i></div>${p.desc ? `<p class="sp-lh-desc">${p.desc}</p>` : ''}</div>`;
 }
 
 // gap: the playlist dock's centre button is labelled "Next row" in the design;

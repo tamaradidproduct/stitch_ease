@@ -81,6 +81,19 @@ function stepViewsSelfTest() {
       [count(rep3, 'sp-rrow-c'), has(rep3, 'at end of pass 3'), has(rep3, '<b>70</b>')], [2, true, true]);
     check('spPassEndCount is null when the last row has no count', spPassEndCount(rpR.filter(r => r.step === rpR[0].step), 1), null);
 
+    // ── Task 7: playlist ──
+    const pl = spPlaylistHtml(p, 1, rows.length, rows);
+    check('playlist heading: INSTRUCTIONS and the section progress', [has(pl, 'INSTRUCTIONS'), has(pl, '<b>1</b> / 3 rows · 33%')], [true, true]);
+    check('playlist: a done row is marked ✓, once', count(pl, '✓'), 1);
+    check('playlist: the selected card opens the row and has no Mark button',
+      [count(pl, 'Open row'), has(pl, 'sp-done-btn'), has(pl, 'ROW 2 · CURRENT')], [1, false, true]);
+    spViewedRow = 3;
+    const pl2 = spPlaylistHtml(p, 1, rows.length, rows);
+    spViewedRow = null;
+    check('browsing: the selected card is the looked-at row and the current row is tagged',
+      [has(pl2, 'ROW 3<'), has(pl2, 'ROW 3 · CURRENT'), has(pl2, 'CURRENT ROW')], [true, false, true]);
+    check('spFocusSelected is safe with nothing on screen', (() => { try { spFocusSelected(); return true; } catch (e) { return String(e); } })(), true);
+
     const realConfirm = sheetConfirm;
     let asked = null;
     sheetConfirm = o => { asked = o; };

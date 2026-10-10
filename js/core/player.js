@@ -179,48 +179,28 @@ function leaveStepMode() { document.body.classList.remove('sp-on'); }
 
 // ── Looking (never changes progress) ──
 
-function spScrollCurrent() {
+function spScrollCurrent() { spFocusSelected(); }
+
+// Keep the row being looked at just below the bar, with the row before it showing above it —
+// after every ‹ ›, row tap, Done and when the playlist opens. Smooth unless motion is reduced.
+function spFocusSelected() {
+  if (spPlayerOpen) return window.scrollTo({ top: 0 });
   const el = document.querySelector('.sp-row.selected');
-  if (el) el.scrollIntoView({ block: 'center' });
+  if (!el) return;
+  const prev = el.previousElementSibling;
+  const anchor = prev && prev.classList.contains('sp-row') ? prev : el;
+  const bar = document.querySelector('.ui-top');
+  const top = anchor.getBoundingClientRect().top + window.scrollY - (bar ? bar.getBoundingClientRect().height : 0) - 8;
+  const calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  window.scrollTo({ top: Math.max(0, top), behavior: calm ? 'auto' : 'smooth' });
 }
 
 function spOpenPlayer(row) {
-  const p = PHASES[cur], c = stepCursor(p);
-  const open = () => {
-    spViewedRow = row === c + 1 ? null : row;
-    spPlayerOpen = true;
-    spRender();
-    window.scrollTo({ top: 0 });
-  };
-  // From the playlist, the selected section grows into the player.
-  const el = !spPlayerOpen && document.querySelector('.sp-row.selected[data-row="' + row + '"]');
-  if (!el || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return open();
-  spGrow(el, open);
-}
-
-// The selected section "grows" to fill the screen: a copy of it, fixed at the
-// same place, stretches to the full viewport while its contents fade, the
-// player is built underneath at the end, and the copy fades away to reveal it.
-function spGrow(el, done) {
-  const r = el.getBoundingClientRect();
-  const g = document.createElement('div');
-  g.className = 'sp-grow';
-  g.style.top = r.top + 'px';
-  g.style.height = r.height + 'px';
-  g.innerHTML = '<div class="sp sp-grow-in"><article class="sp-row selected" style="margin:0">' + el.innerHTML + '</article></div>';
-  document.body.appendChild(g);
-  void g.offsetHeight;                  // start values committed before the end values
-  g.classList.add('go');
-  let finished = false;
-  const end = () => {
-    if (finished) return;
-    finished = true;
-    done();
-    g.classList.add('out');
-    setTimeout(() => g.remove(), 220);
-  };
-  g.addEventListener('transitionend', e => { if (e.propertyName === 'height') end(); });
-  setTimeout(end, 500);                 // if transitions never fire (hidden tab), still open
+  const c = stepCursor(PHASES[cur]);
+  spViewedRow = row === c + 1 ? null : row;
+  spPlayerOpen = true;
+  spRender();
+  window.scrollTo({ top: 0 });
 }
 
 function spClosePlayer() {
@@ -243,13 +223,7 @@ function spBrowse(delta) {
 
 // After any ‹ › move, bring the row now being looked at into view: the top of
 // the page in the player, the row itself (centred) in the playlist.
-function spScrollToViewed() {
-  if (spPlayerOpen) return window.scrollTo({ top: 0 });
-  const p = PHASES[cur];
-  const n = spViewedRow !== null ? spViewedRow : stepCursor(p) + 1;
-  const el = document.querySelector('.sp-row[data-row="' + n + '"]');
-  if (el) el.scrollIntoView({ block: 'center' });
-}
+function spScrollToViewed() { spFocusSelected(); }
 
 function spBrowseSection(delta) {
   const target = cur + (delta < 0 ? -1 : 1);
@@ -348,6 +322,9 @@ function spPatchPlaylist(p, prev, next) {
   if (!swap(prev + 1) || !swap(next + 1)) return false;
   const tallyEl = root.querySelector('.ui-top-tally');
   if (tallyEl) tallyEl.textContent = next + ' / ' + total + ' rows';
+  const pg = root.querySelector('.sp-lh-pg'), bar = root.querySelector('.sp-lh-bar i'), pct = Math.round(next / total * 100);
+  if (pg) pg.innerHTML = '<b>' + next + '</b> / ' + total + ' rows · ' + pct + '%';
+  if (bar) bar.style.width = pct + '%';
   const tally = document.getElementById('prog-rows');
   if (tally) tally.textContent = globalRowsNow() + ' / ' + patternTotalRows();
   const dock = root.querySelector('.ui-dock');
