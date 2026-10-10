@@ -12,28 +12,16 @@
 //   a task          work that is not rows — only in a rowless section (finishing)
 //
 // The classification is by position and wording, so it is a first draft for a
-// person to review, not a verdict: it is applied at load, behind an opt-in flag,
-// and printed by `describeStepConversion()`. Row and repeat entries are copied
+// person to review, not a verdict: it is applied at load and printed by
+// `describeStepConversion()`. Row and repeat entries are copied
 // untouched (same ids), so the row count never changes.
 //
-// OFF BY DEFAULT. Open the app with ?steps=1 (and ?steps=0 to go back). Until
-// the schema-4 migration lands (docs/superpowers/plans/…, Task 9) the new shape
-// is for review only: its progress keys do not sync, and a project that already
-// exists keeps the old shape through its frozen snapshot.
+// ALWAYS ON. The ?steps=1 / ?steps=0 opt-in flag (pt3_stepmodel) was removed; a project that
+// already exists keeps the old shape through its frozen snapshot.
 // ─────────────────────────────────────────────
 
-const STEP_MODEL_KEY = 'pt3_stepmodel';
-
-function stepModelOn() {
-  try { return localStorage.getItem(STEP_MODEL_KEY) === '1'; } catch (e) { return false; }
-}
-
-(function stepModelParam() {
-  try {
-    const m = /[?&]steps=([01])\b/.exec(location.search);
-    if (m) localStorage.setItem(STEP_MODEL_KEY, m[1]);
-  } catch (e) { /* no localStorage, or no location (node) — stays off */ }
-})();
+// Kept as a function so the callers (and the selftests that branch on it) read the same.
+function stepModelOn() { return true; }
 
 function convNoteText(e) {
   const b = (e.bullets || []).map(x => '• ' + x);
