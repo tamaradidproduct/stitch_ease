@@ -57,6 +57,9 @@ Fields per case: **Area · Priority · Preconditions · Steps · Expected**.
   - The chart runs edge to edge with no box around it.
   - The current row is on a sage band, with row numbers on both sides and stitch numbers across the top.
   - The symbols are the app's own (YO ring, k2tog and SKPO triangles, purl dot).
+  - The chart area is a slightly darker well; stitches are light cells that stand out, the current row is at full strength on a sage band and the rows around it fade into the well.
+  - The chart never scrolls vertically: it shows as many rows as fit (at least seven) around the current row. (A full-chart view comes later.)
+  - While you scroll a wide chart sideways, the row numbers of the end you are nearer to stay in view: left numbers when you are closer to the left end, right numbers when closer to the right.
   - Every stitch is a square of the same size; none is stretched or squeezed. A chart wider than the screen scrolls sideways (opening at the end the row starts from), a narrower one is centred.
   - The legend is one line: Knit plus up to three stitches, then `+N` if there are more, then a book icon at the right that opens the stitch sheet.
 

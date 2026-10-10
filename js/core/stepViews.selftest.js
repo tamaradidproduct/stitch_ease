@@ -172,6 +172,16 @@ function stepViewsSelfTest() {
       [has(win, 'minmax'), has(win, '1fr'), has(win, 'repeat(12, var(--h-cell))')], [false, false, true]);
     check('the playlist preview uses the smaller fixed square cell', [has(spChartWindowHtml(2, [], 1, cp.chart), 'repeat(12, var(--h-cell-mini))'), has(spChartWindowHtml(2, [], 1, cp.chart), 'minmax')], [true, false]);
 
+    // ── Chart window: no vertical scroll, as many rows as fit; the nearer row-number column stays in view ──
+    check('chart span for a region height: at least 7 rows, more when there is room',
+      [spChartSpanFor(100), spChartSpanFor(230), spChartSpanFor(400)], [3, 3, 6]);
+    const w7 = spChartWindowHtml(6, [], 3, cp.chart), w5 = spChartWindowHtml(6, [], 2, cp.chart), wMax = spChartWindowHtml(6, [], 20, cp.chart);
+    check('the window shows 2 x span + 1 rows, clamped at the chart ends', [count(w7, 'class="sp-cw-row'), count(w5, 'class="sp-cw-row'), count(wMax, 'class="sp-cw-row')], [7, 5, 12]);
+    check('the window is centred on the current row and clamps at the start',
+      [has(spChartWindowHtml(1, [], 3, cp.chart), 'sp-cw-row active'), count(spChartWindowHtml(1, [], 3, cp.chart), 'class="sp-cw-row')], [true, 7]);
+    check('which row-number column to keep in view: the nearer side',
+      [spChartSideFor(0, 648, 375), spChartSideFor(273, 648, 375), spChartSideFor(136, 648, 375), spChartSideFor(0, 300, 375)], ['left', 'right', 'left', 'left']);
+
     // ── App shell: the document never scrolls on step screens ──
     check('playlist: everything under the bar lives in one scroll container',
       [count(pl, 'class="sp-scroll"'), pl.indexOf('ui-top') < pl.indexOf('sp-scroll'), pl.indexOf('sp-scroll') < pl.indexOf('sp-row')], [1, true, true]);

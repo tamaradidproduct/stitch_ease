@@ -20,19 +20,20 @@ body.sp-on .content { padding: 0; }   /* the bars and cards bring their own gutt
 .sp-chart-region { flex: 1 1 67%; min-height: var(--h-chart-min); margin: 0 calc(-1 * var(--s-4)); display: flex; flex-direction: column;
   background: var(--c-card); border-top: 1px solid var(--c-line); border-bottom: 1px solid var(--c-line); }
 .sp-cw-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.sp-cw-scroll { flex: 1; min-height: 0; overflow: auto; }
+/* The window never scrolls vertically (a full-chart view comes later); sideways it does. */
+.sp-cw-scroll { flex: 1; min-height: 0; overflow-x: auto; overflow-y: hidden; background: var(--c-well); }
 .sp-cw { display: flex; flex-direction: column; gap: 2px; width: max-content; min-width: 100%; align-items: stretch; padding: var(--s-2) 0 var(--s-3); user-select: none; }
 .sp-cw-head, .sp-cw-row { display: grid; justify-content: center; align-items: center; gap: 2px; text-align: center; }
 .sp-cw-head { padding-bottom: var(--s-1); font-size: var(--fs-caps); color: var(--c-muted); }
 .sp-cw-n { font-size: var(--fs-caps); color: var(--c-muted); text-align: center; }
-.sp-cw-row { opacity: .35; padding: 1px 0; }
-.sp-cw-row.d1 { opacity: .65; }
-.sp-cw-row.d2 { opacity: .5; }
+.sp-cw-row { opacity: .5; padding: 1px 0; }
+.sp-cw-row.d1 { opacity: .8; }
+.sp-cw-row.d2 { opacity: .65; }
 .sp-cw-row.active { opacity: 1; background: var(--c-sage-wash); }
 .sp-cw-row.active .sp-cw-n { color: var(--c-blue); font-weight: var(--fw-bold); }
-.sp-cw-row .cc { width: var(--h-cell); height: var(--h-cell); aspect-ratio: 1; background: var(--c-cell); border: 0; border-radius: var(--r-cell); }
+.sp-cw-row .cc { width: var(--h-cell); height: var(--h-cell); aspect-ratio: 1; background: var(--c-card); border: 0; border-radius: var(--r-cell); }
 .sp-cw-row .cc-sym { color: var(--c-cell-ink); }
-.sp-cw-row.active .cc { background: var(--c-card); }
+.sp-cw-row.active .cc { box-shadow: 0 0 0 1px var(--c-sage); }
 .sp-cw-row .cc.cc-e { background: transparent !important; }
 .sp-cw-row .cc.cc-col, .sp-cw-row.active .cc.cc-col:not(.cc-e) { background: var(--cc-bg); }
 .sp-cw-row .cc.cc-col .cc-sym { color: var(--cc-fg); }
@@ -101,3 +102,12 @@ body.sp-on .content { padding: 0; }   /* the bars and cards bring their own gutt
 .sp-sh-full { margin-top: var(--s-5); width: 100%; }
 
 .sp-mini .sp-cw-row .cc { width: var(--h-cell-mini); height: var(--h-cell-mini); }
+
+/* Reversed: a slightly darker well with the stitches standing out as light cells; the current row
+   is full strength on a sage band, the rest fade into the well. */
+.sp-cw-row.active .sp-cw-n { background: var(--c-sage-wash); }
+.sp-cw-row > :first-child, .sp-cw-head > :first-child, .sp-cw-row > :last-child, .sp-cw-head > :last-child { background: var(--c-well); }
+.sp-cw-row.active > :first-child, .sp-cw-row.active > :last-child { background: var(--c-sage-wash); }
+/* The row numbers of whichever end the chart is nearer stay in view while it scrolls sideways. */
+.sp-cw-scroll:not(.sp-side-right) .sp-cw-row > :first-child, .sp-cw-scroll:not(.sp-side-right) .sp-cw-head > :first-child { position: sticky; left: 0; z-index: 1; }
+.sp-cw-scroll.sp-side-right .sp-cw-row > :last-child, .sp-cw-scroll.sp-side-right .sp-cw-head > :last-child { position: sticky; right: 0; z-index: 1; }

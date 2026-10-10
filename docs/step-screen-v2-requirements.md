@@ -56,6 +56,8 @@ Product requirements from the interview of 2026-10-09. They revise the step scre
 ### 3.4 Chart
 - Fills its half of the screen. Current row highlighted; surrounding rows fade with distance.
 - **Full-bleed:** edge to edge of the screen, no box or side margins; a wide chart may run off the sides and scroll.
+- **Window, not scroll:** the chart shows as many rows as fit around the current row (at least seven) and never scrolls vertically; a full-chart view is separate (§6 of the older requirements, not built). Sideways scrolling keeps the row numbers of the nearer end in view.
+- **Look:** a slightly darker well with the stitches standing out as light cells; the current row is full strength on a sage band, the others fade into the well.
 - **Cells are always square and a fixed size** (never stretched or shrunk to fit the width); a chart wider than the screen scrolls sideways, a narrower one is centred.
 - Stitch numbers across the top, row numbers on both sides, per-cell yarn colours, mid-row marker as built.
 - **Symbols** are the app's own chart symbols (the Figma Stitches set already in `js/core/chart.js`), in the chart and the legend.

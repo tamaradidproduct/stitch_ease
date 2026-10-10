@@ -30,6 +30,10 @@ if (process.argv.includes('--selftest')) {
     ['50% radius is a circle, still a raw value', 'border-radius: 50%;', 0],
   ];
   let bad = 0;
+  // The chart window never scrolls vertically (a full-chart view comes later).
+  const stepCss = fs.readFileSync(path.join(root, 'css/step.css'), 'utf8');
+  const scroller = (stepCss.match(/\.sp-cw-scroll\s*\{[^}]*\}/) || [''])[0];
+  if (!/overflow-y:\s*hidden/.test(scroller)) { console.log('FAIL .sp-cw-scroll must not scroll vertically'); bad++; }
   // The top bar's project name must truncate, or a long name runs under the tally and buttons.
   const ui = fs.readFileSync(path.join(root, 'css/ui.css'), 'utf8');
   const proj = (ui.match(/\.ui-top-project\s*\{[^}]*\}/) || [''])[0];

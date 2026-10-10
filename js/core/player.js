@@ -19,6 +19,7 @@
 let spViewedRow = null;     // null = follow the cursor
 let spPlayerOpen = false;
 let spNotesOpen = false;
+let spChartSpan = 3;         // rows shown either side of the current chart row (fitted to the screen)
 let spSetupOpen = false;     // the player card's Setup toggle (collapsed until asked for)
 let spChartOpen = false;    // the full chart screen
 let spKey = null;           // project|section the view state belongs to
@@ -154,21 +155,42 @@ function spRender() {
   root.classList.toggle('sp-browsing', root.querySelector('.sp-browse') !== null);
   renderTabs();
   spSyncPlayerLayout();
+  if (spFitChart()) return;   // the window was re-fitted and repainted
   spAimChart();
   spAimMini();
 }
 
 // A wide window opens on the end the row starts from: right for RS, left for WS.
+// Fit the chart window to the height it was given: as many rows as fit, never fewer than seven,
+// and no vertical scrolling (a full-chart view comes later). Re-renders once if the count changed.
+function spFitChart() {
+  const el = document.getElementById('sp-cw-scroll');
+  if (!el || !el.clientHeight) return false;
+  const span = spChartSpanFor(el.clientHeight);
+  if (span === spChartSpan) return false;
+  spChartSpan = span;
+  spRender();
+  return true;
+}
+
+// Keep the nearer row-number column in view: which end the chart is scrolled closer to.
+function spChartSide() {
+  const el = document.getElementById('sp-cw-scroll');
+  if (!el) return;
+  const side = spChartSideFor(el.scrollLeft, el.scrollWidth, el.clientWidth);
+  el.classList.toggle('sp-side-right', side === 'right');
+}
+
 function spAimChart() {
   const el = document.getElementById('sp-cw-scroll');
   if (!el) return;
-  const active = el.querySelector('.sp-cw-row.active');
-  if (active) el.scrollTop = active.offsetTop - el.clientHeight / 2 + active.offsetHeight / 2;
-  if (el.scrollWidth <= el.clientWidth) return;
-  const p = PHASES[cur], c = stepCursor(p), total = stepsRowCount(p, activeDoc);
-  const v = spViewedRow !== null ? spViewedRow : Math.min(total, c + 1);
-  const row = spRowsFor(p)[v - 1];
-  el.scrollLeft = row && row.step.kind === 'row' && row.def.chartRow && !isRSRow(row.def.chartRow) ? 0 : el.scrollWidth;
+  if (el.scrollWidth > el.clientWidth) {
+    const p = PHASES[cur], c = stepCursor(p), total = stepsRowCount(p, activeDoc);
+    const v = spViewedRow !== null ? spViewedRow : Math.min(total, c + 1);
+    const row = spRowsFor(p)[v - 1];
+    el.scrollLeft = row && row.step.kind === 'row' && row.def.chartRow && !isRSRow(row.def.chartRow) ? 0 : el.scrollWidth;
+  }
+  spChartSide();
 }
 
 // Pin the player between the bars: measured, because vh units mis-report in Chrome Custom Tabs.

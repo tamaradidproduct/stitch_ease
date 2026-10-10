@@ -335,6 +335,20 @@ function spMarkCol(N) {
   return Number.isInteger(b) && b >= 0 ? Math.min(N - 1, b) : -1;
 }
 
+// How many rows either side of the current one fit in a chart area of this height (never fewer
+// than 3, so seven rows are always shown). Cells are fixed squares plus a 2 px gap; the stitch
+// numbers and the padding take about 44 px.
+function spChartSpanFor(heightPx) {
+  const rows = Math.max(7, Math.floor((heightPx - 44) / 26));
+  return Math.floor((rows - 1) / 2);
+}
+
+// Which row-number column stays in view while the chart scrolls sideways: the nearer end.
+function spChartSideFor(scrollLeft, scrollWidth, clientWidth) {
+  const max = scrollWidth - clientWidth;
+  return max > 0 && scrollLeft > max / 2 ? 'right' : 'left';
+}
+
 // `span` is how many rows to show either side of the current one: 3 in the
 // player, 1 for the preview inside the playlist's selected row.
 function spChartWindowHtml(chartRow, after, span, chart) {
@@ -356,7 +370,7 @@ function spChartWindowHtml(chartRow, after, span, chart) {
       <span class="sp-cw-n">${r}</span>${spCellsHtml(r, active, types, active && chart === CHART_B ? spMarkCol(N) : -1, chart)}<span class="sp-cw-n">${r}</span></div>`;
   }
   return `<section class="sp-cw-wrap${mini ? ' sp-mini' : ''}">
-    <div class="sp-cw-scroll"${mini ? '' : ' id="sp-cw-scroll"'}><div class="sp-cw">
+    <div class="sp-cw-scroll"${mini ? '' : ' id="sp-cw-scroll" onscroll="spChartSide()"'}><div class="sp-cw">
       <div class="sp-cw-head" style="${cols}"><span></span>${head}<span></span></div>${rowsHtml}</div></div>
   </section>`;
 }
@@ -434,7 +448,7 @@ function spRepeatCardHtml(block, row, v, hasChart, inList) {
 
 // The chart fills the rest of the screen, edge to edge; the legend sits beneath it.
 function spChartRegionHtml(p, row, chart) {
-  return `<section class="sp-chart-region">${spChartWindowHtml(row.def.chartRow, [], 'all', chart)}${spLegendLine(spChartTypes(chart))}</section>`;
+  return `<section class="sp-chart-region">${spChartWindowHtml(row.def.chartRow, [], spChartSpan, chart)}${spLegendLine(spChartTypes(chart))}</section>`;
 }
 
 function spPlayerHtml(p, cursor, total, rows) {
