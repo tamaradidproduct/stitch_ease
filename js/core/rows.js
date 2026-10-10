@@ -184,6 +184,7 @@ function entryDone(entry, progress) {
 
 // Total rows in a section — chart included, since the chart is an entry.
 function sectionRowCount(section, pattern) {
+  if (isStepSection(section)) return stepsRowCount(section, pattern);   // js/core/steps.js
   return sectionEntries(section, pattern).reduce((n, e) => n + entryRowCount(e), 0);
 }
 
@@ -195,6 +196,7 @@ function sectionRowCount(section, pattern) {
 //
 //   ctx = { entries, chartRows }   — both optional
 function sectionRowsDone(section, ctx, pattern) {
+  if (isStepSection(section)) return stepSectionCursor(section, ctx, pattern);
   const pr = positionsOf(ctx);
   return sectionEntries(section, pattern).reduce((n, e) => n + entryRowsDone(e, pr), 0);
 }
@@ -211,6 +213,7 @@ function patternRowsDone(pattern, ctx) {
 // A chart section is not complete until the chart itself has been worked to
 // its last row, not merely because the confirm note underneath it was ticked.
 function sectionComplete(section, ctx, pattern) {
+  if (isStepSection(section)) return stepSectionComplete(section, ctx, pattern);
   const list = sectionEntries(section, pattern);
   if (!list.length) return false;
   const pr = positionsOf(ctx);

@@ -1,0 +1,716 @@
+// ─────────────────────────────────────────────
+// STEP SCREEN — playlist and player.
+//
+// docs/superpowers/specs/2026-10-05-step-screen-design.md, laid out as in the
+// Stitch project "Stitch Ease Knitting Tracker" (Playlist / Player screens).
+// Where the designs are silent the choice is noted inline as "gap".
+//
+// Progress lives in steps.js (one cursor per section). This file is view state
+// plus markup: which row is being LOOKED AT (`spViewedRow`, ephemeral — never
+// persisted or synced) and whether the player page is open. Looking never
+// changes progress; only spDone / spMarkIncomplete do.
+//
+// Handlers are inline-onclick globals like the rest of the app, and take row
+// numbers, never ids, so nothing authored ever lands inside an attribute.
+// Pattern text is raw HTML by convention (synced docs are re-escaped on the way
+// in by sanitizeSyncedPattern), so it is interpolated as-is.
+// ─────────────────────────────────────────────
+
+let spViewedRow = null;     // null = follow the cursor
+let spPlayerOpen = false;
+let spNotesOpen = false;
+let spChartOpen = false;    // the full chart screen
+let spKey = null;           // project|section the view state belongs to
+
+// ── Rows, flattened ──
+//
+// One entry per physical row, in order. gap: a repeat is flattened here, so each
+// of its rows is a list item carrying its pass. The designs' repeat card
+// (Task 6) replaces this for repeats.
+function spRows(section) {
+  const out = [];
+  let n = 0;
+  sectionSteps(section, activeDoc).forEach(step => {
+    if (step.kind === 'row') {
+      out.push({ n: ++n, step, def: step, pass: 1, passes: 1, rowInPass: 1, R: 1 });
+    } else if (step.kind === 'repeat') {
+      const R = step.rows.length, T = step.times | 0;
+      for (let p = 1; p <= T; p++) for (let r = 1; r <= R; r++)
+        out.push({ n: ++n, step, def: step.rows[r - 1], pass: p, passes: T, rowInPass: r, R });
+    }
+  });
+  return out;
+}
+
+// Memoised on the row: rowRecap() is the expensive call, and Done must not
+// redo it for every row in the section.
+function spText(row) {
+  if (row.text === undefined) {
+    const d = row.def;
+    row.text = d.text || (d.chartRow ? rowRecap(d.chartRow) : '');
+  }
+  return row.text;
+}
+
+// The flattened rows live as long as the section is on screen. A full render
+// (renderStepSection) drops them, so a pattern or yarn-colour change is seen;
+// the repaints that follow a tap reuse them.
+let spRowsCache = null;
+function spRowsFor(p) {
+  if (!spRowsCache || spRowsCache.p !== p || spRowsCache.proj !== activeProjectId)
+    spRowsCache = { p, proj: activeProjectId, rows: spRows(p) };
+  return spRowsCache.rows;
+}
+
+// "R11 (RS)" for a chart row, "R3" otherwise — the label the designs use.
+function spLabel(row) {
+  if (row.step.kind === 'repeat') return 'R' + row.rowInPass;   // numbered within its pass, as the repeat design does
+  const cr = row.def.chartRow;
+  return 'R' + row.n + (cr ? ' (' + (isRSRow(cr) ? 'RS' : 'WS') + ')' : '');
+}
+
+function spCallouts(row) {
+  return calloutsFor(row.step, { pass: row.pass, passes: row.passes, rowInPass: row.rowInPass });
+}
+
+// ── View state ──
+
+function spSyncKey() {
+  const key = activeProjectId + '|' + (PHASES[cur] && PHASES[cur].id);
+  if (key !== spKey) { spKey = key; spViewedRow = null; spPlayerOpen = false; spNotesOpen = false; spChartOpen = false; }
+}
+
+// null means "on the cursor row" — also when the viewed row is dropped back
+// onto it, so the browse chip never says "viewing row 11 · on row 11".
+function spBrowsing(cursor, total) {
+  return spViewedRow !== null && spViewedRow !== cursor + 1 && spViewedRow >= 1 && spViewedRow <= total;
+}
+
+// ── Markup ──
+
+// "2 / 12 rows · 17%" — the one progress figure for the section.
+function spProgressText(cursor, total) {
+  return cursor + ' / ' + total + ' rows · ' + (total ? Math.round(cursor / total * 100) : 0) + '%';
+}
+
+// gap: the designs show one notes card; the spec wants section notes
+// collapsible. Collapsed by default so a long materials list doesn't push the
+// rows off the screen.
+function spNotesHtml(p) {
+  const notes = p.notes || [];
+  if (!notes.length) return '';
+  return `<div class="sp-notes">
+    <button class="sp-notes-head" onclick="spToggleNotes()" aria-expanded="${spNotesOpen}">
+      <span>Section notes</span><span class="sp-notes-hint">${spNotesOpen ? 'hide' : 'view'}</span></button>
+    ${spNotesOpen ? '<div class="sp-notes-body">' + notes.map(n => '<p>' + n + '</p>').join('') + '</div>' : ''}
+  </div>`;
+}
+
+function spSetupPill(text) {
+  return `<div class="sp-pill"><span class="sp-dot"></span><span class="sp-pill-k">Setup:</span><span class="sp-pill-t">${text}</span></div>`;
+}
+
+// The `after` checkpoint — labelled like the Setup line rather than marked with
+// an icon, so it reads as the same kind of thing: a note about this row.
+function spCheckChip(text) {
+  return `<div class="sp-pill"><span class="sp-dot"></span><span class="sp-pill-k">Check:</span><span class="sp-pill-t">${text}</span></div>`;
+}
+
+// gap: the designs have no browse indicator; this is the spec's chip, styled
+// like the setup pill.
+function spBrowseChip(cursor, total) {
+  const where = cursor >= total ? 'section complete' : 'on row ' + (cursor + 1);
+  return `<div class="sp-browse">Viewing row ${spViewedRow} · ${where}
+    <button onclick="spBackToCurrent()">Back to current</button></div>`;
+}
+
+function spPassNote(row) {
+  return row.passes > 1 ? `<span class="sp-pass">Pass ${row.pass} of ${row.passes} · row ${row.rowInPass} of ${row.R}</span>` : '';
+}
+
+// A three-row slice of the chart (the row above, the row, the row below) inside
+// the selected card, so the playlist shows the stitches without opening the
+// player. Tapping it opens the player.
+function spMiniChartHtml(p, row) {
+  const chart = spChartFor(p, row);
+  if (!chart) return '';
+  return `<div class="sp-mc-wrap" onclick="spOpenPlayer(${row.n})">${spChartWindowHtml(row.def.chartRow, [], 1, chart)}</div>`;
+}
+
+// Same aim as the player's chart window: a wide chart opens at the end the row
+// starts from.
+function spAimMini() {
+  const el = document.querySelector('.sp-mini .sp-cw-scroll');
+  if (!el || el.scrollWidth <= el.clientWidth) return;
+  const sel = document.querySelector('.sp-row.selected');
+  const row = sel && spRowsFor(PHASES[cur])[(+sel.dataset.row) - 1];
+  el.scrollLeft = row && row.step.kind === 'row' && row.def.chartRow && !isRSRow(row.def.chartRow) ? 0 : el.scrollWidth;
+}
+
+// The white card is the SELECTED row — the current one by default, or whichever
+// row has been tapped / stepped to. The current row, when not selected, is an
+// ordinary row marked "Current row".
+function spRowHtml(row, cursor, total) {
+  const done = row.n <= cursor, current = row.n === cursor + 1;
+  const selected = (spViewedRow !== null ? spViewedRow : cursor + 1) === row.n;
+  const text = spText(row), co = spCallouts(row);
+  const status = current ? '<span class="sp-badge dark">Current row</span>' : done ? '<span class="sp-badge">Completed</span>' : '';
+  if (selected) {
+    const open = row.step.kind === 'repeat' ? '' : ` onclick="spOpenPlayer(${row.n})"`;
+    return `<article class="sp-row selected" data-row="${row.n}">
+      <div class="sp-row-top"><div class="sp-row-lbl"><b>${spLabel(row)}</b>${row.step.kind === 'repeat' ? '' : spPassNote(row)}</div>${status}</div>
+      ${co.before.map(spSetupPill).join('')}
+      <p class="sp-row-text big"${open}>${text}</p>
+      ${spMiniChartHtml(PHASES[cur], row)}
+      ${co.after.map(spCheckChip).join('')}
+      <div class="sp-row-actions">
+        ${(PHASES[cur].notes || []).length ? '<button class="sp-note-btn" onclick="spToggleNotes()">Note</button>' : '<span></span>'}
+        ${done ? `<button class="sp-done-btn" onclick="spMarkIncomplete(${row.n})">Mark incomplete</button>`
+               : `<button class="sp-done-btn" onclick="spDone(${row.n})">Mark done</button>`}
+      </div></article>`;
+  }
+  return `<article class="sp-row ${done ? 'done' : 'upcoming'}${current ? ' current' : ''}" data-row="${row.n}" onclick="spSelectRow(${row.n})">
+    <div class="sp-row-top"><div class="sp-row-lbl"><span>${spLabel(row)}</span>${row.step.kind === 'repeat' ? '' : spPassNote(row)}</div>${status}</div>
+    <p class="sp-row-text">${text}</p>
+    ${co.before.map(t => '<p class="sp-row-aside"><b>Setup:</b> ' + t + '</p>').join('')}
+    ${co.after.map(t => '<p class="sp-row-aside"><b>Check:</b> ' + t + '</p>').join('')}
+  </article>`;
+}
+
+function spTasksHtml(p) {
+  const tasks = sectionSteps(p, activeDoc).filter(s => s.kind === 'task');
+  return `<section class="sp-list"><div class="sp-list-head"><span>Checklist</span></div>` +
+    tasks.map((t, i) => `<label class="sp-task${taskDone(t) ? ' done' : ''}" onclick="spToggleTask(${i}); return false;">
+      <span class="sp-check">${taskDone(t) ? '✓' : ''}</span><span>${t.text || ''}</span></label>`).join('') + '</section>';
+}
+
+const BACK_CHEV = (typeof BACK_CHEVRON_SVG !== 'undefined') ? BACK_CHEVRON_SVG : '‹';
+const SP_CHEV_L = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15.75 19.5-7.5-7.5 7.5-7.5"/></svg>';
+const SP_CHEV_R = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>';
+
+// The browse chip sits in the dock, directly above the buttons it relates to.
+function spDockChip() {
+  if (spViewedRow === null) return '';
+  const p = PHASES[cur], total = stepsRowCount(p, activeDoc), c = stepCursor(p);
+  return spBrowsing(c, total) ? spBrowseChip(c, total) : '';
+}
+
+function spDockHtml(label, doneCall) {
+  return `<footer class="sp-dock">${spDockChip()}<div class="sp-dock-in">
+    <button class="sp-dock-nav" onclick="spBrowse(-1)" aria-label="Previous row">${SP_CHEV_L}</button>
+    <button class="sp-dock-main" onclick="${doneCall}">${label}</button>
+    <button class="sp-dock-nav" onclick="spBrowse(1)" aria-label="Next row">${SP_CHEV_R}</button>
+  </div></footer>`;
+}
+
+function spPdfButton() {
+  return typeof PDF_SVG === 'undefined' ? '' :
+    `<button class="sp-icon-btn${typeof pdfWaiting === 'function' && pdfWaiting() ? ' has-dot' : ''}" onclick="openPatternPdf()" aria-label="Original pattern PDF" title="Original pattern PDF">${PDF_SVG}</button>`;
+}
+
+// The section header: "Current section" with the section switcher, the title
+// and PDF button, the progress at the right, then Details and Row progress.
+// `noMeta` leaves the last two out (the player and the full chart).
+function spSectionOverviewHtml(p, cursor, total, right, noMeta) {
+  const pct = total ? Math.round(cursor / total * 100) : 0;
+  return `<section class="sp-overview">
+    <button class="sp-eyebrow" id="phase-switch-btn" onclick="togglePhaseNav()" aria-label="Switch section">Current section
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg></button>
+    <div class="phase-scroll collapsed" id="phase-tabs"></div>
+    <div class="sp-title-row">
+      <div class="sp-title-main"><h2 class="sp-title">${p.name}</h2>${spPdfButton()}</div>
+      <span class="sp-title-right">${right !== undefined ? right : pct + '%'}</span>
+    </div>
+    ${noMeta ? '' : `<div class="sp-meta">
+      <div><span class="sp-eyebrow-s">Details</span><p>${p.desc || ''}</p></div>
+      <div><span class="sp-eyebrow-s">Row progress</span><p>${cursor} / ${total} rows</p></div>
+    </div>`}
+  </section>`;
+}
+
+// Rows in order. A repeat block is drawn as one unit: while it is the one being
+// worked (or looked at) it shows a pass stepper and just that pass's rows;
+// otherwise it is a single quiet line.
+function spListHtml(rows, cursor, total) {
+  const sel = spViewedRow !== null ? spViewedRow : cursor + 1;
+  let html = '';
+  for (let i = 0; i < rows.length; ) {
+    const r = rows[i];
+    if (r.step.kind !== 'repeat') { html += spRowHtml(r, cursor, total); i++; continue; }
+    let j = i;
+    while (j < rows.length && rows[j].step === r.step) j++;
+    html += spRepeatHtml(rows.slice(i, j), cursor, total, sel);
+    i = j;
+  }
+  return html;
+}
+
+function spRepeatHtml(block, cursor, total, sel) {
+  const first = block[0].n, last = block[block.length - 1].n, step = block[0].step;
+  const R = step.rows.length, T = step.times | 0;
+  const selIn = sel >= first && sel <= last, curIn = cursor + 1 >= first && cursor + 1 <= last;
+  if (!selIn && !curIn) {
+    const done = last <= cursor;
+    return `<article class="sp-row ${done ? 'done' : 'upcoming'}" onclick="spSelectRow(${first})">
+      <div class="sp-row-top"><div class="sp-row-lbl"><span>Repeat · ${R} rows × ${T}</span></div>${done ? '<span class="sp-badge">Completed</span>' : ''}</div>
+      <p class="sp-row-text">${block.slice(0, R).map(spText).join(' · ')}</p></article>`;
+  }
+  const pass = block[(selIn ? sel : cursor + 1) - first].pass;
+  return `<section class="sp-repeat">
+    <div class="sp-stepper">
+      <button class="sp-step-btn" onclick="spPass(-1)" aria-label="Previous pass">−</button>
+      <div class="sp-step-mid"><span class="sp-step-k">Repeat sequence</span><span class="sp-step-v">Pass <b>${pass}</b> of ${T}</span></div>
+      <button class="sp-step-btn" onclick="spPass(1)" aria-label="Finish this pass">+</button>
+    </div>${block.filter(b => b.pass === pass).map(b => spRowHtml(b, cursor, total)).join('')}</section>`;
+}
+
+function spPlaylistHtml(p, cursor, total, rows) {
+  return spSectionOverviewHtml(p, cursor, total) + spNotesHtml(p) +
+    `<section class="sp-list"><div class="sp-list-head"><span>Instructions</span><span>${p.hasChart ? 'RS / WS playlist' : ''}</span></div>` +
+    spListHtml(rows, cursor, total) + '</section>';
+}
+
+// gap: the playlist dock's centre button is labelled "Next row" in the design;
+// it records the current row, the same as Mark done. ‹ › browse. Once the
+// section is done it becomes the way on to the next one — the old Back / Next
+// pair at the foot of the list is gone, section switching being the design's
+// "Current section" menu.
+function spNextSectionButton() {
+  return cur < PHASES.length - 1
+    ? { label: 'Next section', call: `go(${cur + 1})` }
+    : { label: 'Finished!', call: 'showFinishedScreen()' };
+}
+
+function spPlaylistDock(cursor, total) {
+  if (cursor < total) return spDockHtml('Next row', `spDone(${cursor + 1})`);
+  const n = spNextSectionButton();
+  return spDockHtml(n.label, n.call);
+}
+
+// gap: no rows, so no row browsing — ‹ goes to the previous section instead.
+function spRowlessDock() {
+  const n = spNextSectionButton();
+  return `<footer class="sp-dock"><div class="sp-dock-in">
+    ${cur > 0 ? `<button class="sp-dock-nav" onclick="go(${cur - 1})" aria-label="Previous section">${SP_CHEV_L}</button>` : ''}
+    <button class="sp-dock-main" onclick="${n.call}">${n.label}</button>
+  </div></footer>`;
+}
+
+
+// ── Chart window (inside the player) and the full chart screen ──
+//
+// Laid out as the Stitch "Player – Chart Focused" design. The cells are the
+// app's own stitchCell() — real symbols and per-cell yarn colours — not the
+// design's text glyphs, which only sketch five stitches.
+
+const SP_STITCH_NAMES = { K: 'Knit', P: 'Purl', YO: 'YO', K2: 'k2tog', SK: 'SKPO', M1: 'M1', M1L: 'M1L', M1R: 'M1R',
+  K2A: 'k2tog', SKA: 'ssk', SSP: 'ssp', P2TOG: 'p2tog', KTBL: 'ktbl', PTBL: 'ptbl', TK2TOG: 'tk2tog', TSSK: 'tssk',
+  PU: 'pull up', GP: 'ghost purl', BRK: 'brk', BRP: 'brp', SL: 'sl1' };
+
+// Only a row of the section's own chart — a motif repeat's rows (Task 6) point
+// at a different, smaller chart.
+function spHasChart(p, row) {
+  return !!(p.hasChart && row && row.step.kind === 'row' && row.def.chartRow && CHART_B.length && CHART_B[0]);
+}
+
+// The chart a row is worked from: the section's own chart for a chart row, or
+// the repeat's motif chart (`step.motif`, a small grid) for a row inside it.
+function spChartFor(p, row) {
+  if (!row) return null;
+  if (spHasChart(p, row)) return CHART_B;
+  const st = row.step;
+  return st.kind === 'repeat' && st.motif && st.motif[0] && row.def.chartRow ? st.motif : null;
+}
+
+function spChartRowToN(rows, chartRow) {
+  const i = rows.findIndex(r => r.step.kind === 'row' && r.def.chartRow === chartRow);
+  return i < 0 ? null : i + 1;
+}
+
+function spLegendHtml(types) {
+  return Object.keys(types).filter(t => t !== 'E').map(t => {
+    const sym = SYMS[t];
+    return `<span class="sp-leg"><span class="sp-leg-cc">${sym || ''}</span>${SP_STITCH_NAMES[t] || t.toLowerCase()}</span>`;
+  }).join('');
+}
+
+function spCellsHtml(r, active, types, mark, chart) {
+  chart = chart || CHART_B;
+  const colors = chart === CHART_B ? chartColorRow(r) : null;
+  return chart[r - 1].map((t, i) => {
+    const tt = parseColorCell(t).t;
+    types[tt] = true;
+    let c = stitchCell(t, false, colors ? colors[i] : null, active);
+    if (mark === i) c = c.replace('class="cc', 'class="sp-cw-mark cc');
+    return c;
+  }).join('');
+}
+
+// The ring + dot on the cell just past the mid-row marker, only once the
+// knitter has set one for this chart.
+function spMarkCol(N) {
+  const b = midRowPos && PHASES[cur] ? midRowPos[PHASES[cur].id] : undefined;
+  return Number.isInteger(b) && b >= 0 ? Math.min(N - 1, b) : -1;
+}
+
+// `span` is how many rows to show either side of the current one: 3 in the
+// player, 1 for the preview inside the playlist's selected row.
+function spChartWindowHtml(chartRow, after, span, chart) {
+  span = span || 3;
+  chart = chart || CHART_B;
+  const n = chart.length, N = chart[0].length;
+  const first = Math.max(1, Math.min(chartRow - span, n - 2 * span)), last = Math.min(n, first + 2 * span);
+  const minCell = span === 1 ? 15 : 20;                       // the preview sits inside a card, so its cells may be narrower
+  const cols = `grid-template-columns:${span === 1 ? 18 : 24}px repeat(${N},minmax(${minCell}px,1fr)) ${span === 1 ? 18 : 24}px`;
+  const head = Array.from({ length: N }, (_, i) => `<span>${N - i}</span>`).join('');
+  const types = {};
+  let rowsHtml = '';
+  for (let r = last; r >= first; r--) {
+    const active = r === chartRow, d = Math.abs(r - chartRow);
+    rowsHtml += `<div class="sp-cw-row${active ? ' active' : ' d' + d}" style="${cols}">
+      <span class="sp-cw-n">${r}</span>${spCellsHtml(r, active, types, active && chart === CHART_B ? spMarkCol(N) : -1, chart)}<span class="sp-cw-n">${r}</span></div>`;
+  }
+  return `<section class="sp-cw-wrap${span === 1 ? ' sp-mini' : ''}">
+    ${span === 1 ? '' : `<div class="sp-cw-bar"><span>Viewing rows ${first}–${last}</span>
+      <span class="sp-cw-bar-r">${after.map(t => `<span class="sp-cw-chip"><b>Check:</b> ${t}</span>`).join('')}</span></div>`}
+    <div class="sp-cw-scroll"${span === 1 ? '' : ' id="sp-cw-scroll"'}><div class="sp-cw" style="min-width:${N * (minCell + 3) + (span === 1 ? 44 : 52)}px">
+      <div class="sp-cw-head" style="${cols}"><span></span>${head}<span></span></div>${rowsHtml}</div></div>
+    <div class="sp-legend">${spLegendHtml(types)}</div>
+  </section>`;
+}
+
+function spFullChartHtml(p, cursor, total, rows) {
+  const n = CHART_B.length, N = CHART_B[0].length;
+  const curRow = rows[cursor] && rows[cursor].def.chartRow;
+  const viewRow = spViewedRow !== null && rows[spViewedRow - 1] ? rows[spViewedRow - 1].def.chartRow : null;
+  const types = {};
+  let body = '';
+  for (let r = n; r >= 1; r--) {
+    const active = r === curRow;
+    body += `<div class="sp-fc-row${active ? ' active' : ''}${r === viewRow ? ' viewing' : ''}" data-r="${r}" onclick="spFcTap(${r})">
+      <span class="sp-fc-n l">${r}</span><div class="sp-fc-cells">${spCellsHtml(r, active, types, -1)}</div><span class="sp-fc-n">${r}</span></div>`;
+  }
+  const v = Math.min(total, spViewedRow !== null ? spViewedRow : cursor + 1);
+  const pal = p.colorPalette && typeof openColorSheet === 'function';
+  return `<div class="sp-player-bar"><button class="sp-back" onclick="spCloseChart()" aria-label="Back to the row">${SP_CHEV_L}</button></div>` +
+    spSectionOverviewHtml(p, cursor, total, 'Full chart', true) +
+    (typeof yarnChipsHtml === 'function' && p.colorPalette ? yarnChipsHtml(p) : '') +
+    `<div class="sp-fc-tools">
+      <button onclick="spZoom(-2)" aria-label="Zoom out">A−</button><button onclick="spZoom(2)" aria-label="Zoom in">A+</button>
+      <button onclick="spFcRecenter()" aria-label="Centre on the current row">Current row</button>
+      ${pal ? '<button onclick="openColorSheet()" aria-label="Edit yarn colours">Colours</button>' : ''}</div>
+    <div class="sp-fc-scroll"><div class="sp-fc" id="sp-fc" style="--cell-sz:${cellSz}px">${body}</div></div>
+    <div class="sp-legend">${spLegendHtml(types)}</div>` +
+    `<footer class="sp-dock"><div class="sp-dock-in"><button class="sp-dock-main" id="sp-fc-back" onclick="spCloseChart()">Back to row ${v}</button></div></footer>`;
+}
+
+// ── The player screen ──
+//
+// A chart row: a compact written strip (the row's label, the reading direction,
+// the Setup line), then the chart window. Any other row: the row as a large
+// card, its Check line, and a preview of the next row.
+function spPlayerChartHtml(p, row, chart) {
+  const co = spCallouts(row);
+  const rep = row.step.kind === 'repeat';
+  const rs = rep ? null : isRSRow(row.def.chartRow);   // RS/WS belongs to the section's chart, not a motif
+  return `<div class="sp-strip">
+      <div class="sp-strip-top"><span class="sp-lbl-chip">${spLabel(row)}</span>
+        ${rs === null ? '' : `<span class="sp-read">read ${rs ? 'right → left' : 'left → right'}</span>`}
+        ${co.before.map(t => `<span class="sp-strip-chip"><span class="sp-dot"></span>${t}</span>`).join('')}</div>
+      <p class="sp-strip-text">${spText(row)}</p></div>` +
+    spChartWindowHtml(row.def.chartRow, co.after, 3, chart);
+}
+
+function spPlayerHtml(p, cursor, total, rows) {
+  const v = Math.min(total, spViewedRow !== null ? spViewedRow : cursor + 1);
+  const row = rows[v - 1];
+  const next = rows[v];
+  const co = spCallouts(row);
+  const current = v === cursor + 1, done = v <= cursor;
+  const label = done ? `Mark row ${v} incomplete` : `Done row ${v}`;
+  const call = done ? `spMarkIncomplete(${v})` : `spDone(${v})`;
+  const chart = spChartFor(p, row);
+  const badge = current ? '<span class="sp-badge light">Current row</span>' : done ? '<span class="sp-badge">Completed</span>' : '<span class="sp-badge muted">Upcoming</span>';
+  const bar = `<div class="sp-player-bar"><button class="sp-back" onclick="spClosePlayer()" aria-label="Back to playlist">${SP_CHEV_L}</button></div>` +
+    spSectionOverviewHtml(p, cursor, total, `Row ${v} of ${total}`, true) + spNotesHtml(p);
+  if (chart) return bar + spPlayerChartHtml(p, row, chart) + spDockHtml(label, call);
+  const rs = row.def.chartRow && row.step.kind === 'row' ? isRSRow(row.def.chartRow) : null;
+  return bar + co.before.map(spSetupPill).join('') +
+    `<article class="sp-hero">
+      <div class="sp-row-top"><div class="sp-row-lbl"><span class="sp-lbl-chip">${spLabel(row)}</span>
+        ${rs === null ? '' : `<span class="sp-read">read ${rs ? 'right → left' : 'left → right'}</span>`}</div>${badge}</div>
+      <p class="sp-hero-text">${spText(row)}</p>
+      <div class="sp-hero-foot">${spPassNote(row)}${co.after.map(spCheckChip).join('')}</div>
+    </article>` +
+    (next ? `<article class="sp-next"><div class="sp-row-top"><span>${spLabel(next)}</span><span class="sp-next-k">Next</span></div><p>${spText(next)}</p></article>` : '') +
+    spDockHtml(label, call);
+}
+
+function spInnerHtml(p) {
+  const rows = spRowsFor(p);
+  const total = rows.length;
+  const cursor = stepCursor(p);
+  if (!total) {
+    return spSectionOverviewHtml(p, 0, 0, '') + spNotesHtml(p) + spTasksHtml(p) + spRowlessDock();
+  }
+  if (spViewedRow !== null && (spViewedRow < 1 || spViewedRow > total)) spViewedRow = null;
+  if (spChartOpen && spPlayerOpen && spHasChart(p, rows[0])) return spFullChartHtml(p, cursor, total, rows);
+  if (spPlayerOpen && (cursor < total || spViewedRow !== null)) return spPlayerHtml(p, cursor, total, rows);
+  return spPlaylistHtml(p, cursor, total, rows) + spPlaylistDock(cursor, total);
+}
+
+// Called by renderPhase(). The wrapper is what spRender() repaints, so the
+// section header, tabs and the fixed dock all stay in step without rebuilding
+// the page.
+function renderStepSection(p) {
+  spSyncKey();
+  spRowsCache = null;
+  const html = `<div class="sp" id="sp-root">${spInnerHtml(p)}</div>`;
+  document.body.classList.add('sp-on');
+  return html;
+}
+
+function spRender() {
+  const root = document.getElementById('sp-root');
+  if (!root) return;
+  root.innerHTML = spInnerHtml(PHASES[cur]);
+  root.classList.toggle('sp-browsing', root.querySelector('.sp-browse') !== null);
+  renderTabs();
+  spAimChart();
+  spAimMini();
+}
+
+// A wide window opens on the end the row starts from: right for RS, left for WS.
+function spAimChart() {
+  const el = document.getElementById('sp-cw-scroll');
+  if (!el || el.scrollWidth <= el.clientWidth) return;
+  const p = PHASES[cur], c = stepCursor(p), total = stepsRowCount(p, activeDoc);
+  const v = spViewedRow !== null ? spViewedRow : Math.min(total, c + 1);
+  const row = spRowsFor(p)[v - 1];
+  el.scrollLeft = row && row.step.kind === 'row' && row.def.chartRow && !isRSRow(row.def.chartRow) ? 0 : el.scrollWidth;
+}
+
+function leaveStepMode() { document.body.classList.remove('sp-on'); }
+
+// ── Looking (never changes progress) ──
+
+function spScrollCurrent() {
+  const el = document.querySelector('.sp-row.selected');
+  if (el) el.scrollIntoView({ block: 'center' });
+}
+
+function spOpenPlayer(row) {
+  const p = PHASES[cur], c = stepCursor(p);
+  const open = () => {
+    spViewedRow = row === c + 1 ? null : row;
+    spPlayerOpen = true;
+    spRender();
+    window.scrollTo({ top: 0 });
+  };
+  // From the playlist, the selected section grows into the player.
+  const el = !spPlayerOpen && document.querySelector('.sp-row.selected[data-row="' + row + '"]');
+  if (!el || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return open();
+  spGrow(el, open);
+}
+
+// The selected section "grows" to fill the screen: a copy of it, fixed at the
+// same place, stretches to the full viewport while its contents fade, the
+// player is built underneath at the end, and the copy fades away to reveal it.
+function spGrow(el, done) {
+  const r = el.getBoundingClientRect();
+  const g = document.createElement('div');
+  g.className = 'sp-grow';
+  g.style.top = r.top + 'px';
+  g.style.height = r.height + 'px';
+  g.innerHTML = '<div class="sp sp-grow-in"><article class="sp-row selected" style="margin:0">' + el.innerHTML + '</article></div>';
+  document.body.appendChild(g);
+  void g.offsetHeight;                  // start values committed before the end values
+  g.classList.add('go');
+  let finished = false;
+  const end = () => {
+    if (finished) return;
+    finished = true;
+    done();
+    g.classList.add('out');
+    setTimeout(() => g.remove(), 220);
+  };
+  g.addEventListener('transitionend', e => { if (e.propertyName === 'height') end(); });
+  setTimeout(end, 500);                 // if transitions never fire (hidden tab), still open
+}
+
+function spClosePlayer() {
+  spPlayerOpen = false;
+  spRender();
+  spScrollCurrent();
+}
+
+// ‹ › step through rows, and carry on into the neighbouring section at either
+// end — the last row of one section is followed by the first of the next.
+function spBrowse(delta) {
+  const p = PHASES[cur], total = stepsRowCount(p, activeDoc), c = stepCursor(p);
+  const from = total ? (spViewedRow !== null ? spViewedRow : Math.min(total, c + 1)) : (delta < 0 ? 1 : 0);
+  const to = from + delta;
+  if (to < 1 || to > total) return spBrowseSection(delta);
+  spViewedRow = to === c + 1 ? null : to;
+  spRender();
+  spScrollToViewed();
+}
+
+// After any ‹ › move, bring the row now being looked at into view: the top of
+// the page in the player, the row itself (centred) in the playlist.
+function spScrollToViewed() {
+  if (spPlayerOpen) return window.scrollTo({ top: 0 });
+  const p = PHASES[cur];
+  const n = spViewedRow !== null ? spViewedRow : stepCursor(p) + 1;
+  const el = document.querySelector('.sp-row[data-row="' + n + '"]');
+  if (el) el.scrollIntoView({ block: 'center' });
+}
+
+function spBrowseSection(delta) {
+  const target = cur + (delta < 0 ? -1 : 1);
+  if (target < 0 || target >= PHASES.length) return;
+  const keepPlayer = spPlayerOpen;
+  go(target);
+  const p = PHASES[cur];
+  if (!isStepSection(p)) return;
+  const total = stepsRowCount(p, activeDoc);
+  if (total) {
+    const row = delta < 0 ? total : 1;
+    spViewedRow = row === stepCursor(p) + 1 ? null : row;
+    spPlayerOpen = keepPlayer;
+    spRender();
+  }
+  spScrollToViewed();
+}
+
+// Tap a row in the playlist to select it. Looking only — progress is untouched.
+function spSelectRow(n) {
+  const c = stepCursor(PHASES[cur]);
+  spViewedRow = n === c + 1 ? null : n;
+  spRender();
+}
+
+function spBackToCurrent() {
+  spViewedRow = null;
+  spRender();
+  spScrollToViewed();
+}
+
+function spOpenChart() { spChartOpen = true; spRender(); window.scrollTo({ top: 0 }); spFcRecenter(); }
+function spCloseChart() { spChartOpen = false; spRender(); window.scrollTo({ top: 0 }); }
+
+// Tapping a chart row looks at it — class swaps only, so a 100-row chart is not
+// rebuilt on every tap.
+function spFcTap(chartRow) {
+  const p = PHASES[cur], c = stepCursor(p);
+  const n = spChartRowToN(spRowsFor(p), chartRow);
+  if (!n) return;
+  spViewedRow = n === c + 1 ? null : n;
+  document.querySelectorAll('.sp-fc-row.viewing').forEach(e => e.classList.remove('viewing'));
+  const el = document.querySelector('.sp-fc-row[data-r="' + chartRow + '"]');
+  if (el && n !== c + 1) el.classList.add('viewing');
+  const back = document.getElementById('sp-fc-back');
+  if (back) back.textContent = 'Back to row ' + n;
+}
+
+function spZoom(d) {
+  cellSz = Math.max(10, Math.min(32, cellSz + d));
+  const fc = document.getElementById('sp-fc');
+  if (fc) fc.style.setProperty('--cell-sz', cellSz + 'px');
+  save();
+}
+
+function spFcRecenter() {
+  const el = document.querySelector('.sp-fc-row.active');
+  if (el) el.scrollIntoView({ block: 'center' });
+}
+
+function spToggleNotes() { spNotesOpen = !spNotesOpen; spRender(); }
+
+// ── Progress (explicit actions only) ──
+
+// The common tap — Done on the cursor row from the playlist — touches two rows,
+// the progress figures and the dock, so it patches those instead of rebuilding
+// the list. Anything else (browsing, the player, a jump) repaints.
+function spPatchPlaylist(p, prev, next) {
+  const root = document.getElementById('sp-root');
+  if (!root || spPlayerOpen || spViewedRow !== null || next !== prev + 1) return false;
+  const rows = spRowsFor(p), total = rows.length;
+  const swap = n => {
+    if (n < 1 || n > total) return true;
+    const el = root.querySelector('.sp-row[data-row="' + n + '"]');
+    if (!el) return false;
+    el.outerHTML = spRowHtml(rows[n - 1], next, total);
+    return true;
+  };
+  if (!swap(prev + 1) || !swap(next + 1)) return false;
+  const right = root.querySelector('.sp-title-right');
+  if (right) right.textContent = Math.round(next / total * 100) + '%';
+  const prog = root.querySelectorAll('.sp-meta p')[1];
+  if (prog) prog.textContent = next + ' / ' + total + ' rows';
+  const tally = document.getElementById('prog-rows');
+  if (tally) tally.textContent = globalRowsNow() + ' / ' + patternTotalRows();
+  const dock = root.querySelector('.sp-dock');
+  if (dock) dock.outerHTML = spPlaylistDock(next, total);
+  if (next >= total) renderTabs();   // the section's "complete" dot
+  spAimMini();
+  return true;
+}
+
+function spApplyCursor(p, cursor) {
+  const prev = stepCursor(p);
+  const patched = !spPlayerOpen && spViewedRow === null && cursor === prev + 1;
+  setStepCursor(p, cursor);
+  if (patched && spPatchPlaylist(p, prev, cursor)) { spScrollCurrent(); return; }
+  spViewedRow = null;
+  if (cursor >= stepsRowCount(p, activeDoc)) spPlayerOpen = false;   // nothing left to stand on
+  spRender();
+  if (!spPlayerOpen) spScrollCurrent();
+}
+
+function spDone(row) {
+  const p = PHASES[cur];
+  const r = doneAt(p, activeDoc, stepCursor(p), row);
+  if (r.cursor === stepCursor(p)) return;
+  if (!r.confirm) return spApplyCursor(p, r.cursor);
+  sheetConfirm({
+    title: 'Mark rows complete?',
+    message: r.confirm.from === r.confirm.to ? `Mark row ${r.confirm.to} complete?` : `Mark rows ${r.confirm.from}–${r.confirm.to} complete?`,
+    detail: 'Rows before it will be counted as worked.',
+    confirmLabel: 'Mark complete',
+    onConfirm: () => spApplyCursor(p, r.cursor),
+  });
+}
+
+function spMarkIncomplete(row) {
+  const p = PHASES[cur];
+  const r = markIncompleteAt(stepCursor(p), row);
+  if (r.cursor === stepCursor(p)) return;
+  if (!r.confirm) return spApplyCursor(p, r.cursor);
+  sheetConfirm({
+    title: 'Mark rows incomplete?',
+    message: `Mark rows ${r.confirm.from}–${r.confirm.to} incomplete?`,
+    detail: 'You\'ll go back to the start of this row.',
+    confirmLabel: 'Mark incomplete',
+    onConfirm: () => spApplyCursor(p, r.cursor),
+  });
+}
+
+// Pass − / + are progress actions: + finishes the current pass (using it IS the
+// statement that the pass was knitted), − steps back to the start of this one
+// or the previous one. See passPlus / passMinus in steps.js.
+function spPass(delta) {
+  const p = PHASES[cur], c = stepCursor(p);
+  const n = delta > 0 ? passPlus(p, activeDoc, c) : passMinus(p, activeDoc, c);
+  if (n === c) return;
+  spViewedRow = null;
+  spApplyCursor(p, n);
+}
+
+function spToggleTask(i) {
+  const p = PHASES[cur];
+  const task = sectionSteps(p, activeDoc).filter(s => s.kind === 'task')[i];
+  if (!task) return;
+  toggleTask(task);
+  spRender();
+}

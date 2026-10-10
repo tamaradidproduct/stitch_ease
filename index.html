@@ -1359,11 +1359,14 @@
 <script src="js/patterns/sophie-hood.js"></script>
 <script src="js/patterns/where-are-the-leaves.js"></script>
 <script src="js/patterns/hatsuki.js"></script>
+<script src="js/core/convert.js"></script>
 <script src="js/core/storage.js"></script>
 <script src="js/core/rows.js"></script>
+<script src="js/core/steps.js"></script>
 <script src="js/core/chart.js"></script>
 <script src="js/core/yarns.js"></script>
 <script src="js/core/render.js"></script>
+<script src="js/core/player.js"></script>
 <script src="js/core/patternImport.js"></script>
 <script src="js/core/chartImport.js"></script>
 <script src="js/core/pdf.js"></script>
@@ -1372,6 +1375,13 @@
 <script src="js/cloud/family.js"></script>
 <script src="js/cloud/pdfsync.js"></script>
 <script src="js/cloud/patternsync.js"></script>
+<script>
+/* Dev only: open the app with ?demo to register the unshipped step-screen demo pattern
+   (js/core/steps.demo.selftest.js). Written with document.write, before app.js runs, so the
+   pattern exists by the time saved projects are opened. The file is not shipped, so a stray
+   ?demo in production is a harmless 404. */
+if (/[?&]demo\b/.test(location.search)) document.write('<scr' + 'ipt src="js/core/steps.demo.selftest.js"></scr' + 'ipt>');
+</script>
 <script src="js/core/app.js"></script>
 </body>
 </html>

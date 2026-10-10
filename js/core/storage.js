@@ -481,7 +481,7 @@ function migrateAddPatternHash() {
     if ((parseInt(localStorage.getItem('pt3_schema')) || 0) >= PATTERN_HASH_SCHEMA) return;
     JSON.parse(localStorage.getItem('pt3_projects') || '[]').forEach(proj => {
       if (localStorage.getItem('pt3_proj_' + proj.id + '_phash')) return;
-      const pat = patternById(proj.patternId);
+      const pat = legacyShape(patternById(proj.patternId));
       if (pat) freezePattern(proj.id, pat);
     });
     localStorage.setItem('pt3_schema', String(PATTERN_HASH_SCHEMA));
@@ -526,7 +526,7 @@ function migrateToEntries() {
       const p = 'pt3_proj_' + proj.id + '_';
       const readObj = k => { try { return JSON.parse(localStorage.getItem(p + k) || 'null') || {}; } catch(e) { return {}; } };
 
-      const live = patternById(proj.patternId);
+      const live = legacyShape(patternById(proj.patternId));
       if (!live) { skipped++; return; }
 
       // A tombstone's progress keys are already purged — there is nothing to
@@ -582,6 +582,70 @@ function migrateToEntries() {
   }
 }
 
+// ─────────────────────────────────────────────
+// SCHEMA 4 — one cursor per section (js/core/steps.js)
+//
+// For each project whose pattern is on the step model, derive `sc:<section>`
+// (rows done) and `t:<task>` from the keys it already has, and put the project
+// on the new-shape pattern IN THE SAME STEP: freezePattern() re-stamps the hash,
+// or the project would sit on its old snapshot with a "Pattern updated" chip
+// and no way to carry its ticks across. Old keys are left where they are —
+// they are inert, a step that comes back finds its tick, and a device that has
+// not migrated would push them straight back anyway (see adoptPattern).
+//
+// A project whose saved structure had already diverged from the code BEFORE this
+// (a frozen snapshot that is not today's pattern) is moved onto its own
+// snapshot, converted — not onto the live pattern, which would remap its ticks.
+// It keeps the "Pattern updated" chip, which is the right thing to say.
+//
+// Runs only with the step model on. The sentinel is separate from migrateToEntries'
+// and is written last, so a failure part-way tries again next load.
+// ─────────────────────────────────────────────
+const STEP_SCHEMA = 4;
+
+function migrateToStepCursors() {
+  if (!stepModelOn()) return;
+  try {
+    const have = parseInt(localStorage.getItem('pt3_schema')) || 0;
+    if (have >= STEP_SCHEMA || have < SCHEMA_VERSION) return;   // done already, or the entries model has not landed
+    let moved = 0, kept = 0, skipped = 0;
+    // The registry is read here, not taken from `projects`: bootstrap runs the
+    // migrations before loadProjects() has filled it (as the ones above do).
+    let registry = [];
+    try { registry = JSON.parse(localStorage.getItem('pt3_projects') || '[]') || []; } catch (e) { registry = []; }
+    registry.forEach(proj => {
+      if (proj.deletedAt) return;
+      const live = livePatternFor(proj);
+      if (!live || !live.phases.some(isStepSection)) { skipped++; return; }
+      const p = 'pt3_proj_' + proj.id + '_';
+      const stored = localStorage.getItem(p + 'phash');
+      const old = legacyPatternFor(proj);
+      let target = live;
+      if (stored && !(old && stored === structHash(old))) {
+        const frozen = frozenPattern(proj.id);
+        if (!frozen) { skipped++; return; }
+        target = convertPattern(frozen);
+        kept++;
+      }
+      const read = (k, d) => { try { return JSON.parse(localStorage.getItem(p + k) || 'null') || d; } catch (e) { return d; } };
+      const entries = read('entries', {}), clk = read('clk', {});
+      const derived = cursorsFromLegacyProgress(target, { entries: entries, chartRows: read('chartRows', {}) });
+      Object.assign(entries, derived.values);
+      Object.assign(clk, clocksForCursors(derived, clk));
+      localStorage.setItem(p + 'entries', JSON.stringify(entries));
+      localStorage.setItem(p + 'clk', JSON.stringify(clk));
+      freezePattern(proj.id, target);
+      moved++;
+    });
+    localStorage.setItem('pt3_schema', String(STEP_SCHEMA));
+    console.info('[migrate] step cursors: ' + moved + ' project(s) moved' +
+                 (kept ? ' (' + kept + ' onto their own older structure)' : '') +
+                 (skipped ? ', ' + skipped + ' left alone' : ''));
+  } catch (e) {
+    console.error('migrateToStepCursors failed', e);
+  }
+}
+
 // Done-entries / total for a project, read from its saved progress (for home
 // cards). Notes, rows and repeats all count as one thing to tick, which is
 // what the card's percentage means.
@@ -591,7 +655,10 @@ function projectProgress(proj) {
   const pat = patternForProject(proj).pattern;
   // A converted section counts its entries; an unconverted one its steps. Both
   // are "things you tick", which is what the card's percentage means.
-  const total = pat ? pat.phases.reduce((a, ph) => a + (ph.entries || []).length, 0) : 0;
+  const stepTasks = ph => sectionSteps(ph, pat).filter(t => t.kind === 'task');
+  const total = pat ? pat.phases.reduce((a, ph) => a + (isStepSection(ph)
+    ? stepsRowCount(ph, pat) + stepTasks(ph).length            // a step section: its rows, plus any checklist items
+    : (ph.entries || []).length), 0) : 0;
   let done = 0;
   try {
     if (pat) {
@@ -601,7 +668,11 @@ function projectProgress(proj) {
       // must show the right number for a project that has not been opened
       // since its pattern was converted.
       seedEntryProgress(ep, st, JSON.parse(localStorage.getItem('pt3_proj_' + proj.id + '_ctrs') || '{}'), pat.phases);
-      pat.phases.forEach(ph => (ph.entries || []).forEach(e => { if (entryDone(e, ep)) done++; }));
+      pat.phases.forEach(ph => {
+        if (isStepSection(ph)) {
+          done += stepSectionCursor(ph, { entries: ep }, pat) + stepTasks(ph).filter(t => ep[taskKey(t.id)]).length;
+        } else (ph.entries || []).forEach(e => { if (entryDone(e, ep)) done++; });
+      });
     }
   } catch(e) {}
   return { done, total, pct: total ? Math.round(done / total * 100) : 0 };
@@ -618,7 +689,14 @@ function resetEntry(e) {
   stampClock(k);
 }
 
-function resetSection(ph) { (ph.entries || []).forEach(resetEntry); }
+function resetSection(ph) {
+  (ph.entries || []).forEach(resetEntry);
+  if (isStepSection(ph)) {
+    // An explicit 0 / false rather than a delete, for the same reason as resetEntry().
+    entryProg[stepCursorKey(ph.id)] = 0; stampClock(stepCursorKey(ph.id));
+    sectionSteps(ph, activeDoc).filter(t => t.kind === 'task').forEach(t => { entryProg[taskKey(t.id)] = false; stampClock(taskKey(t.id)); });
+  }
+}
 
 // Reset progress for the current phase only.
 function resetPhase() {

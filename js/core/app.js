@@ -361,6 +361,7 @@ migrateToProjects();
 migrateAddClocks();
 migrateAddPatternHash();
 migrateToEntries();
+migrateToStepCursors();
 loadGlobal();
 loadOutbox();
 loadSyncStatus();

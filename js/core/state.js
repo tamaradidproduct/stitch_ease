@@ -240,7 +240,14 @@ function structSignature(pattern) {
         ? 'x' + (e.times | 0) + 'x' + ((e.rows || []).map(r => r.id).join('+'))
         : '-',
       e.bullets ? 'b' + e.bullets.length : '-'
-    ].join(':')).join(',')
+    ].join(':')).join(','),
+    // Step-model sections (js/core/steps.js): kinds, ids, repeat shape — never
+    // text, before/after or notes. Absent for every other section, so their
+    // signature, and so their hash, is exactly what it was.
+    ...(isStepSection(ph) ? ['S' + (ph.rowless ? 'r' : '-') + (ph.chartSteps ? 'c' : '-') + (ph.steps || []).map(s => [
+      s.kind, s.id,
+      s.kind === 'repeat' ? 'x' + (s.times | 0) + 'x' + ((s.rows || []).map(r => r.id).join('+')) : '-'
+    ].join(':')).join(',')] : [])
   ].join('|')).join(';');
 }
 

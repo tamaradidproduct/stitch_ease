@@ -296,6 +296,9 @@ function scrollActiveIntoView(smooth) {
 
 function renderPhase() {
   const p = PHASES[cur];
+  // Step-model sections (js/core/steps.js) have their own playlist + player.
+  if (isStepSection(p)) { document.getElementById('phase-content').innerHTML = renderStepSection(p); return; }
+  leaveStepMode();
   const items = p.entries || p.steps || [];
   const totalRows = sectionRowCount(p, activeDoc);
   const doneRows = sectionRowsDone(p, progressCtx(), activeDoc);
@@ -736,6 +739,7 @@ function render() {
 }
 
 function leaveChartMode() {
+  leaveStepMode();
   document.body.classList.remove('chart-page');
   const dock = document.getElementById('chart-dock'); if (dock) dock.innerHTML = '';
 }
@@ -753,7 +757,7 @@ function renderProject() {
   // NB: coerce to a real boolean — classList.toggle(cls, undefined) *flips*
   // the class (WebIDL treats explicit undefined as "no force arg"), which made
   // every step toggle flip chart-page on/off on non-chart screens.
-  const isChart = !!PHASES[cur].hasChart;
+  const isChart = !!PHASES[cur].hasChart && !isStepSection(PHASES[cur]);
   document.body.classList.toggle('chart-page', isChart);
 
   if (isChart) {
