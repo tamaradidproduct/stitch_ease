@@ -57,7 +57,7 @@ function yarnChipsHtml(phase) {
   const yarns = phase.chartYarns;
   if (!yarns || !yarns.length) return '';
   return `<button class="yarn-chips" onclick="openYarnSheet()" aria-label="Yarn colours — tap to change">
-    ${yarns.map((y, i) => `<span class="yarn-chip"><span class="yarn-dot" style="background:var(--yarn-${i})"></span>${escapeHtml(y.name)}</span>`).join('')}
+    ${yarns.map((y, i) => chipHtml({ lead: true, html: swatchHtml({ color: `var(--yarn-${i})`, round: true }) + escapeHtml(y.name) })).join('')}
   </button>`;
 }
 
@@ -73,16 +73,17 @@ function setYarnColor(phase, i, hex) {
 function openYarnSheet() {
   const phase = PHASES[cur];
   if (!phase || !phase.chartYarns) return;
-  const rows = phase.chartYarns.map((y, i) => `<div class="yarn-row">
-      <label class="yarn-pick" style="background:var(--yarn-${i})">
+  const rows = phase.chartYarns.map((y, i) => rowHtml({
+    variant: 'divided',
+    lead: `<label class="yarn-pick" style="background:var(--yarn-${i})">
         <input type="color" data-yarn="${i}" value="${fullHex(yarnColorFor(phase, i))}" aria-label="Colour for ${escapeHtml(y.name)}">
-      </label>
-      <div class="yarn-row-name">${escapeHtml(y.name)}</div>
-      <button class="sheet-btn slim" data-reset="${i}">Reset</button>
-    </div>`).join('');
+      </label>`,
+    main: `<div class="yarn-row-name">${escapeHtml(y.name)}</div>`,
+    trail: `<button class="btn btn--slim" data-reset="${i}">Reset</button>`,
+  })).join('');
   openSheet('Yarn colours', `${rows}
     <p class="sheet-sub">Tap a swatch to match your yarn. Only this project changes.</p>
-    <div class="sheet-actions"><button class="sheet-btn primary" onclick="dismissSheet()">Done</button></div>`, {
+    <div class="sheet-actions"><button class="btn btn--primary" onclick="dismissSheet()">Done</button></div>`, {
     onOpen: el => {
       el.querySelectorAll('input[type=color]').forEach(inp => {
         inp.oninput = () => setYarnColor(phase, +inp.dataset.yarn, inp.value.toLowerCase());

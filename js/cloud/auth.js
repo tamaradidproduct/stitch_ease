@@ -189,14 +189,14 @@ function openClaimSheet(n, kind, uid) {
   const plural = n === 1 ? 'project' : 'projects';
   const body = kind === 'unclaimed'
     ? `<p class="sheet-msg">Add your ${n} ${plural} to this account?</p>
-       <p class="acct-note" style="border:0;margin-top:8px;padding-top:0">They’ll be backed up and appear on your other devices. Nothing is removed from this one.</p>`
+       <p class="msg msg--note msg--plain">They’ll be backed up and appear on your other devices. Nothing is removed from this one.</p>`
     : `<p class="sheet-msg">This device already has ${n} ${plural} from a different account.</p>
-       <p class="acct-note" style="border:0;margin-top:8px;padding-top:0">Add them to your account, or leave them alone — either way nothing is deleted from this device.</p>`;
+       <p class="msg msg--note msg--plain">Add them to your account, or leave them alone — either way nothing is deleted from this device.</p>`;
 
   openSheet(kind === 'unclaimed' ? 'Back up your projects' : 'Projects already here',
     body + `<div class="sheet-actions">
-      <button class="sheet-btn" id="claim-no">Not now</button>
-      <button class="sheet-btn primary" id="claim-yes">${kind === 'unclaimed' ? 'Add to my account' : 'They’re mine'}</button>
+      <button class="btn" id="claim-no">Not now</button>
+      <button class="btn btn--primary" id="claim-yes">${kind === 'unclaimed' ? 'Add to my account' : 'They’re mine'}</button>
     </div>`,
     {
       // Dismissing is the same as "not now" — never a claim by accident.
@@ -269,7 +269,7 @@ function openAccountSheet(msg) {
 
   if (st === 'unavailable') {
     body = `<p class="sheet-msg">Sync isn’t available on this device.</p>
-      <p class="acct-note">The app works normally — your projects are saved here as always.
+      <p class="msg msg--note">The app works normally — your projects are saved here as always.
       This usually means part of the app didn’t finish downloading; reopening it later should fix it.</p>`;
     openSheet('Account', body);
     return;
@@ -277,17 +277,17 @@ function openAccountSheet(msg) {
 
   if (st === 'signed-out') {
     body = `<p class="sheet-msg">Sign in to keep your projects on all your devices.</p>
-      <button class="sheet-btn google-btn" id="acct-google">${GOOGLE_G_SVG}Continue with Google</button>
+      <button class="btn google-btn" id="acct-google">${GOOGLE_G_SVG}Continue with Google</button>
       <div class="acct-or"><span>or</span></div>
       <p class="acct-sub sheet-sub">We’ll email you a link — no password to remember.</p>
       <input class="sheet-input" id="acct-email" type="email" inputmode="email"
              autocomplete="email" placeholder="you@example.com" aria-label="Email address">
       <div class="sheet-actions">
-        <button class="sheet-btn" onclick="dismissSheet()">Not now</button>
-        <button class="sheet-btn primary" id="acct-send">Email me a link</button>
+        <button class="btn" onclick="dismissSheet()">Not now</button>
+        <button class="btn btn--primary" id="acct-send">Email me a link</button>
       </div>
-      ${msg ? msgHtml(msg) : ''}
-      <p class="acct-note">Your projects stay on this device either way. Signing in only adds a copy in the cloud.</p>`;
+      ${msg ? msgHtml({ kind: msg.ok ? 'ok' : 'error', text: msg.text }) : ''}
+      <p class="msg msg--note">Your projects stay on this device either way. Signing in only adds a copy in the cloud.</p>`;
     openSheet('Account', body, {
       onOpen: el => {
         el.querySelector('#acct-google').onclick = signInWithGoogle;
@@ -308,29 +308,28 @@ function openAccountSheet(msg) {
 
   // signed-in / offline
   const email = (session.user && session.user.email) || 'Signed in';
-  body = `<div class="acct-row">
-      <div class="acct-avatar">${acctInitial()}</div>
-      <div>
-        <div class="acct-email">${escapeHtml(email)}</div>
+  body = `${rowHtml({
+      cls: 'acct-row',
+      lead: `<div class="acct-avatar">${acctInitial()}</div>`,
+      main: `<div class="acct-email">${escapeHtml(email)}</div>
         <div class="acct-status">${st === 'offline'
           ? 'Offline — your work will sync when you’re back'
-          : 'Signed in'}</div>
-      </div>
-    </div>
-    ${msg ? msgHtml(msg) : ''}
+          : 'Signed in'}</div>`,
+    })}
+    ${msg ? msgHtml({ kind: msg.ok ? 'ok' : 'error', text: msg.text }) : ''}
     ${syncBlockHtml()}
     ${familyBlockHtml()}
     ${pdfStorageBlockHtml()}
-    ${hasUnclaimedProjects() ? `<p class="acct-err">${liveProjects().length === 1
+    ${hasUnclaimedProjects() ? `<p class="msg msg--error">${liveProjects().length === 1
         ? 'A project on this device isn’t in your account yet.'
         : liveProjects().length + ' projects on this device aren’t in your account yet.'}
       </p>
-      <div class="sheet-actions"><button class="sheet-btn primary" id="acct-claim">Add them to my account</button></div>` : ''}
+      <div class="sheet-actions"><button class="btn btn--primary" id="acct-claim">Add them to my account</button></div>` : ''}
     <div class="sheet-actions">
-      <button class="sheet-btn" onclick="dismissSheet()">Done</button>
-      <button class="sheet-btn" id="acct-signout">Sign out</button>
+      <button class="btn" onclick="dismissSheet()">Done</button>
+      <button class="btn" id="acct-signout">Sign out</button>
     </div>
-    <p class="acct-note">Signing out leaves your projects on this device. Nothing is deleted.</p>`;
+    <p class="msg msg--note">Signing out leaves your projects on this device. Nothing is deleted.</p>`;
   openSheet('Account', body, {
     onOpen: el => {
       el.querySelector('#acct-signout').onclick = signOut;
@@ -344,10 +343,6 @@ function openAccountSheet(msg) {
       if (typeof wireFamilyBlock === 'function') wireFamilyBlock(el);
     }
   });
-}
-
-function msgHtml(m) {
-  return `<p class="${m.ok ? 'acct-ok' : 'acct-err'}">${escapeHtml(m.text)}</p>`;
 }
 
 // ─────────────────────────────────────────────
@@ -368,13 +363,12 @@ function pdfStorageBlockHtml() {
   const files = pdfStorageList();
   if (!files.length) return '';
 
-  const rows = files.map(f => `<div class="acct-pdf-row">
-      <div class="acct-pdf-main">
-        <div class="acct-pdf-name">${escapeHtml(f.name)}</div>
-        <div class="acct-pdf-sub">${escapeHtml(f.fileName || '')} · ${escapeHtml(formatBytes(f.size))}</div>
-      </div>
-      <button class="acct-pdf-del" data-pdf-del="${escapeHtml(f.patternId)}">Remove</button>
-    </div>`).join('');
+  const rows = files.map(f => rowHtml({
+    variant: 'sm',
+    main: `<div class="acct-pdf-name">${escapeHtml(f.name)}</div>
+        <div class="acct-pdf-sub">${escapeHtml(f.fileName || '')} · ${escapeHtml(formatBytes(f.size))}</div>`,
+    trail: `<button class="acct-pdf-del" data-pdf-del="${escapeHtml(f.patternId)}">Remove</button>`,
+  })).join('');
 
   return `<div class="acct-pdfs">
       <button class="acct-pdfs-head" id="acct-pdfs-toggle" aria-expanded="false">
@@ -427,9 +421,9 @@ function syncBlockHtml() {
         <div class="acct-sync-when">${escapeHtml(syncStatusText())}</div>
         ${pending ? `<div class="acct-status">${escapeHtml(pending)}</div>` : ''}
       </div>
-      <button class="sheet-btn slim" id="acct-sync">Sync now</button>
+      <button class="btn btn--slim" id="acct-sync">Sync now</button>
     </div>
-    ${err ? `<p class="acct-err">${escapeHtml(err)}</p>` : ''}`;
+    ${err ? `<p class="msg msg--error">${escapeHtml(err)}</p>` : ''}`;
 }
 
 // Manual sync. Deliberately awaits both halves and then re-opens the sheet, so

@@ -13,6 +13,7 @@ peacock-tee-deploy/
   js/patterns/*.js              ← one file per pattern; each PATTERNS.push()es itself
   js/core/storage.js            ← pkey/save/load*/migrations/projects registry
   js/core/chart.js              ← chart tracker, zoom, scroll, changeChartRow
+  js/core/ui.js                 ← shared UI builders: btnHtml, msgHtml, sheetBodyHtml, rowHtml, checkHtml, stepperBtnHtml, swatchHtml, chipHtml
   js/core/render.js             ← render*/stepHtml/openSheet/escapeHtml
   js/core/ui.js                 ← generic UI components (top bar, dock, facts, toggle, card, icon button)
   js/core/stepViews.js          ← step-screen markup (playlist, player, repeat, chart window)
@@ -43,8 +44,9 @@ plumbing. Load order matters only for top-level *executed* code — the pattern
 data and the bootstrap. Function declarations can live anywhere.
 
 ## Deployment
-- Hosted on **GitHub Pages** at https://tamaradidproduct.github.io/stitch_ease/, deploying from the `main` branch.
-- **Auto-deploys on every push to `main`** — GitHub Pages rebuilds the site instantly when the branch updates. **Merging a PR into `main` is the deploy action** — nothing further to run.
+- Production: https://app.stitch-ease.com (GitHub Pages, Actions deploy). Staging: https://staging.app.stitch-ease.com.
+- Every push to `main` triggers `deploy-staging.yml` (automatic) and `deploy.yml` (waits for manual approval in the `production` environment). **Merging a PR starts the deploy; approving the run ships it.**
+- CI (`ci.yml`) runs `node scripts/check.mjs` on PRs. Workflow map and Airtable QA loop: `.claude/skills/dev-setup/SKILL.md`.
 - **Only merge when the user explicitly asks** — make and verify changes locally, commit, push, and open a PR; hold the merge until requested.
 - Service worker cache is named `stitch-ease-vN` — bump N in `sw.js` when deploying a change so clients refresh. HTML is served **network-first** (see SW section), so page updates land on next load without a manual cache bump; bump N mainly for the cached static assets.
 
@@ -127,7 +129,7 @@ Patterns ship with the deploy, so **text edits reach everyone immediately** — 
 - Some patterns (Lenore, Tatted Triangle) show a compact abbreviation → one-word expansion in their notes today ('R' → 'Ring'), not a full sentence — deliberately left un-migrated, since deferring would swap that compact label for the glossary's full-sentence definition and change the sheet's character. Ask before converting those too.
 
 ### Importing patterns on-device
-**New project → Import pattern** always adds a **new** pattern: `putCustomPattern` gives it its own id (`newCustomPatternId` — the file's id/name slugged plus a random suffix), so a file never replaces anything by matching an id or name. **Replacing is only the explicit Update button on an imported pattern's tile** in the picker (`triggerUpdatePattern` → the same file picker, carrying the target id → a confirm sheet for CSV, the preview sheet titled "Update pattern" for a chart). Either format can update either. Matching by id was too fragile: a chart's id is a slug of its name, and with family sync two people's same-named charts would have overwritten each other. It takes a pattern CSV (`docs/pattern-csv-template.md`) or a chart export `.stitchchart.json` (`docs/stitchchart-import.md`); `handlePatternFileText` decides by content. Both become **custom patterns** in `pt3_custom_patterns` — never committed, so bought patterns are fine. A chart import shows a preview sheet first (name, thumbnail, stitch counts, flat/round, RS/WS row 1) and becomes one `hasChart` phase. Per-cell yarn colours live in `phase.chartColors`, a grid parallel to the chart — kept separate so nothing that reads `CHART_B` changes. The export's `referenceImage` is never stored. An unknown stitch id blocks the import: **ask before adding** to `STITCHCHART_IDS`/`GLOSSARY`.
+**New project → Import pattern** always adds a **new** pattern: `putCustomPattern` gives it its own id (`newCustomPatternId` — the file's id/name slugged plus a random suffix), so a file never replaces anything by matching an id or name. **Replacing is only the explicit Update button on an imported pattern's tile** in the picker (`triggerUpdatePattern` → the same file picker, carrying the target id → a confirm sheet for CSV, the preview sheet titled "Update pattern" for a chart). Either format can update either. A CSV with a `sizes` cell and `{a|b|c}` placeholders (docs/pattern-csv-template.md) imports as a **sized template** — the same `sizes` + `buildPhases(i)` shape `hatsuki.js` uses, rebuilt on load from `sizedPhases` since a function can't be saved or synced; `dropSizedCache(id)` must run whenever a custom template is replaced or removed. Matching by id was too fragile: a chart's id is a slug of its name, and with family sync two people's same-named charts would have overwritten each other. It takes a pattern CSV (`docs/pattern-csv-template.md`) or a chart export `.stitchchart.json` (`docs/stitchchart-import.md`); `handlePatternFileText` decides by content. Both become **custom patterns** in `pt3_custom_patterns` — never committed, so bought patterns are fine. A chart import shows a preview sheet first (name, thumbnail, stitch counts, flat/round, RS/WS row 1) and becomes one `hasChart` phase. Per-cell yarn colours live in `phase.chartColors`, a grid parallel to the chart — kept separate so nothing that reads `CHART_B` changes. The export's `referenceImage` is never stored. An unknown stitch id blocks the import: **ask before adding** to `STITCHCHART_IDS`/`GLOSSARY`.
 
 #### Custom pattern sync — shared per family
 `js/cloud/patternsync.js` + the `custom_patterns` table (`supabase/migrations/20260924120000_custom_patterns.sql`). Without it a project started from an imported pattern synced to devices that had no pattern to open it with.
@@ -229,6 +231,10 @@ Legacy aliases: `--bg`, `--card`, `--border`, `--text`, `--muted`, `--accent`, `
 - `save()` / `loadProjectState()` / `loadGlobal()` / `migrateLegacy()` — persistence
 - `renderGlobalRows()` — updates the header Rows tally in place
 - `showUpdateBanner(worker)` / `applyUpdate()` — PWA update prompt
+- `checkHtml` / `checkboxAttrs` / `stepperBtnHtml` (`js/core/ui.js`) — the tick box (`.check`, ticked via the ancestor's `.done`), the attributes that make a clickable `.step` / `.rep-row` / confirm row a keyboard-operable `role="checkbox"` (a global keydown handler in `ui.js` turns Enter/Space into a click), and the round ± button (`.stepper-btn--sm|lg`). Every toggle calls `render()`, so `aria-checked` is rebuilt each time — and focus is lost with it.
+- `swatchHtml` / `chipHtml` (`js/core/ui.js`) — a colour sample (`.swatch`, `--xs|sm|round`; the colour is escaped into the style attribute) and an outlined pill label (`.chip`, `--lead`). `.card` is the raised surface shared by `.lib-card`, the active step, the active repeat and the title menu. The yarn/colour *pickers* (`.yarn-pick`, `.color-edit-swatch`, `.color-swatch-opt`) are controls, not samples, and stay separate.
+- `rowHtml` (`js/core/ui.js`) — `.row` with `.row-lead` / `.row-main` / `.row-trail` slots (all trusted markup) and `--sm` / `--baseline` / `--divided`; used by the account, family, PDF-storage and yarn rows.
+- `btnHtml` / `msgHtml` / `sheetBodyHtml` (`js/core/ui.js`) — buttons (`.btn` + `--primary|accent|danger|slim|lg|block`), inline messages (`.msg` + `--error|ok|note|plain`), and the message→detail→body→error→actions→note stack inside a sheet. Each says in its signature which strings are escaped (`label`, `text`, `message`) and which are trusted markup (`labelHtml`, `html`, `messageHtml`).
 - `openSheet(title, html, opts)` / `sheetConfirm` / `sheetPrompt` — the bottom-sheet primitive; **use these, never `prompt()`/`confirm()`** (unreliable in Chrome Custom Tabs, which is where magic links open)
 
 **Original PDF (`js/core/pdf.js`)**

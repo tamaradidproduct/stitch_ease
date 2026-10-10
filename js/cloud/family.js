@@ -149,10 +149,11 @@ function familyBlockHtml() {
     ? 'Just you — patterns and PDFs you add stay in your account'
     : n + ' people share patterns and PDFs';
 
-  const rows = others.map(m => `<div class="fam-row">
-      <div class="fam-email">${escapeHtml(m.email || 'Member')}</div>
-      <div class="fam-role">${escapeHtml(m.role === 'owner' ? 'started the family' : 'member')}</div>
-    </div>`).join('');
+  const rows = others.map(m => rowHtml({
+    variant: ['sm', 'baseline'],
+    main: `<div class="fam-email">${escapeHtml(m.email || 'Member')}</div>`,
+    trail: `<div class="fam-role">${escapeHtml(m.role === 'owner' ? 'started the family' : 'member')}</div>`,
+  })).join('');
 
   return `<div class="acct-family">
       <div class="acct-family-head">
@@ -161,11 +162,11 @@ function familyBlockHtml() {
       </div>
       ${rows ? `<div class="fam-list">${rows}</div>` : ''}
       <div class="sheet-actions">
-        <button class="sheet-btn slim" id="fam-invite">Invite someone</button>
-        <button class="sheet-btn slim" id="fam-join">Join with a code</button>
+        <button class="btn btn--slim" id="fam-invite">Invite someone</button>
+        <button class="btn btn--slim" id="fam-join">Join with a code</button>
       </div>
       <div id="fam-msg"></div>
-      <p class="acct-note">Imported patterns and pattern PDFs are shared across your family. Projects and row counts stay yours alone.</p>
+      <p class="msg msg--note">Imported patterns and pattern PDFs are shared across your family. Projects and row counts stay yours alone.</p>
     </div>`;
 }
 
@@ -188,7 +189,7 @@ function wireFamilyBlock(el) {
 function familyMsg(text, ok) {
   const box = document.getElementById('fam-msg');
   if (!box) return;
-  box.innerHTML = `<p class="${ok ? 'acct-ok' : 'acct-err'}">${escapeHtml(text)}</p>`;
+  box.innerHTML = msgHtml({ kind: ok ? 'ok' : 'error', text });
 }
 
 // The code is shown, not emailed. Sending mail would need an edge function and
@@ -198,10 +199,10 @@ function showFamilyCode(code) {
     <p class="sheet-msg">Give them this code. It works once, and expires in 7 days.</p>
     <div class="fam-code" id="fam-code">${escapeHtml(code)}</div>
     <div class="sheet-actions">
-      <button class="sheet-btn" onclick="dismissSheet()">Done</button>
-      <button class="sheet-btn primary" id="fam-copy">Copy code</button>
+      <button class="btn" onclick="dismissSheet()">Done</button>
+      <button class="btn btn--primary" id="fam-copy">Copy code</button>
     </div>
-    <p class="acct-note">They sign in on their own device, open Account, and tap “Join with a code”. They’ll see your imported patterns and pattern PDFs — not your projects or row counts.</p>`, {
+    <p class="msg msg--note">They sign in on their own device, open Account, and tap “Join with a code”. They’ll see your imported patterns and pattern PDFs — not your projects or row counts.</p>`, {
     onOpen: el => {
       el.querySelector('#fam-copy').onclick = () => {
         const btn = el.querySelector('#fam-copy');
@@ -224,11 +225,11 @@ function openJoinFamilySheet() {
            autocapitalize="characters" autocomplete="off" spellcheck="false"
            placeholder="ABCD2345" aria-label="Invite code">
     <div class="sheet-actions">
-      <button class="sheet-btn" onclick="dismissSheet()">Cancel</button>
-      <button class="sheet-btn primary" id="fam-join-go">Join</button>
+      <button class="btn" onclick="dismissSheet()">Cancel</button>
+      <button class="btn btn--primary" id="fam-join-go">Join</button>
     </div>
     <div id="fam-join-msg"></div>
-    <p class="acct-note">You’ll see their imported patterns and pattern PDFs, and they’ll see yours. Your projects and row counts stay yours.</p>`, {
+    <p class="msg msg--note">You’ll see their imported patterns and pattern PDFs, and they’ll see yours. Your projects and row counts stay yours.</p>`, {
     onOpen: el => {
       const input = el.querySelector('#fam-code-input');
       const go = el.querySelector('#fam-join-go');
@@ -246,11 +247,11 @@ function openJoinFamilySheet() {
           // The server's own words are the useful ones here — "code expired"
           // and "code already used" need different actions from the reader.
           const m = (e && e.message) || '';
-          msg.innerHTML = `<p class="acct-err">${escapeHtml(
+          msg.innerHTML = msgHtml({ kind: 'error', text:
             /expired/i.test(m)   ? 'That code has expired. Ask for a new one.' :
             /already used/i.test(m) ? 'That code has already been used. Ask for a new one.' :
             /invalid/i.test(m)   ? 'That code isn’t recognised. Check it and try again.' :
-            'Couldn’t join just now. Check your connection and try again.')}</p>`;
+            'Couldn’t join just now. Check your connection and try again.' });
           go.disabled = false; go.textContent = 'Join';
         }
       };

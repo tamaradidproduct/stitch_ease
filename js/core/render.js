@@ -144,8 +144,8 @@ function entryHtml(e, isActive) {
 function noteOrRowEntryHtml(e, isActive) {
   const done = entryDone(e, entryProg);
   const cls = done ? 'done' : isActive ? 'active' : '';
-  return `<div class="step ${cls}" onclick="toggleEntry('${e.id}')">
-    <div class="step-circle">${CHECK_SVG}</div>
+  return `<div class="step ${cls}"${checkboxAttrs(done)} onclick="toggleEntry('${e.id}')">
+    ${checkHtml()}
     <div class="step-body">
       <div class="step-text">${e.text.replace(/\n/g, '<br>')}</div>
       ${e.sub ? `<div class="step-sub">${e.sub}</div>` : ''}
@@ -187,7 +187,7 @@ function repeatEntryHtml(e, isActive) {
     return `<div class="step repeat-step ${cls} collapsed">
       <div class="step-body">
         <div class="repeat-head" onclick="toggleRepeatExpand('${e.id}')">
-          <div class="step-circle" onclick="toggleRepeatDone('${e.id}', event)">${CHECK_SVG}</div>
+          ${checkHtml({ done, label: 'Whole repeat done', onclick: `toggleRepeatDone('${e.id}', event)` })}
           <div class="repeat-head-text">
             <div class="repeat-head-title-row">
               <div class="step-text">${title}</div>
@@ -204,8 +204,8 @@ function repeatEntryHtml(e, isActive) {
   const rows = e.rows.map((r, i) => {
     const n = i + 1;
     const rcls = done ? 'done' : n < pos.z ? 'done' : n === pos.z ? 'now' : '';
-    return `<li class="rep-row ${rcls}" onclick="toggleRepeatRow('${e.id}',${n})">
-      <span class="rep-check">${CHECK_SVG}</span>
+    return `<li class="rep-row ${rcls}"${checkboxAttrs(rcls === 'done')} onclick="toggleRepeatRow('${e.id}',${n})">
+      ${checkHtml({ sm: true })}
       <span class="rep-n">${n}</span>
       <div class="rep-t">${r.text}${r.sub ? `<div class="step-sub">${r.sub}</div>` : ''}</div>
     </li>`;
@@ -225,19 +225,19 @@ function repeatEntryHtml(e, isActive) {
   return `<div class="step repeat-step ${cls}">
     <div class="step-body">
       <div class="repeat-head">
-        <div class="step-circle" onclick="toggleRepeatDone('${e.id}', event)">${CHECK_SVG}</div>
+        ${checkHtml({ done, label: 'Whole repeat done', onclick: `toggleRepeatDone('${e.id}', event)` })}
         <div class="repeat-head-text">
           <div class="step-text">${title}</div>
           <div class="repeat-head-sub">repeat unit</div>
         </div>
         ${collapseBtn}
         <div class="rep-pass">
-          <button class="rep-pass-btn" onclick="advanceRepeatPass('${e.id}',-1)" aria-label="Previous pass">−</button>
+          ${stepperBtnHtml({ dir: 'minus', onclick: `advanceRepeatPass('${e.id}',-1)`, label: 'Previous pass' })}
           <span class="rep-pass-lbl">${passLabel}</span>
-          <button class="rep-pass-btn" onclick="advanceRepeatPass('${e.id}',1)" aria-label="Next pass">+</button>
+          ${stepperBtnHtml({ dir: 'plus', onclick: `advanceRepeatPass('${e.id}',1)`, label: 'Next pass' })}
         </div>
       </div>
-      <ul class="rep-rows">${rows}</ul>
+      <ul class="rep-rows" role="group">${rows}</ul>
     </div>
   </div>`;
 }
@@ -351,9 +351,9 @@ function renderPhase() {
       '</div></div></div>';
 
     html += '<div class="nav-btns">';
-    if (cur > 0) html += `<button class="nav-btn" onclick="go(${cur - 1})">← Back</button>`;
-    if (cur < PHASES.length - 1) html += `<button class="nav-btn primary" onclick="go(${cur + 1})">Next →</button>`;
-    else html += `<button class="nav-btn primary" onclick="showFinishedScreen()">Finished! 🎉</button>`;
+    if (cur > 0) html += btnHtml({ label: '← Back', variant: 'lg', cls: 'nav-btn', onclick: `go(${cur - 1})` });
+    if (cur < PHASES.length - 1) html += btnHtml({ label: 'Next →', variant: ['primary', 'lg'], cls: 'nav-btn', onclick: `go(${cur + 1})` });
+    else html += btnHtml({ label: 'Finished! 🎉', variant: ['primary', 'lg'], cls: 'nav-btn', onclick: 'showFinishedScreen()' });
     html += '</div>';
   }
 
@@ -442,7 +442,7 @@ function openNotes() {
     // pattern-only note keeps working exactly as before.
     const glossary = n.def ? null : (typeof glossaryEntry === 'function' ? glossaryEntry(n.term) : null);
     const def = n.def || (glossary && glossary.def) || '';
-    return `<div class="note-row">
+    return `<div class="row row--baseline note-row">
       <span class="note-term">${art ? `<span class="note-sym">${art}</span>` : ''}${n.term ? escapeHtml(n.term) : ''}</span>
       <span class="note-def">${escapeHtml(def)}</span>
     </div>`;
@@ -479,7 +479,7 @@ function openColorSheet() {
     const grid = YARN_SWATCH_GRID.map(hex =>
       `<button type="button" class="color-swatch-opt" style="background:${hex}" data-hex="${hex}" onclick="pickColorSwatch(${i},'${hex}')" aria-label="${hex}"></button>`
     ).join('');
-    return `<div class="color-edit-row">
+    return `<div class="row row--sm color-edit-row">
       <button type="button" class="color-edit-swatch" id="color-preview-${i}" data-hex="${hex}"
               style="background:${hex}" onclick="toggleColorGrid(${i})" aria-label="Choose color"></button>
       <input class="sheet-input color-edit-name" type="text" id="color-name-${i}" value="${escapeHtml(c.name)}" aria-label="Color name">
@@ -488,8 +488,8 @@ function openColorSheet() {
   }).join('');
   const body = `${rows}
     <div class="sheet-actions">
-      <button class="sheet-btn" onclick="dismissSheet()">Cancel</button>
-      <button class="sheet-btn primary" id="sheet-ok">Save</button>
+      ${btnHtml({ label: 'Cancel', onclick: 'dismissSheet()' })}
+      ${btnHtml({ label: 'Save', variant: 'primary', id: 'sheet-ok' })}
     </div>`;
   openSheet('Yarn colors', body, {
     onOpen: el => {
@@ -527,12 +527,14 @@ function pickColorSwatch(i, hex) {
 // `if (!confirm(...)) return;` have to move their work into onConfirm.
 
 function sheetConfirm(o) {
-  const body = `<p class="sheet-msg">${escapeHtml(o.message)}</p>
-    ${o.detail ? `<p class="sheet-sub">${escapeHtml(o.detail)}</p>` : ''}
-    <div class="sheet-actions">
-      <button class="sheet-btn" onclick="dismissSheet()">${escapeHtml(o.cancelLabel || 'Cancel')}</button>
-      <button class="sheet-btn ${o.danger ? 'danger' : 'primary'}" id="sheet-ok">${escapeHtml(o.confirmLabel || 'OK')}</button>
-    </div>`;
+  const body = sheetBodyHtml({
+    message: o.message,
+    detail: o.detail || null,
+    actions: [
+      btnHtml({ label: o.cancelLabel || 'Cancel', onclick: 'dismissSheet()' }),
+      btnHtml({ label: o.confirmLabel || 'OK', variant: o.danger ? 'danger' : 'primary', id: 'sheet-ok' }),
+    ],
+  });
   openSheet(o.title, body, {
     onDismiss: o.onCancel,
     onOpen: el => {
@@ -542,13 +544,15 @@ function sheetConfirm(o) {
 }
 
 function sheetPrompt(o) {
-  const body = `${o.message ? `<p class="sheet-msg">${escapeHtml(o.message)}</p>` : ''}
-    <input class="sheet-input" id="sheet-input" type="text"
-           value="${escapeHtml(o.value || '')}" aria-label="${escapeHtml(o.title)}">
-    <div class="sheet-actions">
-      <button class="sheet-btn" onclick="dismissSheet()">Cancel</button>
-      <button class="sheet-btn primary" id="sheet-ok">${escapeHtml(o.confirmLabel || 'Save')}</button>
-    </div>`;
+  const body = sheetBodyHtml({
+    message: o.message || null,
+    body: `<input class="sheet-input" id="sheet-input" type="text"
+           value="${escapeHtml(o.value || '')}" aria-label="${escapeHtml(o.title)}">`,
+    actions: [
+      btnHtml({ label: 'Cancel', onclick: 'dismissSheet()' }),
+      btnHtml({ label: o.confirmLabel || 'Save', variant: 'primary', id: 'sheet-ok' }),
+    ],
+  });
   openSheet(o.title, body, {
     onDismiss: o.onCancel,
     onOpen: el => {
@@ -681,8 +685,8 @@ function showFinishedScreen() {
       <div class="finished-title">${proj ? escapeHtml(proj.name) : 'Your project'} is finished!</div>
       <div class="finished-sub">Every step of ${pat ? escapeHtml(pat.name) : 'the pattern'} is complete — nice work.</div>
       <div class="finished-actions">
-        <button class="finished-btn primary" onclick="closeFinishedScreen(); goHome();">Back to library</button>
-        <button class="finished-btn" onclick="closeFinishedScreen()">Keep reviewing</button>
+        ${btnHtml({ label: 'Back to library', variant: 'accent', onclick: 'closeFinishedScreen(); goHome();' })}
+        ${btnHtml({ label: 'Keep reviewing', onclick: 'closeFinishedScreen()' })}
       </div>
     </div>`;
   document.body.appendChild(scrim);
@@ -792,7 +796,7 @@ function renderHome() {
       const pr = projectProgress(proj);
       const pat = livePatternFor(proj);
       const meta = pat ? [pat.badge, pat.desc].filter(Boolean).join(' · ') : '';
-      return `<div class="lib-card proj-card" onclick="openProject('${proj.id}')">
+      return `<div class="card lib-card proj-card" onclick="openProject('${proj.id}')">
         <div class="lib-card-top">
           <span class="lib-card-name">${escapeHtml(proj.name)}</span>
           <span class="lib-card-pct">${pr.pct}%</span>
@@ -837,7 +841,7 @@ function glossaryListHtml(crafts) {
           <div class="glossary-group-name">${escapeHtml(g.name)}</div>
           ${g.terms.map(t => {
             const art = t.sym ? SYMS[t.sym] : null;
-            return `<div class="note-row">
+            return `<div class="row row--baseline note-row">
             <span class="note-term">${art ? `<span class="note-sym">${art}</span>` : ''}${escapeHtml(t.abbr || t.term)}</span>
             <span class="note-def">${t.abbr ? `<strong>${escapeHtml(t.term)}.</strong> ` : ''}${escapeHtml(t.def)}</span>
           </div>`;
@@ -877,7 +881,7 @@ function renderPicker() {
   renderHeader();
   // Imported patterns carry an explicit Update: the only way a file replaces
   // an existing pattern (see putCustomPattern in patternImport.js).
-  const cards = PATTERNS.map(p => `<div class="lib-card proj-card" onclick="choosePattern('${p.id}')">
+  const cards = PATTERNS.map(p => `<div class="card lib-card proj-card" onclick="choosePattern('${p.id}')">
       <div class="lib-card-top"><span class="lib-card-name">${p.name}</span></div>
       <div class="lib-card-meta">${[p.badge, p.desc].filter(Boolean).join(' · ')}</div>
       ${p.custom ? `<div class="lib-card-bottom">
@@ -890,7 +894,7 @@ function renderPicker() {
   document.getElementById('phase-content').innerHTML =
     `<div class="picker-drop" ondragover="event.preventDefault()" ondrop="onPickerDrop(event)">
     <div class="picker-hint">Choose a pattern for your new project</div><div class="lib-list">${cards}</div>
-    <button class="picker-import-btn" onclick="triggerImportPattern()">Import pattern</button>
+    ${btnHtml({ label: 'Import pattern', variant: 'block', cls: 'picker-import-btn', onclick: 'triggerImportPattern()' })}
     <div class="picker-import-sub">A chart export (.stitchchart.json) or a pattern CSV</div>
     <input type="file" id="pattern-csv-input" accept=".json,.csv,application/json,text/csv" style="display:none"
            onchange="handlePatternCsvFile(this)"></div>`;
@@ -994,22 +998,23 @@ function openPatternUpdateSheet() {
   // lost reads as a warning when it is the only thing in the box.
   const lost = sum.ticks - sum.kept;
   const lostNote = lost > 0
-    ? `<p class="acct-err">${lost === 1 ? 'One tick belongs to a step that no longer exists'
-        : lost + ' ticks belong to steps that no longer exist'} — they stay saved, and come back if the step does.</p>`
-    : '';
+    ? (lost === 1 ? 'One tick belongs to a step that no longer exists'
+        : lost + ' ticks belong to steps that no longer exist') + ' — they stay saved, and come back if the step does.'
+    : null;
 
-  openSheet('Pattern updated', `
-    <p class="sheet-msg">A newer version of this pattern is available.</p>
-    <div class="pu-facts">
+  openSheet('Pattern updated', sheetBodyHtml({
+    message: 'A newer version of this pattern is available.',
+    body: `<div class="pu-facts">
       <div class="pu-line">${escapeHtml(changeLine)}</div>
       <div class="pu-line">${escapeHtml(kept)}</div>
-    </div>
-    ${lostNote}
-    <div class="sheet-actions">
-      <button class="sheet-btn" onclick="dismissSheet()">Not now</button>
-      <button class="sheet-btn primary" id="pu-adopt">Use the new version</button>
-    </div>
-    <p class="acct-note">Until you take it, this project keeps the version you started on. Nothing is deleted either way.</p>`,
+    </div>`,
+    error: lostNote,
+    actions: [
+      btnHtml({ label: 'Not now', onclick: 'dismissSheet()' }),
+      btnHtml({ label: 'Use the new version', variant: 'primary', id: 'pu-adopt' }),
+    ],
+    note: 'Until you take it, this project keeps the version you started on. Nothing is deleted either way.',
+  }),
     {
       onOpen: el => {
         el.querySelector('#pu-adopt').onclick = () => {
