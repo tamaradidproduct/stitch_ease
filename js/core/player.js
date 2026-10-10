@@ -288,6 +288,15 @@ function spFcRecenter() {
   if (el) el.scrollIntoView({ block: 'center' });
 }
 
+// The glossary button: a bottom sheet with this row's stitches and the pattern's own notes, and a
+// way on to the whole glossary. Looking only.
+function openStitchSheet() {
+  const p = PHASES[cur], rows = spRowsFor(p), c = stepCursor(p);
+  const v = Math.min(rows.length, spViewedRow !== null ? spViewedRow : c + 1);
+  const row = rows[v - 1], pat = typeof activePattern === 'function' ? activePattern() : null;
+  openSheet('Stitches', spStitchSheetHtml(row ? spRowStitches(p, row) : [], (pat && pat.notes) || []));
+}
+
 function spToggleSetup() { spSetupOpen = !spSetupOpen; spRender(); }
 function spToggleNotes() { spNotesOpen = !spNotesOpen; spRender(); }
 

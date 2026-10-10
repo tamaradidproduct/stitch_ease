@@ -146,6 +146,24 @@ function stepViewsSelfTest() {
     spViewedRow = null;
     check('selecting a row of the repeat while the cursor is elsewhere expands it', has(other, 'sp-card--repeat'), true);
 
+    // ── Stitches on this row and the stitch sheet ──
+    const names = list => list.map(i => i.term);
+    check('stitches found in a written instruction, in order, without English words',
+      names(spStitchesInText('k2, yo, k2tog, *p1, k3* rep to end of row', 'Knitting', [])), ['Knit', 'Yarn over', 'Knit two together', 'Purl']);
+    check('a pattern\'s own terms are found too, with the pattern\'s definition',
+      spStitchesInText('Work DS, then k1', 'Knitting', [{ term: 'DS', def: 'Double stitch: turn and slip.' }]).map(i => i.term + '=' + i.def), ['DS=Double stitch: turn and slip.', 'Knit=' + glossaryEntry('k').def]);
+    check('craft keeps tatting terms out of knitting rows', names(spStitchesInText('Join and R', 'Knitting', [])), []);
+    check('nothing found: no items', spStitchesInText('Work in pattern to the end.', 'Knitting', []), []);
+    const strip = spGlossaryBar(spStitchesInText('k2, yo, k2tog, p1, ssk', 'Knitting', []));
+    check('the written-row strip lists the first three stitches, +N and a button that opens the stitch sheet',
+      [has(strip, 'Knit'), has(strip, 'Yarn over'), has(strip, '+2'), has(strip, 'openStitchSheet()'), has(strip, 'openGlossary()')], [true, true, true, true, false]);
+    check('the strip falls back to a label when no stitch is found', has(spGlossaryBar([]), 'Stitch glossary'), true);
+    check('the chart legend button opens the stitch sheet too', [has(spLegendLine({ K: 1, P: 1 }), 'openStitchSheet()'), has(spLegendLine({ K: 1, P: 1 }), 'openGlossary()')], [true, false]);
+    const sheet = spStitchSheetHtml(spStitchesInText('k2, yo', 'Knitting', []), [{ term: 'DS', def: 'Double stitch.' }]);
+    check('the stitch sheet: this row, this pattern, and a link to the full glossary',
+      [has(sheet, 'ON THIS ROW'), has(sheet, 'Yarn over'), has(sheet, 'IN THIS PATTERN'), has(sheet, 'Double stitch.'), has(sheet, 'Full glossary')], [true, true, true, true, true]);
+    check('the stitch sheet with nothing on the row still offers the glossary', [has(spStitchSheetHtml([], []), 'ON THIS ROW'), has(spStitchSheetHtml([], []), 'Full glossary')], [false, true]);
+
     // ── App shell: the document never scrolls on step screens ──
     check('playlist: everything under the bar lives in one scroll container',
       [count(pl, 'class="sp-scroll"'), pl.indexOf('ui-top') < pl.indexOf('sp-scroll'), pl.indexOf('sp-scroll') < pl.indexOf('sp-row')], [1, true, true]);

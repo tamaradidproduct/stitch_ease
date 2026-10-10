@@ -222,14 +222,83 @@ function spLegendLine(types) {
   const shown = keys.slice(0, 3), more = keys.length - shown.length;
   const item = t => `<span class="sp-leg"><span class="sp-leg-cc">${SYMS[t] || ''}</span>${SP_STITCH_NAMES[t] || t.toLowerCase()}</span>`;
   return `<div class="sp-legend">${item('K')}${shown.map(item).join('')}${more > 0 ? `<span class="sp-leg-more">+${more}</span>` : ''}` +
-    uiIconButton({ icon: typeof GLOSSARY_SVG === 'undefined' ? '?' : GLOSSARY_SVG, label: 'Glossary', onclick: 'openGlossary()' }) + '</div>';
+    uiIconButton({ icon: typeof GLOSSARY_SVG === 'undefined' ? '?' : GLOSSARY_SVG, label: 'Glossary', onclick: 'openStitchSheet()' }) + '</div>';
 }
 
-// A row with no chart still gets the glossary strip: the same bar as under a chart, with a label
-// where the stitches would be.
-function spGlossaryBar() {
-  return `<div class="sp-legend sp-legend--bare"><span class="sp-leg-more">Stitch glossary</span>` +
-    uiIconButton({ icon: typeof GLOSSARY_SVG === 'undefined' ? '?' : GLOSSARY_SVG, label: 'Glossary', onclick: 'openGlossary()' }) + '</div>';
+// ── Stitches on a row ──
+// The glossary entry's chart symbol, where the chart draws one (keys of SYMS).
+const SP_GLOSSARY_SYM = { p: 'P', yo: 'YO', k2tog: 'K2', skpo: 'SK', ssk: 'SKA', m1: 'M1', m1l: 'M1L', m1r: 'M1R', ssp: 'SSP',
+  p2tog: 'P2TOG', ktbl: 'KTBL', ptbl: 'PTBL', tk2tog: 'TK2TOG', tssk: 'TSSK', brk: 'BRK', brp: 'BRP' };
+
+function spSymFor(entry) {
+  const key = entry && entry.abbr ? SP_GLOSSARY_SYM[entry.abbr.split('/')[0].trim().toLowerCase()] : null;
+  return key && typeof SYMS !== 'undefined' ? SYMS[key] || '' : '';
+}
+
+// The stitches a row's text names, in order of appearance, each once: the pattern's own terms
+// (with the pattern's definition) first-class, then the craft's glossary. Only abbreviations and
+// one-word terms are matched, so ordinary words are left alone; a trailing count ('k13') is ignored.
+function spStitchesInText(text, craft, notes) {
+  const plain = String(text || '').replace(/<[^>]*>/g, ' ');
+  const own = {};
+  (notes || []).forEach(n => { if (n && n.term) own[String(n.term).toLowerCase()] = n; });
+  const seen = {}, out = [];
+  (plain.match(/[A-Za-z][A-Za-z0-9&]*/g) || []).forEach(tok => {
+    const t = tok.toLowerCase(), letters = t.replace(/\d+$/, '');
+    const note = own[t] || own[letters];
+    let item = null;
+    if (note) {
+      const gl = note.def ? null : (typeof glossaryEntry === 'function' ? glossaryEntry(note.term) : null);
+      item = { term: note.term, def: note.def || (gl && gl.def) || '', sym: note.sym && typeof SYMS !== 'undefined' ? SYMS[note.sym] || '' : (note.symbol || '') };
+    } else {
+      const e = glossaryEntryIn(craft, t) || glossaryEntryIn(craft, letters);
+      if (e) item = { term: e.term, def: e.def, sym: spSymFor(e) };
+    }
+    if (item && !seen[item.term]) { seen[item.term] = true; out.push(item); }
+  });
+  return out;
+}
+
+// What the stitch sheet and the strip list for a row: the chart row's own stitches on a chart
+// row, otherwise the stitches its text names.
+function spRowStitches(p, row) {
+  const pat = typeof activePattern === 'function' ? activePattern() : null;
+  const notes = (pat && pat.notes) || [];
+  const craft = /tatting/i.test(((pat && pat.badge) || '') + ' ' + ((pat && pat.desc) || '')) ? 'Tatting' : 'Knitting';
+  const chart = spChartFor(p, row), cr = row && row.def && row.def.chartRow;
+  if (chart && cr && chart[cr - 1]) {
+    const types = {};
+    chart[cr - 1].forEach(t => { types[parseColorCell(t).t] = true; });
+    return Object.keys(types).filter(t => t !== 'E').map(t => {
+      const e = glossaryEntry(SP_STITCH_NAMES[t] || t);
+      return { term: e ? e.term : (SP_STITCH_NAMES[t] || t), def: e ? e.def : '', sym: SYMS[t] || '' };
+    });
+  }
+  return spStitchesInText(spText(row), craft, notes);
+}
+
+// The strip under a row with no chart: the same bar as under a chart, listing the stitches the
+// row names (the first three, then "+N"), and the button that opens the stitch sheet.
+function spGlossaryBar(items) {
+  const shown = (items || []).slice(0, 3), more = (items || []).length - shown.length;
+  const one = i => `<span class="sp-leg"><span class="sp-leg-cc">${i.sym || ''}</span>${escapeHtml(i.term)}</span>`;
+  return `<div class="sp-legend sp-legend--bare">${shown.length ? shown.map(one).join('') + (more > 0 ? `<span class="sp-leg-more">+${more}</span>` : '') : '<span class="sp-leg-more">Stitch glossary</span>'}` +
+    uiIconButton({ icon: typeof GLOSSARY_SVG === 'undefined' ? '?' : GLOSSARY_SVG, label: 'Glossary', onclick: 'openStitchSheet()' }) + '</div>';
+}
+
+// The bottom sheet behind the glossary button: this row's stitches, the pattern's own notes,
+// and a way on to the whole glossary.
+function spStitchSheetHtml(items, notes) {
+  const row = (term, def, sym) => `<div class="note-row"><span class="note-term">${sym ? `<span class="note-sym">${sym}</span>` : ''}${escapeHtml(term)}</span><span class="note-def">${escapeHtml(def || '')}</span></div>`;
+  const shown = {};
+  (items || []).forEach(i => { shown[i.term] = true; });
+  const own = (notes || []).filter(n => n && n.term && !shown[n.term]).map(n => {
+    const gl = n.def ? null : (typeof glossaryEntry === 'function' ? glossaryEntry(n.term) : null);
+    return row(n.term, n.def || (gl && gl.def) || '', n.sym && typeof SYMS !== 'undefined' ? SYMS[n.sym] || '' : (n.symbol || ''));
+  });
+  return (items && items.length ? `<h4 class="sp-sh-h">ON THIS ROW</h4>${items.map(i => row(i.term, i.def, i.sym)).join('')}` : '') +
+    (own.length ? `<h4 class="sp-sh-h">IN THIS PATTERN</h4>${own.join('')}` : '') +
+    '<button class="sheet-btn sp-sh-full" onclick="closeSheet(); openGlossary()">Full glossary ›</button>';
 }
 
 // The stitch count after this row, from the row's optional `sts`: a number, or an array
@@ -375,6 +444,6 @@ function spPlayerHtml(p, cursor, total, rows) {
   const call = done ? `spMarkIncomplete(${v})` : `spDone(${v})`;
   const chart = spChartFor(p, row);
   return spTopBarHtml(p, cursor, total, { onBack: 'spClosePlayer()' }) +
-    `<div class="sp-player">${row.step.kind === 'repeat' ? '' : spPlayerHeadHtml(row, v, total)}${row.step.kind === 'repeat' ? spRepeatCardHtml(rows.filter(r => r.step === row.step), row, v, !!chart) : spPlayerCardHtml(p, row, v, total, !!chart)}${chart ? spChartRegionHtml(p, row, chart) : spGlossaryBar()}</div>` +
+    `<div class="sp-player">${row.step.kind === 'repeat' ? '' : spPlayerHeadHtml(row, v, total)}${row.step.kind === 'repeat' ? spRepeatCardHtml(rows.filter(r => r.step === row.step), row, v, !!chart) : spPlayerCardHtml(p, row, v, total, !!chart)}${chart ? spChartRegionHtml(p, row, chart) : spGlossaryBar(spRowStitches(p, row))}</div>` +
     spDockHtml(label, call, done ? 'outline' : undefined);
 }

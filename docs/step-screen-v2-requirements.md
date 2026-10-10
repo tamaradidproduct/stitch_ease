@@ -80,10 +80,11 @@ Product requirements from the interview of 2026-10-09. They revise the step scre
 
 - **In the playlist:** a repeat is one card for the whole block while it is current or selected: the pass line with − / +, the pass's rows, Setup, the end-of-pass count and Check, and a single `Open row ›` that opens the player on the selected row. Like any other row it is expanded only when it holds the selected row (the current row by default); otherwise it is one quiet line (`Repeat · 2 rows × 4`, tagged `CURRENT ROW · PASS n OF T` when the current row is inside it, with ✓ when done). The card's label carries the repeat's own summary (`REPEAT · 2 ROWS × 4`), not the section description.
 
-## 6. Glossary
-- A **dedicated glossary**, reached from the legend's **Glossary ›** link and from the library home as today. No tap-to-define on instruction text or chart symbols (too fiddly on a small screen).
-- Covers general stitches **and** the designer's pattern-specific stitches (the pattern's `notes`) together.
-- Searchable, as built.
+## 6. Glossary and the stitch sheet
+- The book icon in the strip under the card or chart opens a **bottom sheet** (not a page): `ON THIS ROW` lists the stitches the row uses with their definitions, `IN THIS PATTERN` lists the designer's own terms, and a `Full glossary ›` button opens the **dedicated glossary page**. Back from that page returns to the row.
+- On a chart row the stitches come from the chart row; on a row with no chart they are the stitches named in its text (abbreviations and one-word terms of the pattern's craft; the pattern's own terms with the pattern's definition). The strip under a chartless row lists the first three and `+N`.
+- No tap-to-define on instruction text or chart symbols (too fiddly on a small screen).
+- The glossary page is searchable, as built. Still open: listing the pattern's own terms on the glossary page itself (a follow-up Finding).
 
 ## 7. Computed stitch counts
 - **Source:** derived from the instruction and chart data. Patterns that already state a count keep it; Hatsuki's shoulder rows already show one (commits `753453e`, `588eda9`).

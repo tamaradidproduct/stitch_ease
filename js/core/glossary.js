@@ -147,3 +147,19 @@ function glossaryEntry(query) {
   if (!query) return null;
   return glossaryIndex[query.trim().toLowerCase()] || null;
 }
+
+// Like glossaryEntry(), but only among one craft's entries ('Knitting', 'Tatting'), so a bare
+// 'R' or 'Join' in a knitting row is not read as a tatting term. Used to find the stitches
+// named in a row's text.
+const glossaryCraftIndexes = {};
+function glossaryEntryIn(craft, query) {
+  if (!query) return null;
+  if (!glossaryCraftIndexes[craft]) {
+    const idx = {};
+    GLOSSARY.filter(c => c.craft === craft).forEach(c => c.groups.forEach(gr => gr.terms.forEach(t => {
+      [t.term].concat(t.abbr ? t.abbr.split('/') : []).forEach(k => { const key = k.trim().toLowerCase(); if (key && !idx[key]) idx[key] = t; });
+    })));
+    glossaryCraftIndexes[craft] = idx;
+  }
+  return glossaryCraftIndexes[craft][query.trim().toLowerCase()] || null;
+}

@@ -57,14 +57,14 @@ Fields per case: **Area · Priority · Preconditions · Steps · Expected**.
   - The chart runs edge to edge with no box around it.
   - The current row is on a sage band, with row numbers on both sides and stitch numbers across the top.
   - The symbols are the app's own (YO ring, k2tog and SKPO triangles, purl dot).
-  - The legend is one line: Knit plus up to three stitches, then `+N` if there are more, then a book icon at the right.
+  - The legend is one line: Knit plus up to three stitches, then `+N` if there are more, then a book icon at the right that opens the stitch sheet.
 
 **TC-07 Chartless row keeps its natural height** · Player · P1
 - Steps: open the player on **Written rows** row 2.
 - Expected:
   - No chart area is shown.
   - The card is only as tall as its content and does not stretch to fill the screen.
-  - Under the card there is still the glossary strip (`Stitch glossary` and the book icon), styled like the legend under a chart; the icon opens the glossary.
+  - Under the card there is still the glossary strip, styled like the legend under a chart: it lists the stitches named in the row's text (the first three, then `+N`), or just `Stitch glossary` when none are found, with the book icon at the right. The icon opens the stitch sheet.
 
 **TC-08 Dock labels and the one primary action** · Player · P0
 - Steps: in **Written rows**, open the player on row 1. Tap the main button. Tap ‹ to go back to row 1.
@@ -119,20 +119,19 @@ Fields per case: **Area · Priority · Preconditions · Steps · Expected**.
   - Both names end in an ellipsis.
   - The tally, document icon and ⋮ stay fully on screen, down to a 320 px window.
 
-**TC-15 Glossary: Back returns to the row** · Glossary · P0
-- Steps: open the player on **Chart** row 4. Tap the book icon at the right of the legend. In the glossary tap Back.
+**TC-15 Stitch sheet and glossary: Back returns to the row** · Glossary · P0
+- Steps: open the player on a row. Tap the book icon in the strip under the card or chart. In the bottom sheet tap `Full glossary ›`, then tap Back in the glossary. Repeat from the library's book icon.
 - Expected:
-  - The glossary opens.
-  - Back returns to the player on row 4, with the same row and Setup state, not to the library.
-  - Opening the glossary from the library's book icon and tapping Back still returns to the library.
+  - The book icon opens a bottom sheet titled `Stitches`, not a new page. It lists `ON THIS ROW` (each stitch the row uses, with its symbol where the chart has one, and its definition), then `IN THIS PATTERN` (the pattern's own notes, if any), and a `Full glossary ›` button. It closes with × or a tap outside.
+  - `Full glossary ›` opens the whole glossary page. Back from it returns to the same row in the player, with the same Setup state, not to the library.
+  - From the library's book icon, Back still returns to the library.
 
-**TC-33 Options menu closes and the trigger shows ✕** · Navigation · P0
-- Steps: tap ⋮ in the top bar. Tap outside the menu. Open it again and tap the ✕. Open it again and press Esc (desktop). Open it and tap `Reset "…"`.
+**TC-34 Stitches on the row** · Glossary · P1
+- Steps: in Written rows open row 1 (`k1, p1 rib to end`), then use the console to set a row's text, e.g. `spText = r => 'k2, yo, k2tog, *p1, k3* rep to end'; spRender()`, and open the stitch sheet.
 - Expected:
-  - While the menu is open the ⋮ reads as ✕.
-  - Tapping anywhere outside the menu, tapping the ✕ or pressing Esc closes it, and the trigger goes back to ⋮.
-  - Tapping a menu item closes the menu and opens its confirmation sheet.
-  - It never stacks two menus.
+  - The strip lists Knit, Yarn over, Knit two together, then `+1` (Purl); ordinary words such as `rep`, `to` and `end` are not listed.
+  - On a chart row the sheet lists the stitches in that chart row.
+  - If the pattern defines its own terms (for example `DS`), they appear with the pattern's definition.
 
 **TC-16 PDF button** · PDF · P1
 - Steps: tap the document icon in the top bar.

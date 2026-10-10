@@ -96,3 +96,6 @@ body.sp-on .content { padding: 0; }   /* the bars and cards bring their own gutt
 .sp-head-t { margin: 0; font-size: var(--fs-heading); font-weight: var(--fw-semibold); color: var(--c-text); }
 
 .sp-legend--bare { border: 1px solid var(--c-line); border-radius: var(--r-card); background: var(--c-card); }
+
+.sp-sh-h { margin: var(--s-4) 0 var(--s-1); font-size: var(--fs-caps); font-weight: var(--fw-bold); letter-spacing: .12em; color: var(--c-muted); }
+.sp-sh-full { margin-top: var(--s-5); width: 100%; }
