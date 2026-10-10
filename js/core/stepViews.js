@@ -68,14 +68,14 @@ function spRowHtml(row, cursor, total) {
     const rs = !rep && cr && spHasChart(PHASES[cur], row) ? (isRSRow(cr) ? 'RS' : 'WS') : '';
     const setup = co.before.length
       ? uiToggleSection({ label: 'SETUP', open: spSetupOpen, onclick: 'spToggleSetup()', html: co.before.map(t => `<p>${t}</p>`).join('') }) : '';
-    return `<article class="ui-card sp-row selected" data-row="${row.n}" onclick="spCardTap(event, ${row.n})">
+    return uiCard({ tag: 'article', cls: 'sp-row selected', attrs: `data-row="${row.n}" onclick="spCardTap(event, ${row.n})"`, html: `
       <div class="sp-card-top"><h3 class="sp-row-h">Row ${row.n}</h3>${current ? uiTag('Current') : done ? uiTag('Done', 'done') : ''}<span class="sp-card-top-r">${rs ? `<span class="sp-read">${rs}</span>` : ''}${rep ? '' : spPassNote(row)}</span></div>
       ${setup}
       <p class="sp-ins">${text}</p>
       ${spMiniChartHtml(PHASES[cur], row)}
       ${uiFacts({ count: cnt, check: co.after.join(' · ') || null })}
       ${uiButton({ label: 'Open row ›', onclick: `spOpenPlayer(${row.n})`, cls: 'sp-open-btn' })}
-    </article>`;
+    ` });
   }
   return `<article class="sp-row ${done ? 'done' : 'upcoming'}${current ? ' current' : ''}" data-row="${row.n}" onclick="spSelectRow(${row.n})">
     <span class="sp-row-n">${spLabel(row)}${done ? ' ✓' : ''}</span>
@@ -229,12 +229,19 @@ function spChartTypes(chart) {
 
 // One line, never wrapping: Knit, the first three other stitches used, "+N" for the
 // rest, and the glossary button at the right.
+// One strip of stitch chips with the glossary button at its end: the chart's legend (under the chart)
+// and the row's stitch bar (no chart) differ only in their chips, the empty line and the border.
+function spStripHtml({ chips, more, empty, bare }) {
+  const one = c => `<span class="sp-leg"><span class="sp-leg-cc">${c.sym || ''}</span>${escapeHtml(c.label)}</span>`;
+  return `<div class="sp-legend${bare ? ' sp-legend--bare' : ''}">${chips.length ? chips.map(one).join('') + (more > 0 ? `<span class="sp-leg-more">+${more}</span>` : '') : `<span class="sp-leg-more">${empty}</span>`}` +
+    uiIconButton({ icon: typeof GLOSSARY_SVG === 'undefined' ? '?' : GLOSSARY_SVG, label: 'Glossary', onclick: 'openStitchSheet()' }) + '</div>';
+}
+
 function spLegendLine(types) {
   const keys = Object.keys(types).filter(t => t !== 'E' && t !== 'K');
-  const shown = keys.slice(0, 3), more = keys.length - shown.length;
-  const item = t => `<span class="sp-leg"><span class="sp-leg-cc">${SYMS[t] || ''}</span>${SP_STITCH_NAMES[t] || t.toLowerCase()}</span>`;
-  return `<div class="sp-legend">${item('K')}${shown.map(item).join('')}${more > 0 ? `<span class="sp-leg-more">+${more}</span>` : ''}` +
-    uiIconButton({ icon: typeof GLOSSARY_SVG === 'undefined' ? '?' : GLOSSARY_SVG, label: 'Glossary', onclick: 'openStitchSheet()' }) + '</div>';
+  const shown = keys.slice(0, 3);
+  const chip = t => ({ sym: SYMS[t] || '', label: SP_STITCH_NAMES[t] || t.toLowerCase() });
+  return spStripHtml({ chips: [chip('K')].concat(shown.map(chip)), more: keys.length - shown.length, empty: '' });
 }
 
 // ── Stitches on a row ──
@@ -292,10 +299,8 @@ function spRowStitches(p, row) {
 // The strip under a row with no chart: the same bar as under a chart, listing the stitches the
 // row names (the first three, then "+N"), and the button that opens the stitch sheet.
 function spGlossaryBar(items) {
-  const shown = (items || []).slice(0, 3), more = (items || []).length - shown.length;
-  const one = i => `<span class="sp-leg"><span class="sp-leg-cc">${i.sym || ''}</span>${escapeHtml(i.term)}</span>`;
-  return `<div class="sp-legend sp-legend--bare">${shown.length ? shown.map(one).join('') + (more > 0 ? `<span class="sp-leg-more">+${more}</span>` : '') : '<span class="sp-leg-more">Stitch glossary</span>'}` +
-    uiIconButton({ icon: typeof GLOSSARY_SVG === 'undefined' ? '?' : GLOSSARY_SVG, label: 'Glossary', onclick: 'openStitchSheet()' }) + '</div>';
+  const all = items || [], shown = all.slice(0, 3);
+  return spStripHtml({ chips: shown.map(c => ({ sym: c.sym, label: c.term })), more: all.length - shown.length, empty: 'Stitch glossary', bare: true });
 }
 
 // The bottom sheet behind the glossary button: this row's stitches, the pattern's own notes,
@@ -413,11 +418,11 @@ function spPlayerCardHtml(p, row, v, total, hasChart) {
   const co = spCallouts(row);
   const setup = co.before.length
     ? uiToggleSection({ label: 'SETUP', open: spSetupOpen, onclick: 'spToggleSetup()', html: co.before.map(t => `<p>${t}</p>`).join('') }) : '';
-  return `<article class="ui-card sp-card${hasChart ? '' : ' sp-card--nochart'}">
+  return uiCard({ tag: 'article', cls: 'sp-card' + (hasChart ? '' : ' sp-card--nochart'), html: `
     ${setup}
     <p class="sp-ins">${spText(row)}</p>
     ${uiFacts({ count: spCount(row), check: co.after.join(' · ') || null })}
-  </article>`;
+  ` });
 }
 
 // The player's card for a repeat row: the pass line (− / + are progress actions), every row
@@ -432,7 +437,8 @@ function spRepeatCardHtml(block, row, v, hasChart, inList) {
   }).join('');
   const setup = co.before.length
     ? uiToggleSection({ label: 'SETUP', open: spSetupOpen, onclick: 'spToggleSetup()', html: co.before.map(t => `<p>${t}</p>`).join('') }) : '';
-  return `<article class="ui-card ${inList ? 'sp-row selected' : 'sp-card'} sp-card--repeat${hasChart ? '' : ' sp-card--nochart'}"${inList ? ` data-row="${v}" onclick="spCardTap(event, ${v})"` : ''}>
+  return uiCard({ tag: 'article', cls: (inList ? 'sp-row selected' : 'sp-card') + ' sp-card--repeat' + (hasChart ? '' : ' sp-card--nochart'),
+    attrs: inList ? `data-row="${v}" onclick="spCardTap(event, ${v})"` : '', html: `
     ${inList ? `<div class="sp-repeat-label">${uiCapsLabel('REPEAT · ' + row.R + ' ROWS × ' + T)}</div>` : ''}
     <div class="sp-pass-line"><span class="sp-pass-n">Pass ${pass} of ${T}</span>
       ${uiIconButton({ icon: '−', label: 'Previous pass', onclick: 'spPass(-1)' })}${uiIconButton({ icon: '+', label: 'Finish this pass', onclick: 'spPass(1)' })}</div>
@@ -440,7 +446,7 @@ function spRepeatCardHtml(block, row, v, hasChart, inList) {
     <ul class="sp-rlist">${items}</ul>
     ${uiFacts({ count: spPassEndCount(block, pass), countLabel: 'sts at end of pass ' + pass, check: co.after.join(' · ') || null })}
     ${inList ? uiButton({ label: 'Open row ›', onclick: `spOpenPlayer(${v})`, cls: 'sp-open-btn' }) : ''}
-  </article>`;
+  ` });
 }
 
 // The chart fills the rest of the screen, edge to edge; the legend sits beneath it.

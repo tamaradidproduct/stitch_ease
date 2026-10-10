@@ -298,6 +298,14 @@ Fields per case: **Area · Priority · Preconditions · Steps · Expected**.
 - Steps: load the app online, go offline, reload. Then bump nothing and reload online.
 - Expected: the app loads offline with the new styles and screens; no screen falls back to unstyled markup.
 
+**TC-41 Names with symbols** · Step screen · P2
+- Steps: import a pattern whose name and a section name contain `&` (e.g. "Tee & Co"); open it and look at the top bar, the section heading and the section sheet.
+- Expected: the names read "Tee & Co" everywhere, never "Tee &amp; Co".
+
+**TC-42 One tap opens a row once** · Step screen · P2
+- Steps: on a chart section, tap the mini chart inside the selected card.
+- Expected: the player opens once (one back tap returns to the playlist); the checklist rows announce as checkboxes to a screen reader.
+
 ---
 
 Deferred issues you may notice while testing (known, not bugs in this build): the legend's book button can clip at 320 px with long stitch names; the glossary doesn't yet include the pattern's own stitches (follow-up); banners can cover the dock; chart stitch numbers scroll out of view on tall charts.

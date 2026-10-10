@@ -205,6 +205,7 @@ Defined in `css/tokens.css` (design direction: `docs/design-direction.md`). The 
 --c-blue                                                   /* chart current-row number only */
 --r-card 12px · --r-control 10px · --r-small 8px · --r-sheet 16px
 --font-ui                                                  /* the only text family (sans serif) */
+--fs-* · --ls-* · --s-* · --h-* · --w-*                    /* type sizes, tracking, spacing, fixed sizes: no raw px in step/ui CSS */
 --cell-sz: 16px      /* chart cell size, user-adjustable */
 ```
 Legacy aliases: `--bg`, `--card`, `--border`, `--text`, `--muted`, `--accent`, `--accent-light`, `--ch-blue`.
@@ -259,6 +260,7 @@ Within a pattern, phase nav is at the bottom. On non-chart phases it's the fixed
 
 ## What NOT to do
 - Don't put raw colours, radii or font names anywhere but `css/tokens.css` — use a token (`node scripts/check-tokens.mjs --all` enforces it)
+- Don't hand-write markup a `ui*` component already produces (`uiCard`, `uiTag`, `uiButton`, `uiFacts`…) and don't use inline `style` except for CSS custom properties
 - Don't use orange, coral or beige; the one accent is sage
 - Don't add a Mark/Done button to a playlist card — the dock's main button is the one primary action
 - Don't suggest "Add to Home Screen" on Android Chrome — owner can't do this and doesn't want it mentioned

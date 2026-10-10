@@ -38,11 +38,13 @@ The visual language of the step screen v2 prototype (`docs/prototypes/step-scree
 | Counts, secondary | 13 px |
 | Caps labels (`ROW 4 OF 24`, `SETUP`) | 11 px, 700, 8–12 % tracking, `--muted` |
 
+Every size is a token — `--fs-instruction` 21, `--fs-heading` 18, `--fs-title` 16, `--fs-lead` 15, `--fs-body` 14, `--fs-meta` 13, `--fs-small` 12, `--fs-caps` 11, `--fs-micro` 10 — and tracking is `--ls-caps` (.12em), `--ls-label` (.1em), `--ls-small` (.08em), `--ls-tag` (.04em), `--ls-hint` (.02em).
+
 - **Main content is plain text on the card.** No chips or pills around instructions or counts.
 
 ## Shape and space
 - **Corner radius:** 12 px cards, 8–12 px buttons and controls, 16 px sheet top corners. Nothing rounder, except full circles where a thing is genuinely round.
-- **Spacing:** multiples of 4; 16 px screen gutter, 20 px card padding, 12–14 px between stacked blocks.
+- **Spacing:** the `--s-1…6` scale (4, 8, 12, 16, 20, 24), plus `--s-2h` (6) and `--s-3h` (14) for the two half steps; fixed sizes are `--h-*` / `--w-*` tokens; 16 px screen gutter, 20 px card padding, 12–14 px between stacked blocks.
 - **Borders:** 1 px `--line` hairlines; no shadows except the sheet backdrop.
 - **Full-bleed content** (charts, wide tables) runs edge to edge with no box.
 
@@ -63,4 +65,6 @@ The visual language of the step screen v2 prototype (`docs/prototypes/step-scree
 - **Checklist and notes sections:** same card and top bar; ticks use `--sage-d`.
 - **Glossary:** caps group labels, term in 600, definition in `--soft`; pattern-specific stitches first.
 - **Account, conflict and pattern-update sheets:** the sheet spec.
+- **Component functions** (`js/core/ui.js`, pure `props → HTML`): `uiIconButton`, `uiCapsLabel`, `uiToggleSection`, `uiFacts`, `uiTopBar`, `uiDock`, `uiCard` (takes `tag` and `attrs`), `uiTag` (Current / Done), `uiButton`. Build new screens from these; add a component rather than hand-writing the markup twice.
+- **Rules the lint enforces** (`node scripts/check-tokens.mjs --all`): no raw colours, radii, font names, type sizes, letter-spacing or px sizes above 3 px in `ui.css`, `step.css`, `ui.js`, `stepViews.js`; inline `style` only for CSS custom properties (e.g. the chart's `--cw-cols`).
 - **Implemented:** tokens in `css/tokens.css`, components in `js/core/ui.js` + `css/ui.css`, step screens in `js/core/stepViews.js` + `css/step.css`. The older screens follow through the legacy-variable bridge; `CLAUDE.md` is updated to match.
