@@ -58,3 +58,8 @@ function uiDock({ label, onclick, variant, chip, onPrev, onNext }) {
 function uiCard({ cls, html }) {
   return `<div class="ui-card${cls ? ' ' + cls : ''}">${html}</div>`;
 }
+
+// A short buzz where the browser allows it (Android); a quiet no-op elsewhere (iOS Safari has no vibration API).
+function uiHaptic(ms) {
+  try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* not available */ }
+}

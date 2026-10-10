@@ -185,6 +185,35 @@ function stepViewsSelfTest() {
     check('which row-number column to keep in view: the nearer side',
       [spChartSideFor(0, 648, 375), spChartSideFor(273, 648, 375), spChartSideFor(136, 648, 375), spChartSideFor(0, 300, 375)], ['left', 'right', 'left', 'left']);
 
+    // ── Small wins: whole-card tap, haptics, a short transition ──
+    const cardRows = spRowsFor(p), selHtml = spPlaylistHtml(p, 0, cardRows.length, cardRows);
+    check('the selected playlist card opens its row when tapped anywhere (not just the button)', [has(selHtml, 'class="ui-card sp-row selected"'), has(selHtml, 'spCardTap(event, 1)')], [true, true]);
+    check('a repeat card opens on a tap too', has(spPlaylistHtml(PHASES[1], 0, prow.length, prow), 'spCardTap(event, 1)'), true);
+    let opened = [];
+    const realOpen = spOpenPlayer; spOpenPlayer = n => opened.push(n);
+    spCardTap({ target: { closest: () => null } }, 3);
+    spCardTap({ target: { closest: sel => (/button/.test(sel) ? {} : null) } }, 4);
+    spOpenPlayer = realOpen;
+    check('spCardTap opens the row, but leaves taps on buttons, toggles and repeat rows alone', opened, [3]);
+
+    const buzz = []; const realNav = navigator.vibrate;
+    navigator.vibrate = ms => { buzz.push(ms); return true; };
+    uiHaptic(12);
+    navigator.vibrate = undefined;
+    let threw = false; try { uiHaptic(12); } catch (e) { threw = true; }
+    navigator.vibrate = realNav;
+    check('uiHaptic vibrates where the browser can, and is a quiet no-op where it cannot (iOS)', [buzz, threw], [[12], false]);
+
+    const realHaptic = uiHaptic; let buzzes = 0; uiHaptic = () => { buzzes++; };
+    setStepCursor(p, 0);
+    spApplyCursor(p, 1);
+    spApplyCursor(p, 0);
+    uiHaptic = realHaptic; setStepCursor(p, 0);
+    check('every change of progress gives haptic feedback', buzzes, 2);
+
+    spNoteChange();
+    check('a row change plays the transition once', [spTakeEnter(), spTakeEnter()], [true, false]);
+
     // ── App shell: the document never scrolls on step screens ──
     check('playlist: everything under the bar lives in one scroll container',
       [count(pl, 'class="sp-scroll"'), pl.indexOf('ui-top') < pl.indexOf('sp-scroll'), pl.indexOf('sp-scroll') < pl.indexOf('sp-row')], [1, true, true]);

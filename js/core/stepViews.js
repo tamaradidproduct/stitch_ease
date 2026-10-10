@@ -83,10 +83,10 @@ function spRowHtml(row, cursor, total) {
     const rs = !rep && cr && spHasChart(PHASES[cur], row) ? (isRSRow(cr) ? 'RS' : 'WS') : '';
     const setup = co.before.length
       ? uiToggleSection({ label: 'SETUP', open: spSetupOpen, onclick: 'spToggleSetup()', html: co.before.map(t => `<p>${t}</p>`).join('') }) : '';
-    return `<article class="ui-card sp-row selected" data-row="${row.n}">
+    return `<article class="ui-card sp-row selected" data-row="${row.n}" onclick="spCardTap(event, ${row.n})">
       <div class="sp-card-top">${uiCapsLabel('ROW ' + row.n + (current ? ' · CURRENT' : done ? ' · DONE' : ''))}${rs ? `<span class="sp-read">${rs}</span>` : ''}${rep ? '' : spPassNote(row)}</div>
       ${setup}
-      <p class="sp-ins"${rep ? '' : ` onclick="spOpenPlayer(${row.n})"`}>${text}</p>
+      <p class="sp-ins">${text}</p>
       ${spMiniChartHtml(PHASES[cur], row)}
       ${uiFacts({ count: cnt, check: co.after.join(' · ') || null })}
       <button class="sp-open-btn" onclick="spOpenPlayer(${row.n})">Open row ›</button>
@@ -436,7 +436,7 @@ function spRepeatCardHtml(block, row, v, hasChart, inList) {
   }).join('');
   const setup = co.before.length
     ? uiToggleSection({ label: 'SETUP', open: spSetupOpen, onclick: 'spToggleSetup()', html: co.before.map(t => `<p>${t}</p>`).join('') }) : '';
-  return `<article class="ui-card ${inList ? 'sp-row selected' : 'sp-card'} sp-card--repeat${hasChart ? '' : ' sp-card--nochart'}"${inList ? ` data-row="${v}"` : ''}>
+  return `<article class="ui-card ${inList ? 'sp-row selected' : 'sp-card'} sp-card--repeat${hasChart ? '' : ' sp-card--nochart'}"${inList ? ` data-row="${v}" onclick="spCardTap(event, ${v})"` : ''}>
     ${inList ? `<div class="sp-repeat-label">${uiCapsLabel('REPEAT · ' + row.R + ' ROWS × ' + T)}</div>` : ''}
     <div class="sp-pass-line"><span class="sp-pass-n">Pass ${pass} of ${T}</span>
       ${uiIconButton({ icon: '−', label: 'Previous pass', onclick: 'spPass(-1)' })}${uiIconButton({ icon: '+', label: 'Finish this pass', onclick: 'spPass(1)' })}</div>

@@ -154,6 +154,10 @@ function spRender() {
   root.innerHTML = spInnerHtml(PHASES[cur]);
   const again = root.querySelector('.sp-scroll');
   if (again) again.scrollTop = kept;
+  if (spTakeEnter()) {
+    const el = root.querySelector('.sp-player') || root.querySelector('.sp-row.selected');
+    if (el) el.classList.add('sp-enter');
+  }
   root.classList.toggle('sp-browsing', root.querySelector('.sp-browse') !== null);
   renderTabs();
   spSyncPlayerLayout();
@@ -327,6 +331,18 @@ function openStitchSheet() {
   openSheet('Stitches', spStitchSheetHtml(row ? spRowStitches(p, row) : [], (pat && pat.notes) || []));
 }
 
+// A tap on the selected playlist card opens its row, except taps on what is interactive inside it
+// (buttons, the Setup toggle, the rows of a repeat), which keep doing their own thing.
+function spCardTap(e, n) {
+  if (e && e.target && e.target.closest && e.target.closest('button, a, .sp-rrow, .ui-toggle')) return;
+  spOpenPlayer(n);
+}
+
+// Feedback for a change of progress: the next screen eases in once.
+let spEnterPending = false;
+function spNoteChange() { spEnterPending = true; }
+function spTakeEnter() { const was = spEnterPending; spEnterPending = false; return was; }
+
 function spToggleSetup() { spSetupOpen = !spSetupOpen; spRender(); }
 function spToggleNotes() { spNotesOpen = !spNotesOpen; spRender(); }
 
@@ -373,6 +389,8 @@ function spPatchPlaylist(p, prev, next) {
   if (dock) dock.outerHTML = spPlaylistDock(next, total);
   if (next >= total) renderTabs();   // the section's "complete" dot
   spAimMini();
+  const fresh = root.querySelector('.sp-row.selected');
+  if (fresh && spTakeEnter()) fresh.classList.add('sp-enter');   // the new current row eases in
   return true;
 }
 
@@ -380,6 +398,8 @@ function spApplyCursor(p, cursor) {
   const prev = stepCursor(p);
   const patched = !spPlayerOpen && spViewedRow === null && cursor === prev + 1;
   setStepCursor(p, cursor);
+  uiHaptic(cursor > prev ? 12 : 8);
+  spNoteChange();
   if (patched && spPatchPlaylist(p, prev, cursor)) { spScrollCurrent(); return; }
   spViewedRow = null;
   if (cursor >= stepsRowCount(p, activeDoc)) spPlayerOpen = false;   // nothing left to stand on

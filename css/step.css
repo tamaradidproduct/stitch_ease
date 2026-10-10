@@ -117,3 +117,11 @@ body.sp-on .content { padding: 0; }   /* the bars and cards bring their own gutt
 .sp-cw-row.active .cc-sym { color: var(--ch-active-symbol); }
 .sp-cw-row.active .cc.cc-col:not(.cc-e) { background: var(--cc-bg); }
 .sp-cw-row.active .cc.cc-col .cc-sym { color: var(--cc-fg); }
+
+/* A card that opens on tap says so; pressed states for the step screens' own buttons */
+.sp-row.selected { cursor: pointer; }
+.sp-open-btn:active, .sp-rrow:active { background: var(--c-line); }
+/* A row change eases in once (after Done, − / +, Mark not done) */
+@keyframes sp-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.sp-enter { animation: sp-enter .22s ease-out; }
+@media (prefers-reduced-motion: reduce) { .sp-enter { animation: none; } }

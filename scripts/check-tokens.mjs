@@ -45,6 +45,12 @@ if (process.argv.includes('--selftest')) {
     if (!m || !/var\(--c-sage/.test(m[1])) { console.log('FAIL ' + name + ' must use the sage tokens'); bad++; }
   }
   if (/\.sp-cw-row\.active \.sp-cw-n\s*\{[^}]*--c-blue/.test(stepCss)) { console.log('FAIL the current row number must not be blue'); bad++; }
+  // Pressed states, and a transition that honours reduced motion.
+  const uiCss = fs.readFileSync(path.join(root, 'css/ui.css'), 'utf8');
+  for (const sel of ['.ui-icon-btn:active', '.ui-dock-nav:active', '.ui-dock-main:active']) {
+    if (uiCss.indexOf(sel) === -1) { console.log('FAIL missing pressed state ' + sel); bad++; }
+  }
+  if (!/@keyframes sp-enter/.test(stepCss) || !/prefers-reduced-motion[^{]*\{[^}]*\.sp-enter[^}]*animation:\s*none/s.test(stepCss)) { console.log('FAIL the row transition needs a reduced-motion opt-out'); bad++; }
   // The top bar's project name must truncate, or a long name runs under the tally and buttons.
   const ui = fs.readFileSync(path.join(root, 'css/ui.css'), 'utf8');
   const proj = (ui.match(/\.ui-top-project\s*\{[^}]*\}/) || [''])[0];
