@@ -170,9 +170,6 @@
      no popup blocker touches, and on Android Chrome it's what hands a blob:
      URL to the system viewer. It has to be dressed as the button it replaces. */
   a.btn { display: flex; align-items: center; justify-content: center; }
-  /* The PDF "Open" is a real <a> — a user-gesture anchor click is the one path
-     no popup blocker touches, and on Android Chrome it's what hands a blob:
-     URL to the system viewer. It has to be dressed as the button it replaces. */
 
   /* ── Check ── the tick box (see checkHtml / checkboxAttrs in js/core/widgets.js).
      Whether it is ticked comes from the ancestor (.step.done, .rep-row.done),
@@ -224,7 +221,7 @@
     width: 22px; height: 22px; border: none; background: transparent; color: var(--accent);
     font-size: 14px; font-weight: 400;
   }
-  .stepper-btn--sm:active { background: rgba(0,0,0,0.08); }
+  .stepper-btn--sm:active { background: var(--c-press); }
   .stepper-btn--lg { width: 44px; height: 44px; border: none; font-size: 26px; font-weight: 300; }
   .stepper-btn--minus { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
   .stepper-btn--minus:active { background: var(--border); }
@@ -293,7 +290,7 @@
      for a dot. The pickers (.yarn-pick, .color-edit-swatch, .color-swatch-opt)
      are controls, not samples, and stay their own thing. */
   .swatch {
-    display: inline-block; flex-shrink: 0; border: 1px solid rgba(0,0,0,.2);
+    display: inline-block; flex-shrink: 0; border: 1px solid var(--c-swatch-line);
     width: 14px; height: 14px; border-radius: 3px;
   }
   .swatch--xs { width: 10px; height: 10px; border-radius: 2px; }
@@ -301,8 +298,8 @@
   .swatch--round { border-radius: 50%; }
   .yarn-chips:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-xs); }
   .yarn-pick {
-    display: block; position: relative; width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0;
-    border: 1px solid rgba(0,0,0,.2); cursor: pointer; overflow: hidden;
+    display: block; position: relative; width: 44px; height: 44px; border-radius: var(--r-control); flex-shrink: 0;
+    border: 1px solid var(--c-swatch-line); cursor: pointer; overflow: hidden;
   }
   .yarn-pick input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
   .yarn-pick:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -360,4 +357,3 @@
   .chart-confirm-step.done .check { background: var(--accent); border-color: var(--accent); }
   .chart-confirm-step.done .check svg { display: block; }
   .chart-confirm-step.done .step-text { color: var(--done-text); text-decoration: line-through; text-decoration-color: var(--accent-mid); }
-

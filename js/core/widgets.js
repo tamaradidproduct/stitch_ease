@@ -95,7 +95,7 @@ function rowHtml(o) {
 function stepperBtnHtml(o) {
   const size = o.size || 'sm';
   const cls = 'stepper-btn stepper-btn--' + size + (size === 'lg' ? ' stepper-btn--' + o.dir : '');
-  return `<button class="${cls}" onclick="${String(o.onclick).replace(/"/g, '&quot;')}" aria-label="${escapeHtml(o.label)}">${o.dir === 'plus' ? '+' : '\u2212'}</button>`;
+  return `<button class="${cls}" onclick="${String(o.onclick).replace(/"/g, '&quot;')}" aria-label="${escapeHtml(o.label == null ? '' : o.label)}">${o.dir === 'plus' ? '+' : '\u2212'}</button>`;
 }
 
 // The tick box itself. Ticked-ness is drawn from the ancestor's .done class,
@@ -131,11 +131,11 @@ document.addEventListener('keydown', e => {
 //   cls     extra classes
 function swatchHtml(o) {
   const cls = ['swatch'].concat(o.size ? 'swatch--' + o.size : [], o.round ? 'swatch--round' : [], o.cls || []).join(' ');
-  return `<span class="${cls}" style="background:${escapeHtml(o.color)}"></span>`;
+  return `<span class="${cls}" style="background:${escapeHtml(o.color == null ? '' : o.color)}"></span>`;
 }
 
 // An outlined pill label. `html` is trusted markup (it often holds a swatch or
 // a <b> count); `lead` trims the padding on the side a swatch or icon sits.
 function chipHtml(o) {
-  return `<span class="chip${o.lead ? ' chip--lead' : ''}">${o.html}</span>`;
+  return `<span class="chip${o.lead ? ' chip--lead' : ''}">${o.html == null ? '' : o.html}</span>`;
 }
