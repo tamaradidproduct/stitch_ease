@@ -34,8 +34,10 @@ if (process.argv.includes('--selftest')) {
   const stepCss = fs.readFileSync(path.join(root, 'css/step.css'), 'utf8');
   const scroller = (stepCss.match(/\.sp-cw-scroll\s*\{[^}]*\}/) || [''])[0];
   if (!/overflow-y:\s*hidden/.test(scroller)) { console.log('FAIL .sp-cw-scroll must not scroll vertically'); bad++; }
-  // Only stitches that carry a symbol are highlighted in the current row; empty cells get no ring or fill.
-  if (/\.sp-cw-row\.active \.cc\s*\{[^}]*box-shadow/.test(stepCss) || !/\.sp-cw-row\.active \.cc\.sp-sym\s*\{[^}]*box-shadow/.test(stepCss)) { console.log('FAIL only symbol cells may be highlighted in the active row'); bad++; }
+  // A stitch has two states. In the current row EVERY stitch (knit included, but not no-stitch cells) gets the
+  // active background, border ring and symbol colour from the chart tokens.
+  const activeRule = (stepCss.match(/\.sp-cw-row\.active \.cc:not\(\.cc-e\)\s*\{[^}]*\}/) || [''])[0];
+  if (!/background:\s*var\(--ch-active-bg\)/.test(activeRule) || !/box-shadow:[^;]*--ch-active-border/.test(activeRule) || !/\.sp-cw-row\.active \.cc-sym\s*\{[^}]*--ch-active-symbol/.test(stepCss)) { console.log('FAIL the current row must colour every stitch (background, border, symbol)'); bad++; }
   // The top bar's project name must truncate, or a long name runs under the tally and buttons.
   const ui = fs.readFileSync(path.join(root, 'css/ui.css'), 'utf8');
   const proj = (ui.match(/\.ui-top-project\s*\{[^}]*\}/) || [''])[0];

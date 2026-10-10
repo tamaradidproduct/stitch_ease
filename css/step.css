@@ -29,11 +29,10 @@ body.sp-on .content { padding: 0; }   /* the bars and cards bring their own gutt
 .sp-cw-row { opacity: .5; padding: 1px 0; }
 .sp-cw-row.d1 { opacity: .8; }
 .sp-cw-row.d2 { opacity: .65; }
-.sp-cw-row.active { opacity: 1; background: var(--c-sage-wash); }
+.sp-cw-row.active { opacity: 1; }
 .sp-cw-row.active .sp-cw-n { color: var(--c-blue); font-weight: var(--fw-bold); }
 .sp-cw-row .cc { width: var(--h-cell); height: var(--h-cell); aspect-ratio: 1; background: var(--c-card); border: 0; border-radius: var(--r-cell); }
 .sp-cw-row .cc-sym { color: var(--c-cell-ink); }
-.sp-cw-row.active .cc.sp-sym { box-shadow: 0 0 0 1px var(--c-sage); }
 .sp-cw-row .cc.cc-e { background: transparent !important; }
 .sp-cw-row .cc.cc-col, .sp-cw-row.active .cc.cc-col:not(.cc-e) { background: var(--cc-bg); }
 .sp-cw-row .cc.cc-col .cc-sym { color: var(--cc-fg); }
@@ -105,9 +104,16 @@ body.sp-on .content { padding: 0; }   /* the bars and cards bring their own gutt
 
 /* Reversed: a slightly darker well with the stitches standing out as light cells; the current row
    is full strength on a sage band, the rest fade into the well. */
-.sp-cw-row.active .sp-cw-n { background: var(--c-sage-wash); }
 .sp-cw-row > :first-child, .sp-cw-head > :first-child, .sp-cw-row > :last-child, .sp-cw-head > :last-child { background: var(--c-well); }
-.sp-cw-row.active > :first-child, .sp-cw-row.active > :last-child { background: var(--c-sage-wash); }
 /* The row numbers of whichever end the chart is nearer stay in view while it scrolls sideways. */
 .sp-cw-scroll:not(.sp-side-right) .sp-cw-row > :first-child, .sp-cw-scroll:not(.sp-side-right) .sp-cw-head > :first-child { position: sticky; left: 0; z-index: 1; }
 .sp-cw-scroll.sp-side-right .sp-cw-row > :last-child, .sp-cw-scroll.sp-side-right .sp-cw-head > :last-child { position: sticky; right: 0; z-index: 1; }
+
+/* A stitch has two states. Default: a light cell with an ink symbol. Current (every stitch of the current
+   row, knit included; no-stitch cells stay as they are): the active background, a border ring and a
+   coloured symbol. A colourwork cell keeps its yarn colour (inline style wins) and rides its own
+   contrast-computed ring (--cc-ring) and symbol colour, as the original chart did. */
+.sp-cw-row.active .cc:not(.cc-e) { background: var(--ch-active-bg); box-shadow: inset 0 0 0 1.5px var(--cc-ring, var(--ch-active-border)); }
+.sp-cw-row.active .cc-sym { color: var(--ch-active-symbol); }
+.sp-cw-row.active .cc.cc-col:not(.cc-e) { background: var(--cc-bg); }
+.sp-cw-row.active .cc.cc-col .cc-sym { color: var(--cc-fg); }

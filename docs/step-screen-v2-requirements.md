@@ -57,7 +57,7 @@ Product requirements from the interview of 2026-10-09. They revise the step scre
 - Fills its half of the screen. Current row highlighted; surrounding rows fade with distance.
 - **Full-bleed:** edge to edge of the screen, no box or side margins; a wide chart may run off the sides and scroll.
 - **Window, not scroll:** the chart shows as many rows as fit around the current row (at least seven) and never scrolls vertically; a full-chart view is separate (§6 of the older requirements, not built). Sideways scrolling keeps the row numbers of the nearer end in view.
-- **Current row:** only the stitches that carry a symbol are highlighted (outline); empty cells are never highlighted. The window re-fits when the available height changes, so there is no empty gap under it.
+- **Stitch states:** every stitch has two states, as in the original chart. Default: a light cell with a dark symbol. Current (every stitch of the current row, knit included; no-stitch cells stay grey): the active background, a border ring and a coloured symbol (the chart's blue palette). On a colourwork chart a stitch keeps its yarn colour in the current row and rides a contrast-computed ring and symbol colour. The window re-fits when the available height changes, so there is no empty gap under it.
 - **Look:** a slightly darker well with the stitches standing out as light cells; the current row is full strength on a sage band, the others fade into the well.
 - **Cells are always square and a fixed size** (never stretched or shrunk to fit the width); a chart wider than the screen scrolls sideways, a narrower one is centred.
 - Stitch numbers across the top, row numbers on both sides, per-cell yarn colours, mid-row marker as built.

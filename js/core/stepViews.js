@@ -324,7 +324,6 @@ function spCellsHtml(r, active, types, mark, chart) {
     types[tt] = true;
     let c = stitchCell(t, false, colors ? colors[i] : null, active);
     if (mark === i) c = c.replace('class="cc', 'class="sp-cw-mark cc');
-    if (SYMS[tt]) c = c.replace('class="cc', 'class="sp-sym cc');   // a stitch that carries a symbol (the only kind highlighted in the current row)
     return c;
   }).join('');
 }

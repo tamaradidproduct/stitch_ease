@@ -180,9 +180,8 @@ function stepViewsSelfTest() {
     check('the window holds the current row and clamps at both ends',
       [has(spChartWindowHtml(1, [], { rows: 7 }, cp.chart), 'sp-cw-row active'), count(spChartWindowHtml(1, [], { rows: 7 }, cp.chart), 'class="sp-cw-row'), count(spChartWindowHtml(12, [], { rows: 7 }, cp.chart), 'class="sp-cw-row'), has(spChartWindowHtml(12, [], { rows: 7 }, cp.chart), 'sp-cw-row active')], [true, 7, 7, true]);
     const oneRow = spChartWindowHtml(1, [], { rows: 1 }, cp.chart);
-    const symbolCells = cp.chart[0].filter(t => SYMS[parseColorCell(t).t]).length;
-    check('only cells that carry a symbol are marked as stitches (empty ones are left plain)',
-      [count(oneRow, 'sp-sym cc'), count(oneRow, 'class="cc"') + count(oneRow, 'sp-sym cc')], [symbolCells, cp.chart[0].length]);
+    check('a stitch has two states, default and current, set by the row: no per-cell highlight classes',
+      [has(oneRow, 'sp-sym'), has(oneRow, 'sp-cw-row active')], [false, true]);
     check('which row-number column to keep in view: the nearer side',
       [spChartSideFor(0, 648, 375), spChartSideFor(273, 648, 375), spChartSideFor(136, 648, 375), spChartSideFor(0, 300, 375)], ['left', 'right', 'left', 'left']);
 
