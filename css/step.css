@@ -69,12 +69,12 @@ body.sp-on .content { padding: 0; }   /* the bars and cards bring their own gutt
 .sp-row { display: flex; align-items: baseline; gap: var(--s-3); padding: 13px var(--s-1); border-bottom: 1px solid var(--c-line); font-size: 15px; line-height: 1.4; cursor: pointer; }
 .sp-row.selected { display: flex; flex-direction: column; align-items: stretch; gap: 0; margin: var(--s-3) 0; padding: var(--s-5) var(--s-5) var(--s-4); cursor: default; }
 .sp-row.selected .sp-ins { cursor: pointer; margin-bottom: var(--s-4); }
-.sp-row-n { width: 36px; flex: none; font-size: var(--fs-caps); font-weight: var(--fw-bold); letter-spacing: .06em; color: var(--c-muted); }
+.sp-row-n { width: 58px; flex: none; white-space: nowrap; font-size: var(--fs-body); font-weight: var(--fw-bold); color: var(--c-text); }
 .sp-row-t { flex: 1; }
 .sp-row-c { flex: none; font-size: var(--fs-meta); color: var(--c-muted); }
 .sp-row-tag { display: block; margin-top: 2px; font-size: 10px; font-weight: var(--fw-bold); letter-spacing: .1em; color: var(--c-sage-strong); }
 .sp-row.done { color: var(--c-muted); }
-.sp-row.done .sp-row-n { color: var(--c-sage); }
+.sp-row.done .sp-row-n { color: var(--c-muted); }
 .sp-open-btn { height: 44px; margin-top: var(--s-3); background: var(--c-card); color: var(--c-soft); border: 0; border-radius: var(--r-control); box-shadow: 0 0 0 1px var(--c-line); font: inherit; font-size: var(--fs-body); font-weight: var(--fw-medium); cursor: pointer; }
 .sp-mc-wrap { margin: 0 calc(-1 * var(--s-5)) var(--s-4); border-top: 1px solid var(--c-line); border-bottom: 1px solid var(--c-line); cursor: pointer; }
 .sp-mc-wrap .sp-cw-scroll { overflow-x: auto; }
@@ -129,3 +129,11 @@ body.sp-on .content { padding: 0; }   /* the bars and cards bring their own gutt
 /* The section's name heads the playlist, with its switcher */
 .sp-sec-btn { display: inline-flex; align-items: center; gap: var(--s-1); padding: 0; background: none; border: 0; font: inherit; font-size: var(--fs-heading); font-weight: var(--fw-semibold); color: var(--c-text); cursor: pointer; }
 .sp-lh .sp-lh-desc { margin-top: var(--s-1); }
+
+/* Row names are a first-class piece of information: a real heading on the selected card, a strong
+   label on the plain rows, and the status as a small tag. */
+.sp-row-h { margin: 0; font-size: var(--fs-heading); font-weight: var(--fw-semibold); color: var(--c-text); }
+.sp-tag { display: inline-block; padding: 2px var(--s-2); background: var(--c-sage-wash); color: var(--c-sage-strong); border-radius: var(--r-small); font-size: var(--fs-caps); font-weight: var(--fw-bold); letter-spacing: .04em; vertical-align: 1px; }
+.sp-tag--done { background: var(--c-paper); color: var(--c-muted); box-shadow: inset 0 0 0 1px var(--c-line); }
+.sp-row.selected .sp-card-top { align-items: center; justify-content: flex-start; gap: var(--s-2); }
+.sp-card-top-r { margin-left: auto; display: inline-flex; gap: var(--s-2); align-items: baseline; }

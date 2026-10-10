@@ -219,17 +219,31 @@ function leaveStepMode() { document.body.classList.remove('sp-on'); }
 
 function spScrollCurrent() { spFocusSelected(); }
 
-// Keep the row being looked at just below the bar, with the row before it showing above it —
-// after every ‹ ›, row tap, Done and when the playlist opens. Smooth unless motion is reduced.
+// Where the playlist should scroll to keep the row being looked at in view, without moving when it
+// does not have to: the view stays put while the selected row and a short preview of the next one are
+// visible; when the selection reaches the end of the view it scrolls just enough to show the selected
+// row whole and a preview (about 48 px) of the next; a row cut off at the top is brought back; a row
+// nowhere in view is jumped to, with the row before it showing above. All rects share one frame.
+// Returns {delta, jump}: how far to move scrollTop, and whether to jump rather than glide.
+function spScrollDelta({ view, sel, prev, next }) {
+  const PREVIEW = 48, MARGIN = 8;
+  if (sel.bottom <= view.top || sel.top >= view.bottom) return { delta: (prev ? prev.top : sel.top) - view.top - MARGIN, jump: true };
+  if (sel.top < view.top) return { delta: sel.top - view.top - MARGIN, jump: false };
+  if (sel.bottom - sel.top + MARGIN >= view.bottom - view.top) return { delta: 0, jump: false };   // taller than the view: its top is showing
+  const need = next ? next.top + Math.min(next.bottom - next.top, PREVIEW) + MARGIN : sel.bottom;
+  return { delta: need > view.bottom ? need - view.bottom : 0, jump: false };
+}
+
 function spFocusSelected() {
   if (spPlayerOpen) return window.scrollTo({ top: 0 });
   const sc = document.querySelector('.sp-scroll'), el = document.querySelector('.sp-row.selected');
   if (!sc || !el) return;
-  const prev = el.previousElementSibling;
-  const anchor = prev && prev.classList.contains('sp-row') ? prev : el;
-  const top = anchor.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 8;
-  const calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-  sc.scrollTo({ top: Math.max(0, top), behavior: calm ? 'auto' : 'smooth' });
+  const rect = e => { if (!e || !e.classList || !e.classList.contains('sp-row')) return null; const r = e.getBoundingClientRect(); return { top: r.top, bottom: r.bottom }; };
+  const v = sc.getBoundingClientRect(), r = el.getBoundingClientRect();
+  const d = spScrollDelta({ view: { top: v.top, bottom: v.bottom }, sel: { top: r.top, bottom: r.bottom }, prev: rect(el.previousElementSibling), next: rect(el.nextElementSibling) });
+  if (!d.delta) return;
+  const calm = d.jump || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  sc.scrollTo({ top: Math.max(0, sc.scrollTop + d.delta), behavior: calm ? 'auto' : 'smooth' });
 }
 
 function spOpenPlayer(row) {

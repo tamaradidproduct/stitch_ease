@@ -197,10 +197,10 @@ Fields per case: **Area · Priority · Preconditions · Steps · Expected**.
 **TC-23 Selected row is a card without a Mark button** · Playlist · P0
 - Steps: look at the playlist, then tap a different row.
 - Expected:
-  - The selected row is a plain white card: label (`ROW 2 · CURRENT`), the instruction, a three-row chart preview on chart rows, the count/Check at the foot, and an `Open row ›` button.
-  - There is no Mark or Done button and no coloured bar down its side.
-  - Done rows are muted with a ✓; the current row, when not selected, is tagged `CURRENT ROW`.
-  - Tapping the instruction or `Open row ›` opens the player.
+  - The selected row is a plain white card headed `Row 2` in heading style (18 px semibold), with a small `Current` tag beside it when it is the current row (`Done` when it is a finished row), the instruction, a three-row chart preview on chart rows, the count/Check at the foot, and `Open row ›`.
+  - There is no Mark or Done button and no coloured bar on its side.
+  - Every other row is a plain line whose name (`R4 (RS)`) is bold and clearly readable; the current row, when not selected, carries the `Current` tag before its text; finished rows are muted with a ✓.
+  - Tapping the card (not a control) or `Open row ›` opens the player.
 
 **TC-32 Playlist: a repeat is one card** · Playlist · P0
 - Steps: open the **Repeat** section in the playlist. Tap +, then tap R2 in the card, then `Open row ›`. Go back to the playlist and move on past the repeat (mark its rows done) so it is no longer current.
@@ -227,13 +227,15 @@ Fields per case: **Area · Priority · Preconditions · Steps · Expected**.
   - The Setup toggle, − / + and the repeat's rows keep doing their own thing and do not open the player.
   - `Open row ›` still works.
 
-**TC-24 Focus follows the selection** · Playlist · P0
-- Preconditions: **Chart** section in the playlist, window small enough that the list scrolls.
-- Steps: tap › five times. Tap a row near the bottom of the screen. Tap `Mark row N done`.
+**TC-24 The playlist scrolls only when it has to** · Playlist · P0
+- Preconditions: Peacock Tee, yoke chart section (44 rows) in the playlist, window small enough that the list scrolls.
+- Steps: tap › repeatedly from row 1. Then tap a row far below the visible part of the list. Then tap › on a row near the top of the view, and ‹ back up past the top.
 - Expected:
-  - After each action the selected row sits near the top, just under the bar, with the previous row visible above it.
-  - A row tapped near the bottom scrolls fully into view and is never hidden behind the dock.
-  - With reduced motion on, the scroll is instant.
+  - The list stays still while the selected row moves down the screen with a preview of the next row still visible.
+  - When the selected row reaches the last visible row, the list scrolls just enough to show it whole and a preview of exactly one more row. After that it advances one row at a time, keeping the selected row second to last.
+  - Moving ‹ above the top of the view brings the selected row back into view.
+  - A row selected far outside the view jumps straight to it, with the row before it showing above, instead of gliding past everything in between.
+  - With reduced motion on, scrolling is instant.
 
 **TC-25 Done speed** · Playlist · P2
 - Steps: in a fresh project's **Chart** section (playlist, no browsing), tap `Mark row N done` twelve times in a row as fast as you can.

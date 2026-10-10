@@ -84,7 +84,7 @@ function spRowHtml(row, cursor, total) {
     const setup = co.before.length
       ? uiToggleSection({ label: 'SETUP', open: spSetupOpen, onclick: 'spToggleSetup()', html: co.before.map(t => `<p>${t}</p>`).join('') }) : '';
     return `<article class="ui-card sp-row selected" data-row="${row.n}" onclick="spCardTap(event, ${row.n})">
-      <div class="sp-card-top">${uiCapsLabel('ROW ' + row.n + (current ? ' · CURRENT' : done ? ' · DONE' : ''))}${rs ? `<span class="sp-read">${rs}</span>` : ''}${rep ? '' : spPassNote(row)}</div>
+      <div class="sp-card-top"><h3 class="sp-row-h">Row ${row.n}</h3>${current ? '<span class="sp-tag">Current</span>' : done ? '<span class="sp-tag sp-tag--done">Done</span>' : ''}<span class="sp-card-top-r">${rs ? `<span class="sp-read">${rs}</span>` : ''}${rep ? '' : spPassNote(row)}</span></div>
       ${setup}
       <p class="sp-ins">${text}</p>
       ${spMiniChartHtml(PHASES[cur], row)}
@@ -94,7 +94,7 @@ function spRowHtml(row, cursor, total) {
   }
   return `<article class="sp-row ${done ? 'done' : 'upcoming'}${current ? ' current' : ''}" data-row="${row.n}" onclick="spSelectRow(${row.n})">
     <span class="sp-row-n">${spLabel(row)}${done ? ' ✓' : ''}</span>
-    <span class="sp-row-t">${text}${current ? '<span class="sp-row-tag">CURRENT ROW</span>' : ''}</span>
+    <span class="sp-row-t">${current ? '<span class="sp-tag">Current</span> ' : ''}${text}</span>
     ${cnt === null ? '' : `<span class="sp-row-c">${cnt}</span>`}
   </article>`;
 }
@@ -167,7 +167,7 @@ function spRepeatHtml(block, cursor, total, sel) {
     const pass = curIn ? block[cursor + 1 - first].pass : 0;
     return `<article class="sp-row ${done ? 'done' : 'upcoming'}${curIn ? ' current' : ''}" onclick="spSelectRow(${curIn ? cursor + 1 : first})">
       <span class="sp-row-n">R${first}–${last}${done ? ' ✓' : ''}</span>
-      <span class="sp-row-t">Repeat · ${R} rows × ${T}${curIn ? `<span class="sp-row-tag">CURRENT ROW · PASS ${pass} OF ${T}</span>` : ''}<span class="sp-row-sub">${block.slice(0, R).map(spText).join(' · ')}</span></span></article>`;
+      <span class="sp-row-t">${curIn ? '<span class="sp-tag">Current</span> ' : ''}Repeat · ${R} rows × ${T}${curIn ? `<span class="sp-row-sub">Pass ${pass} of ${T}</span>` : ''}<span class="sp-row-sub">${block.slice(0, R).map(spText).join(' · ')}</span></span></article>`;
   }
   const row = block[sel - first];
   return spRepeatCardHtml(block, row, row.n, false, true);

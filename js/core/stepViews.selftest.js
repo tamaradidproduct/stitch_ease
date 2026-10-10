@@ -99,12 +99,12 @@ function stepViewsSelfTest() {
     check('playlist heading: just the description (the bar already shows the progress)', [has(pl, 'INSTRUCTIONS'), has(pl, 'sp-lh-pg'), has(pl, 'sp-lh-bar'), has(pl, 'Rows with callouts')], [false, false, false, true]);
     check('playlist: a done row is marked ✓, once', count(pl, '✓'), 1);
     check('playlist: the selected card opens the row and has no Mark button',
-      [count(pl, 'Open row'), has(pl, 'sp-done-btn'), has(pl, 'ROW 2 · CURRENT')], [1, false, true]);
+      [count(pl, 'Open row'), has(pl, 'sp-done-btn'), /sp-row-h[^<]*>Row 2<\/h3><span class="sp-tag">Current/.test(pl)], [1, false, true]);
     spViewedRow = 3;
     const pl2 = spPlaylistHtml(p, 1, rows.length, rows);
     spViewedRow = null;
     check('browsing: the selected card is the looked-at row and the current row is tagged',
-      [has(pl2, 'ROW 3<'), has(pl2, 'ROW 3 · CURRENT'), has(pl2, 'CURRENT ROW')], [true, false, true]);
+      [has(pl2, '>Row 3</h3>'), /Row 3<\/h3><span class="sp-tag">Current/.test(pl2), count(pl2, 'class="sp-tag">Current')], [true, false, 1]);
     check('spFocusSelected is safe with nothing on screen', (() => { try { spFocusSelected(); return true; } catch (e) { return String(e); } })(), true);
 
     // ── Task 8: counts ──
@@ -147,7 +147,7 @@ function stepViewsSelfTest() {
     const away = spPlaylistHtml(PHASES[1], 2, prow.length, prow);
     spViewedRow = null;
     check('repeat with the current row but the selection elsewhere: collapsed, tagged CURRENT ROW, and only one card is open',
-      [has(away, 'sp-card--repeat'), count(away, 'Open row'), has(away, 'Repeat · 2 rows × 4'), has(away, 'CURRENT ROW'), has(away, 'PASS 2 OF 4')], [false, 1, true, true, true]);
+      [has(away, 'sp-card--repeat'), count(away, 'Open row'), has(away, 'Repeat · 2 rows × 4'), has(away, 'class="sp-tag">Current'), has(away, 'Pass 2 of 4')], [false, 1, true, true, true]);
     const here = spPlaylistHtml(PHASES[1], 2, prow.length, prow);
     check('repeat holding the selection (the current row by default): expanded', [has(here, 'sp-card--repeat'), count(here, 'Open row')], [true, 1]);
     spViewedRow = 2;
@@ -229,6 +229,21 @@ function stepViewsSelfTest() {
     spBrowse(-1);
     check('browsing with ‹ eases the previous row in', spTakeEnter(), true);
     spViewedRow = null; spTakeEnter();
+
+    // ── Playlist scroll policy: stay put unless the current row would be cut off ──
+    const V = { top: 100, bottom: 500 }, R = (top, bottom) => ({ top, bottom });
+    check('no scroll while the selected row and a preview of the next are in view',
+      spScrollDelta({ view: V, sel: R(200, 300), prev: R(150, 195), next: R(305, 360) }), { delta: 0, jump: false });
+    check('the selected row last in view: scroll just enough to preview the next row',
+      spScrollDelta({ view: V, sel: R(380, 470), prev: R(330, 375), next: R(475, 540) }), { delta: 475 + 48 + 8 - 500, jump: false });
+    check('the selected row cut off at the bottom: scroll to show it whole and a preview of the next',
+      spScrollDelta({ view: V, sel: R(430, 560), prev: R(380, 425), next: R(565, 620) }), { delta: 565 + 48 + 8 - 500, jump: false });
+    check('the selected row cut off at the top: scroll back to it', spScrollDelta({ view: V, sel: R(60, 180), prev: R(10, 55), next: R(185, 240) }), { delta: 60 - 100 - 8, jump: false });
+    check('a selected row nowhere in view: jump, with the row before it showing above',
+      spScrollDelta({ view: V, sel: R(900, 1000), prev: R(850, 895), next: R(1005, 1060) }), { delta: 850 - 100 - 8, jump: true });
+    check('the last row has no preview to make room for', spScrollDelta({ view: V, sel: R(400, 480), prev: R(350, 395), next: null }), { delta: 0, jump: false });
+    check('a card taller than the view: show its top', spScrollDelta({ view: V, sel: R(150, 800), prev: R(100, 145), next: R(805, 860) }), { delta: 0, jump: false });
+    check('a card taller than the view, starting above it: align its top', spScrollDelta({ view: V, sel: R(20, 700), prev: R(-30, 15), next: R(705, 760) }), { delta: 20 - 100 - 8, jump: false });
 
     // ── App shell: the document never scrolls on step screens ──
     check('playlist: everything under the bar lives in one scroll container',
