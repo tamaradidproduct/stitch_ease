@@ -104,6 +104,19 @@ function stepViewsSelfTest() {
     check('a count shows in the card and in the playlist when present',
       [has(spPlayerCardHtml(p, withCount, 1, 3, false), '<b>41</b> sts'), has(spRowHtml(withCount, 5, 9), 'sp-row-c')], [true, true]);
 
+    // ── Final review fixes ──
+    const realFocus = spFocusSelected;
+    let focused = 0;
+    spFocusSelected = () => { focused++; };
+    spSelectRow(2);
+    spFocusSelected = realFocus; spViewedRow = null;
+    check('tapping a row brings it into view', focused, 1);
+    const prow = spRowsFor(PHASES[1]);
+    const collapsed = spPlaylistHtml(PHASES[1], 8, prow.length, prow);
+    check('a collapsed repeat line carries no v1 class names',
+      ['sp-row-top', 'sp-row-lbl', 'sp-badge', 'sp-row-text'].map(c => has(collapsed, c)), [false, false, false, false]);
+    check('a collapsed repeat line still reads as a done repeat', [has(collapsed, 'Repeat · 2 rows × 4'), has(collapsed, '✓')], [true, true]);
+
     const realConfirm = sheetConfirm;
     let asked = null;
     sheetConfirm = o => { asked = o; };

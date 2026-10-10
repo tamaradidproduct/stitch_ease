@@ -160,8 +160,8 @@ function spRepeatHtml(block, cursor, total, sel) {
   if (!selIn && !curIn) {
     const done = last <= cursor;
     return `<article class="sp-row ${done ? 'done' : 'upcoming'}" onclick="spSelectRow(${first})">
-      <div class="sp-row-top"><div class="sp-row-lbl"><span>Repeat · ${R} rows × ${T}</span></div>${done ? '<span class="sp-badge">Completed</span>' : ''}</div>
-      <p class="sp-row-text">${block.slice(0, R).map(spText).join(' · ')}</p></article>`;
+      <span class="sp-row-n">Repeat${done ? ' ✓' : ''}</span>
+      <span class="sp-row-t">Repeat · ${R} rows × ${T}<span class="sp-row-sub">${block.slice(0, R).map(spText).join(' · ')}</span></span></article>`;
   }
   const pass = block[(selIn ? sel : cursor + 1) - first].pass;
   return `<section class="sp-repeat">

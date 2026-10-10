@@ -1,6 +1,7 @@
 /* Step screens (js/core/stepViews.js). Composed from ui.css components; tokens only. */
 body.sp-on { background: var(--c-bg); padding-bottom: calc(var(--h-btn) + var(--s-6) + var(--s-5)); overflow-x: clip; }
 body.sp-on #header { display: none; }
+body.sp-on .content { padding-left: 0; padding-right: 0; }   /* the bars and cards bring their own gutter */
 .sp { max-width: 28rem; margin: 0 auto; color: var(--c-text); font-family: var(--font-ui); }
 .ui-icon-btn--bare { background: none; box-shadow: none; color: var(--c-soft); width: 24px; }
 
@@ -93,3 +94,5 @@ body.sp-on #header { display: none; }
 .sp-task.done { color: var(--c-muted); text-decoration: line-through; }
 .sp-check { width: 22px; height: 22px; flex: none; display: inline-flex; align-items: center; justify-content: center; border: 1.5px solid var(--c-muted); border-radius: var(--r-cell); font-size: 14px; color: var(--c-card); }
 .sp-task.done .sp-check { background: var(--c-sage-strong); border-color: var(--c-sage-strong); }
+
+.sp-row-sub { display: block; margin-top: 2px; font-size: var(--fs-meta); color: var(--c-muted); }

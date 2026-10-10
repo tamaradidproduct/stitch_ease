@@ -247,6 +247,7 @@ function spSelectRow(n) {
   const c = stepCursor(PHASES[cur]);
   spViewedRow = n === c + 1 ? null : n;
   spRender();
+  spFocusSelected();
 }
 
 function spBackToCurrent() {

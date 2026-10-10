@@ -30,6 +30,10 @@ if (process.argv.includes('--selftest')) {
     ['50% radius is a circle, still a raw value', 'border-radius: 50%;', 0],
   ];
   let bad = 0;
+  // The top bar's project name must truncate, or a long name runs under the tally and buttons.
+  const ui = fs.readFileSync(path.join(root, 'css/ui.css'), 'utf8');
+  const proj = (ui.match(/\.ui-top-project\s*\{[^}]*\}/) || [''])[0];
+  if (!/text-overflow:\s*ellipsis/.test(proj) || !/overflow:\s*hidden/.test(proj)) { console.log('FAIL .ui-top-project must truncate'); bad++; }
   for (const [name, text, want] of cases) {
     const got = findViolations(text).length;
     if (got !== want) { console.log('FAIL', name, 'got', got, 'want', want); bad++; }
