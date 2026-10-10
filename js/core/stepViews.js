@@ -113,37 +113,27 @@ function spDockChip() {
   return spBrowsing(c, total) ? spBrowseChip(c, total) : '';
 }
 
-function spDockHtml(label, doneCall) {
-  return `<footer class="sp-dock">${spDockChip()}<div class="sp-dock-in">
-    <button class="sp-dock-nav" onclick="spBrowse(-1)" aria-label="Previous row">${SP_CHEV_L}</button>
-    <button class="sp-dock-main" onclick="${doneCall}">${label}</button>
-    <button class="sp-dock-nav" onclick="spBrowse(1)" aria-label="Next row">${SP_CHEV_R}</button>
-  </div></footer>`;
+function spDockHtml(label, doneCall, variant) {
+  return uiDock({ label, onclick: doneCall, variant, chip: spDockChip() });
 }
 
 function spPdfButton() {
   return typeof PDF_SVG === 'undefined' ? '' :
-    `<button class="sp-icon-btn${typeof pdfWaiting === 'function' && pdfWaiting() ? ' has-dot' : ''}" onclick="openPatternPdf()" aria-label="Original pattern PDF" title="Original pattern PDF">${PDF_SVG}</button>`;
+    uiIconButton({ icon: PDF_SVG, label: 'Original pattern PDF', onclick: 'openPatternPdf()', dot: typeof pdfWaiting === 'function' && pdfWaiting() });
 }
 
-// The section header: "Current section" with the section switcher, the title
-// and PDF button, the progress at the right, then Details and Row progress.
-// `noMeta` leaves the last two out (the player and the full chart).
-function spSectionOverviewHtml(p, cursor, total, right, noMeta) {
-  const pct = total ? Math.round(cursor / total * 100) : 0;
-  return `<section class="sp-overview">
-    <button class="sp-eyebrow" id="phase-switch-btn" onclick="togglePhaseNav()" aria-label="Switch section">Current section
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg></button>
-    <div class="phase-scroll collapsed" id="phase-tabs"></div>
-    <div class="sp-title-row">
-      <div class="sp-title-main"><h2 class="sp-title">${p.name}</h2>${spPdfButton()}</div>
-      <span class="sp-title-right">${right !== undefined ? right : pct + '%'}</span>
-    </div>
-    ${noMeta ? '' : `<div class="sp-meta">
-      <div><span class="sp-eyebrow-s">Details</span><p>${p.desc || ''}</p></div>
-      <div><span class="sp-eyebrow-s">Row progress</span><p>${cursor} / ${total} rows</p></div>
-    </div>`}
-  </section>`;
+// The one bar every step screen shares: back, project over section name (taps open the
+// section menu), the section's rows tally, the PDF, and the options menu.
+// opts.onBack: where the chevron goes (the library by default).
+function spTopBarHtml(p, cursor, total, opts) {
+  const o = opts || {};
+  const proj = typeof activeProject === 'function' ? activeProject() : null;
+  return uiTopBar({
+    project: proj ? proj.name : '', title: p.name,
+    tally: total ? cursor + ' / ' + total + ' rows' : '',
+    onBack: o.onBack || 'goHome()', onTitle: 'spOpenSectionSheet()',
+    actions: spPdfButton() + '<button class="ui-icon-btn ui-icon-btn--bare" onclick="showResetMenu(event)" aria-label="Options">⋮</button>',
+  });
 }
 
 // Rows in order. A repeat block is drawn as one unit: while it is the one being
@@ -183,7 +173,7 @@ function spRepeatHtml(block, cursor, total, sel) {
 }
 
 function spPlaylistHtml(p, cursor, total, rows) {
-  return spSectionOverviewHtml(p, cursor, total) + spNotesHtml(p) +
+  return spTopBarHtml(p, cursor, total) + spNotesHtml(p) +
     `<section class="sp-list"><div class="sp-list-head"><span>Instructions</span><span>${p.hasChart ? 'RS / WS playlist' : ''}</span></div>` +
     spListHtml(rows, cursor, total) + '</section>';
 }
@@ -200,7 +190,7 @@ function spNextSectionButton() {
 }
 
 function spPlaylistDock(cursor, total) {
-  if (cursor < total) return spDockHtml('Next row', `spDone(${cursor + 1})`);
+  if (cursor < total) return spDockHtml(`Mark row ${cursor + 1} done`, `spDone(${cursor + 1})`);
   const n = spNextSectionButton();
   return spDockHtml(n.label, n.call);
 }
@@ -208,9 +198,9 @@ function spPlaylistDock(cursor, total) {
 // gap: no rows, so no row browsing — ‹ goes to the previous section instead.
 function spRowlessDock() {
   const n = spNextSectionButton();
-  return `<footer class="sp-dock"><div class="sp-dock-in">
-    ${cur > 0 ? `<button class="sp-dock-nav" onclick="go(${cur - 1})" aria-label="Previous section">${SP_CHEV_L}</button>` : ''}
-    <button class="sp-dock-main" onclick="${n.call}">${n.label}</button>
+  return `<footer class="ui-dock"><div class="ui-dock-in">
+    ${cur > 0 ? `<button class="ui-dock-nav" onclick="go(${cur - 1})" aria-label="Previous section">${SP_CHEV_L}</button>` : ''}
+    <button class="ui-dock-main" onclick="${n.call}">${n.label}</button>
   </div></footer>`;
 }
 
@@ -283,8 +273,7 @@ function spFullChartHtml(p, cursor, total, rows) {
   }
   const v = Math.min(total, spViewedRow !== null ? spViewedRow : cursor + 1);
   const pal = p.colorPalette && typeof openColorSheet === 'function';
-  return `<div class="sp-player-bar"><button class="sp-back" onclick="spCloseChart()" aria-label="Back to the row">${SP_CHEV_L}</button></div>` +
-    spSectionOverviewHtml(p, cursor, total, 'Full chart', true) +
+  return spTopBarHtml(p, cursor, total, { onBack: 'spCloseChart()' }) +
     (typeof yarnChipsHtml === 'function' && p.colorPalette ? yarnChipsHtml(p) : '') +
     `<div class="sp-fc-tools">
       <button onclick="spZoom(-2)" aria-label="Zoom out">A−</button><button onclick="spZoom(2)" aria-label="Zoom in">A+</button>
@@ -292,7 +281,7 @@ function spFullChartHtml(p, cursor, total, rows) {
       ${pal ? '<button onclick="openColorSheet()" aria-label="Edit yarn colours">Colours</button>' : ''}</div>
     <div class="sp-fc-scroll"><div class="sp-fc" id="sp-fc" style="--cell-sz:${cellSz}px">${body}</div></div>
     <div class="sp-legend">${spLegendHtml(types)}</div>` +
-    `<footer class="sp-dock"><div class="sp-dock-in"><button class="sp-dock-main" id="sp-fc-back" onclick="spCloseChart()">Back to row ${v}</button></div></footer>`;
+    `<footer class="ui-dock"><div class="ui-dock-in"><button class="ui-dock-main" id="sp-fc-back" onclick="spCloseChart()">Back to row ${v}</button></div></footer>`;
 }
 
 // ── The player screen ──
@@ -318,12 +307,12 @@ function spPlayerHtml(p, cursor, total, rows) {
   const next = rows[v];
   const co = spCallouts(row);
   const current = v === cursor + 1, done = v <= cursor;
-  const label = done ? `Mark row ${v} incomplete` : `Done row ${v}`;
+  const rl = row.step.kind === 'repeat' ? `R${row.rowInPass} of pass ${row.pass}` : `row ${v}`;
+  const label = done ? `Mark ${rl} not done` : `Mark ${rl} done`;
   const call = done ? `spMarkIncomplete(${v})` : `spDone(${v})`;
   const chart = spChartFor(p, row);
   const badge = current ? '<span class="sp-badge light">Current row</span>' : done ? '<span class="sp-badge">Completed</span>' : '<span class="sp-badge muted">Upcoming</span>';
-  const bar = `<div class="sp-player-bar"><button class="sp-back" onclick="spClosePlayer()" aria-label="Back to playlist">${SP_CHEV_L}</button></div>` +
-    spSectionOverviewHtml(p, cursor, total, `Row ${v} of ${total}`, true) + spNotesHtml(p);
+  const bar = spTopBarHtml(p, cursor, total, { onBack: 'spClosePlayer()' });
   if (chart) return bar + spPlayerChartHtml(p, row, chart) + spDockHtml(label, call);
   const rs = row.def.chartRow && row.step.kind === 'row' ? isRSRow(row.def.chartRow) : null;
   return bar + co.before.map(spSetupPill).join('') +

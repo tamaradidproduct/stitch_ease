@@ -26,7 +26,31 @@ function stepViewsSelfTest() {
     const rows = spRowsFor(p);
     const html = spPlaylistHtml(p, 0, rows.length, rows);
     check('playlist: one card per row, one selected', [count(html, 'data-row='), count(html, 'sp-row selected')], [3, 1]);
-    check('player: dock labelled for the current row', has(spPlayerHtml(p, 0, rows.length, rows), 'Done row 1'), true);
+    check('player: dock labelled for the current row', has(spPlayerHtml(p, 0, rows.length, rows), 'Mark row 1 done'), true);
+
+    // ── Task 4: top bar, dock copy, confirm sheets ──
+    const bar = spTopBarHtml(p, 2, 3);
+    check('top bar: tally, PDF button, back, section menu',
+      [has(bar, '2 / 3 rows'), has(bar, 'aria-label="Original pattern PDF"'), has(bar, 'goHome()'), has(bar, 'spOpenSectionSheet()')], [true, true, true, true]);
+    setStepCursor(p, 2);
+    spViewedRow = 1;
+    check('player: a done row offers "not done"', has(spPlayerHtml(p, 2, rows.length, rows), 'Mark row 1 not done'), true);
+    spViewedRow = null;
+    check('playlist dock: records the current row', has(spPlaylistDock(2, rows.length), 'Mark row 3 done'), true);
+    const rp = PHASES[1], rrows = spRowsFor(rp);
+    check('repeat row: dock names the row and pass', has(spPlayerHtml(rp, 0, rrows.length, rrows), 'Mark R1 of pass 1 done'), true);
+
+    const realConfirm = sheetConfirm;
+    let asked = null;
+    sheetConfirm = o => { asked = o; };
+    try {
+      setStepCursor(p, 3);
+      spMarkIncomplete(1);
+      check('confirm copy for un-completing several rows', asked && [asked.title, asked.confirmLabel], ['Mark rows 1–3 not done?', 'Mark not done']);
+      setStepCursor(p, 0); asked = null;
+      spDone(3);
+      check('confirm copy for marking rows ahead', asked && [asked.title, asked.confirmLabel], ['Mark rows 1–3 done?', 'Mark done']);
+    } finally { sheetConfirm = realConfirm; setStepCursor(p, 0); }
   } finally {
     Object.keys(snap).forEach(k => localStorage.setItem(k, snap[k]));
     for (let i = localStorage.length - 1; i >= 0; i--) { const k = localStorage.key(i); if (/^pt3_/.test(k) && !(k in snap)) localStorage.removeItem(k); }

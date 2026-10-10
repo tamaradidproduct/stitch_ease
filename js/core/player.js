@@ -123,7 +123,7 @@ function spInnerHtml(p) {
   const total = rows.length;
   const cursor = stepCursor(p);
   if (!total) {
-    return spSectionOverviewHtml(p, 0, 0, '') + spNotesHtml(p) + spTasksHtml(p) + spRowlessDock();
+    return spTopBarHtml(p, 0, 0) + spNotesHtml(p) + spTasksHtml(p) + spRowlessDock();
   }
   if (spViewedRow !== null && (spViewedRow < 1 || spViewedRow > total)) spViewedRow = null;
   if (spChartOpen && spPlayerOpen && spHasChart(p, rows[0])) return spFullChartHtml(p, cursor, total, rows);
@@ -299,6 +299,22 @@ function spFcRecenter() {
 
 function spToggleNotes() { spNotesOpen = !spNotesOpen; spRender(); }
 
+// "Mark rows 1–3 done?" — one row reads "Mark row 3 done?".
+function spRangeQuestion(from, to, what) {
+  return from === to ? `Mark row ${to} ${what}?` : `Mark rows ${from}–${to} ${what}?`;
+}
+
+// The section name in the top bar opens this: the section's notes, then every
+// section to switch to. Looking only — nothing here changes progress.
+function spOpenSectionSheet() {
+  const p = PHASES[cur];
+  const notes = (p.notes || []).length
+    ? '<p class="sheet-sub">' + p.notes.map(n => n).join('</p><p class="sheet-sub">') + '</p>' : '';
+  const list = PHASES.map((s, i) =>
+    `<button class="sheet-btn${i === cur ? ' primary' : ''}" onclick="closeSheet(); go(${i})">${escapeHtml(s.name)}</button>`).join('');
+  openSheet(p.name, notes + '<div class="sheet-actions" style="flex-direction:column">' + list + '</div>');
+}
+
 // ── Progress (explicit actions only) ──
 
 // The common tap — Done on the cursor row from the playlist — touches two rows,
@@ -316,13 +332,11 @@ function spPatchPlaylist(p, prev, next) {
     return true;
   };
   if (!swap(prev + 1) || !swap(next + 1)) return false;
-  const right = root.querySelector('.sp-title-right');
-  if (right) right.textContent = Math.round(next / total * 100) + '%';
-  const prog = root.querySelectorAll('.sp-meta p')[1];
-  if (prog) prog.textContent = next + ' / ' + total + ' rows';
+  const tallyEl = root.querySelector('.ui-top-tally');
+  if (tallyEl) tallyEl.textContent = next + ' / ' + total + ' rows';
   const tally = document.getElementById('prog-rows');
   if (tally) tally.textContent = globalRowsNow() + ' / ' + patternTotalRows();
-  const dock = root.querySelector('.sp-dock');
+  const dock = root.querySelector('.ui-dock');
   if (dock) dock.outerHTML = spPlaylistDock(next, total);
   if (next >= total) renderTabs();   // the section's "complete" dot
   spAimMini();
@@ -346,10 +360,9 @@ function spDone(row) {
   if (r.cursor === stepCursor(p)) return;
   if (!r.confirm) return spApplyCursor(p, r.cursor);
   sheetConfirm({
-    title: 'Mark rows complete?',
-    message: r.confirm.from === r.confirm.to ? `Mark row ${r.confirm.to} complete?` : `Mark rows ${r.confirm.from}–${r.confirm.to} complete?`,
-    detail: 'Rows before it will be counted as worked.',
-    confirmLabel: 'Mark complete',
+    title: spRangeQuestion(r.confirm.from, r.confirm.to, 'done'),
+    message: 'Rows before it will be counted as worked.',
+    confirmLabel: 'Mark done',
     onConfirm: () => spApplyCursor(p, r.cursor),
   });
 }
@@ -360,10 +373,9 @@ function spMarkIncomplete(row) {
   if (r.cursor === stepCursor(p)) return;
   if (!r.confirm) return spApplyCursor(p, r.cursor);
   sheetConfirm({
-    title: 'Mark rows incomplete?',
-    message: `Mark rows ${r.confirm.from}–${r.confirm.to} incomplete?`,
-    detail: 'You\'ll go back to the start of this row.',
-    confirmLabel: 'Mark incomplete',
+    title: spRangeQuestion(r.confirm.from, r.confirm.to, 'not done'),
+    message: 'You\'ll go back to the start of this row.',
+    confirmLabel: 'Mark not done',
     onConfirm: () => spApplyCursor(p, r.cursor),
   });
 }

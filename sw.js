@@ -1,9 +1,9 @@
-const CACHE = 'stitch-ease-v48';
+const CACHE = 'stitch-ease-v49';
 // Precached so a fresh install works offline. /js/** is also network-first at
 // runtime (see fetch below), so a missing entry here degrades to a cache miss
 // on first offline load, never to stale code. Paths are relative to the app's
 // base (/stitch-ease/) so they work on GitHub Pages.
-const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './css/tokens.css', './css/ui.css',
+const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './css/tokens.css', './css/ui.css', './css/step.css',
   './js/vendor/supabase.js',
   './js/core/state.js',
   './js/core/convert.js',

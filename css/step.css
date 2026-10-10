@@ -1,0 +1,5 @@
+/* Step screens (js/core/stepViews.js). Composed from ui.css components; tokens only. */
+body.sp-on { background: var(--c-bg); padding-bottom: calc(var(--h-btn) + var(--s-6) + var(--s-5)); overflow-x: clip; }
+body.sp-on #header { display: none; }
+.sp { max-width: 28rem; margin: 0 auto; color: var(--c-text); font-family: var(--font-ui); }
+.ui-icon-btn--bare { background: none; box-shadow: none; color: var(--c-soft); width: 24px; }
