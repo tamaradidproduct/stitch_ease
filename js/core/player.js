@@ -172,6 +172,10 @@ function spRender() {
 function spFitChart() {
   const el = document.getElementById('sp-cw-scroll');
   if (!el || !el.clientHeight) return false;
+  // A chart narrower than the screen grows its (square) cells to run the full width; a wider one keeps them
+  // at the minimum and scrolls.
+  const cols = el.querySelectorAll('.sp-cw-row')[0] ? el.querySelectorAll('.sp-cw-row')[0].querySelectorAll('.cc').length : 0;
+  if (cols) el.style.setProperty('--h-cell', spChartCellFor(el.clientWidth, cols) + 'px');
   const row = el.querySelector('.sp-cw-row'), head = el.querySelector('.sp-cw-head'), box = el.querySelector('.sp-cw');
   const pitch = row ? row.offsetHeight + 2 : 0;                                   // a row plus the gap under it
   const pad = box ? parseFloat(getComputedStyle(box).paddingTop) + parseFloat(getComputedStyle(box).paddingBottom) : 0;

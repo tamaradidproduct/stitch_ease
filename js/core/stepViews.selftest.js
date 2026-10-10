@@ -245,6 +245,11 @@ function stepViewsSelfTest() {
     check('a card taller than the view: show its top', spScrollDelta({ view: V, sel: R(150, 800), prev: R(100, 145), next: R(805, 860) }), { delta: 0, jump: false });
     check('a card taller than the view, starting above it: align its top', spScrollDelta({ view: V, sel: R(20, 700), prev: R(-30, 15), next: R(705, 760) }), { delta: 20 - 100 - 8, jump: false });
 
+    // ── A narrow chart fills the width: cells grow, staying square ──
+    check('cell size that makes a chart run the full width (24 px minimum, 40 px maximum)',
+      [spChartCellFor(432, 12), spChartCellFor(432, 23), spChartCellFor(800, 12), spChartCellFor(375, 12), spChartCellFor(375, 8)], [29, 24, 40, 24, 35]);
+    check('cells never shrink below the minimum even on a very narrow screen', spChartCellFor(200, 12), 24);
+
     // ── App shell: the document never scrolls on step screens ──
     check('playlist: everything under the bar lives in one scroll container',
       [count(pl, 'class="sp-scroll"'), pl.indexOf('ui-top') < pl.indexOf('sp-scroll'), pl.indexOf('sp-scroll') < pl.indexOf('sp-row')], [1, true, true]);

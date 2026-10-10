@@ -63,7 +63,7 @@ Fields per case: **Area · Priority · Preconditions · Steps · Expected**.
   - The chart area has no empty gap under the last row: the rows fill the height (a fraction of a row left over is split above and below), and the count adjusts when the screen height changes (for example when the browser's address bar hides).
   - The chart never scrolls vertically: it shows as many rows as fit (at least seven) around the current row. (A full-chart view comes later.)
   - While you scroll a wide chart sideways, the row numbers of the end you are nearer to stay in view: left numbers when you are closer to the left end, right numbers when closer to the right.
-  - Every stitch is a square of the same size; none is stretched or squeezed. A chart wider than the screen scrolls sideways (opening at the end the row starts from), a narrower one is centred.
+  - Every stitch is a square of the same size; none is stretched or squeezed. A chart narrower than the screen grows its (square) cells evenly so it runs edge to edge with no empty margins (up to 40 px a cell). A chart wider than the screen keeps the 24 px cells and scrolls sideways, opening at the end the row starts from.
   - The legend is one line: Knit plus up to three stitches, then `+N` if there are more, then a book icon at the right that opens the stitch sheet.
 
 **TC-07 Chartless row keeps its natural height** · Player · P1

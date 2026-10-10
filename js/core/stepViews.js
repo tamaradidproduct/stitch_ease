@@ -349,6 +349,14 @@ function spChartRowsFor(heightPx, pitch, chrome) {
   return Math.max(7, Math.floor((heightPx - (chrome || 44)) / (pitch || 26)));
 }
 
+// The square cell size that makes a chart of `cols` stitches run the full width of the area, so a narrow
+// chart has no empty margins: the area holds the stitches plus a row-number column each side, with a
+// 2 px gap between every track. Never below 24 px (a wider chart keeps 24 and scrolls sideways) and never
+// above 40 px (large screens).
+function spChartCellFor(widthPx, cols) {
+  return Math.max(24, Math.min(40, Math.floor((widthPx - 2 * (cols + 1)) / (cols + 2))));
+}
+
 // Which row-number column stays in view while the chart scrolls sideways: the nearer end.
 function spChartSideFor(scrollLeft, scrollWidth, clientWidth) {
   const max = scrollWidth - clientWidth;
