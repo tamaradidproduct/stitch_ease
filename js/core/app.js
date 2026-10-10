@@ -334,7 +334,8 @@ function updateHeaderScrollState() {
   // The chart page's header is always visible — never let it hide, even if a
   // stray scroll event fires during a phase-transition race. Same treatment
   // while a focus-scroll is in flight (suppressHeaderHide) — see above.
-  if (document.body.classList.contains('chart-page') || suppressHeaderHide) {
+  // The step screens have their own bar, which stays put; the old header is not shown there.
+  if (document.body.classList.contains('chart-page') || document.body.classList.contains('sp-on') || suppressHeaderHide) {
     h.classList.remove('header-hidden');
     updatePhaseHeaderOffset();
     return;

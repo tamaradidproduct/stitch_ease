@@ -1,7 +1,7 @@
 /* Step screens (js/core/stepViews.js). Composed from ui.css components; tokens only. */
 body.sp-on { background: var(--c-bg); padding-bottom: calc(var(--h-btn) + var(--s-6) + var(--s-5)); overflow-x: clip; }
 body.sp-on #header { display: none; }
-body.sp-on .content { padding-left: 0; padding-right: 0; }   /* the bars and cards bring their own gutter */
+body.sp-on .content { padding: 0; }   /* the bars and cards bring their own gutter */
 .sp { max-width: 28rem; margin: 0 auto; color: var(--c-text); font-family: var(--font-ui); }
 .ui-icon-btn--bare { background: none; box-shadow: none; color: var(--c-soft); width: 24px; }
 
