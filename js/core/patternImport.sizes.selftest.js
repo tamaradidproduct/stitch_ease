@@ -119,6 +119,10 @@ function importSizesSelfTest() {
     'p,P,,,a,A,,row,r1,Always,,,,,S|M,\n' +
     'p,,,,a,,,repeat,rp,Rep,,2,s1,Medium only,,M\n');
   check('repeat with no sub-rows left is dropped', ids(emptyRep, 0), ['a:r1']);
+  const HEAD3 = 'pattern_id,pattern_name,pattern_badge,pattern_desc,phase_id,phase_name,phase_desc,kind,entry_id,text,bullets,sub_row_id,sub_row_text,sizes\n';
+  const build3 = body => buildPatternFromRows(parseCsv(HEAD3 + body));
+  const missingRepeatTimes = build3('p,P,,,a,A,,repeat,rp,Rep,,,s1,Always,S|M\n');
+  check('repeat without repeat_times defaults to 1', missingRepeatTimes.buildPhases(0)[0].entries[0].times, 1);
 
   throwsWith('for_sizes: unknown size name', () =>
     build2('p,P,,,a,A,,row,r1,x,,,,,S|M,XL\n'), 'not in sizes');

@@ -224,7 +224,13 @@ function buildPatternFromRows(rows) {
       const repKey = phaseId + '::' + entryId;
       let entry = repeatByKey[repKey];
       if (!entry) {
-        entry = { kind: 'repeat', id: entryId, times: (sizeNames && r.repeat_times.indexOf('{') !== -1) ? r.repeat_times : (parseInt(r.repeat_times, 10) || 1), rows: [] };
+        const repeatTimes = r.repeat_times || '';
+        entry = {
+          kind: 'repeat',
+          id: entryId,
+          times: (sizeNames && repeatTimes.indexOf('{') !== -1) ? repeatTimes : (parseInt(repeatTimes, 10) || 1),
+          rows: []
+        };
         if (r.text) entry.text = escapeHtml(r.text);
         repeatByKey[repKey] = entry;
         phase.entries.push(entry);

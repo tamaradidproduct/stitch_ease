@@ -243,6 +243,12 @@ async function patternSyncTest() {
     check('sanitise → foreign SVG symbol dropped', evil && ('symbol' in evil.notes[0]), false);
     check('sanitise → unsafe id refuses the whole doc', has('evil2'), false);
     check('built-in id → never replaced', [pat('peacock-tee').name !== 'Hijack', !pat('peacock-tee').custom], [true, true]);
+    throwsWith('sanitise → sizedPhases validated even when phases is also present', () => {
+      const d = JSON.parse(JSON.stringify(two));
+      d.phases = JSON.parse(JSON.stringify(two.sizedPhases));
+      d.sizedPhases[0].id = "a'b";
+      sanitizeSyncedPattern(d, d.id);
+    }, 'unsafe id');
 
     // ── 10. A project that arrives before its pattern gets its snapshot ──
     use('ipad2', 'A', db);

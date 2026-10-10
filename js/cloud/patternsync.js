@@ -198,7 +198,8 @@ function sanitizeSyncedPattern(doc, expectedId) {
   };
 
   const clean = walk(doc, '', 0);
-  (clean.phases || clean.sizedPhases).forEach(ph => { if (!ph || typeof ph.id !== 'string') bad('phase without id'); });
+  const phases = sized ? clean.sizedPhases : clean.phases;
+  phases.forEach(ph => { if (!ph || typeof ph.id !== 'string') bad('phase without id'); });
   clean.custom = true;
   return clean;
 }
