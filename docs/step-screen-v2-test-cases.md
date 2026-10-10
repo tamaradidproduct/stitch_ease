@@ -108,23 +108,26 @@ Fields per case: **Area · Priority · Preconditions · Steps · Expected**.
 ## Top bar, glossary and PDF
 
 **TC-12 Top bar contents** · Navigation · P0
-- Steps: look at the bar in the player and the playlist. Tap the back chevron in each.
+- Steps: look at the bar in the playlist and in the player. Tap the back chevron in each. Scroll the playlist.
 - Expected:
-  - The bar shows back, the project name (small), the section name with ⌄, a `3 / 12 rows`-style tally, a document icon and ⋮.
-  - The tally is the section's, not the project's.
+  - **Playlist:** the bar shows back, the project's name alone, a `3 / 12 rows`-style tally (the section's), a document icon and ⋮. There is no section name in the bar.
+  - **Player:** the project's name small above the section's name, plus the same tally, document icon and ⋮. The section name has no chevron and is not tappable.
   - Back from the player goes to the playlist; back from the playlist goes to the library.
+  - The bar stays put while scrolling.
 
-**TC-13 Section sheet** · Navigation · P1
-- Steps: tap the section name.
+**TC-13 Section name and switcher at the head of the playlist** · Navigation · P1
+- Steps: in the playlist tap the section's name at the top of the list (it has a chevron).
 - Expected:
-  - A sheet opens with the section's notes (if it has any) and every section as a button, the current one highlighted.
-  - Tapping another section switches to it and closes the sheet. Nothing about progress changes.
+  - A sheet opens with the section's notes (if any) and every section as a button, the current one highlighted. Tapping another section switches to it and closes the sheet; progress is unchanged.
+  - There is no way to switch sections from the player.
 
 **TC-14 Long names truncate** · Navigation · P1
-- Steps: rename the project to 50 characters. In the console run `PHASES[cur].name = 'A very long section name that keeps going'; spRender()`.
-- Expected:
-  - Both names end in an ellipsis.
-  - The tally, document icon and ⋮ stay fully on screen, down to a 320 px window.
+- Steps: rename the project to 50 characters. In the console run `PHASES[cur].name = 'A very long section name that keeps going'; spRender()`. View the playlist and the player at 375 px and 320 px.
+- Expected: the project's name and the section's name end in an ellipsis where they share the bar; the tally, document icon and ⋮ stay fully on screen. The section heading at the head of the playlist wraps instead of cutting off.
+
+**TC-37 Rename a project from the bar** · Navigation · P1
+- Steps: in the playlist tap the project's name in the bar. Change the name and confirm. Open the player and tap the small project name above the section name.
+- Expected: a `Rename project` sheet opens with the current name; confirming updates the bar at once (and the library card); cancelling changes nothing. The same sheet opens from the player's small project name.
 
 **TC-15 Stitch sheet and glossary: Back returns to the row** · Glossary · P0
 - Steps: open the player on a row. Tap the book icon in the strip under the card or chart. In the bottom sheet tap `Full glossary ›`, then tap Back in the glossary. Repeat from the library's book icon.

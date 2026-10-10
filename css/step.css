@@ -125,3 +125,7 @@ body.sp-on .content { padding: 0; }   /* the bars and cards bring their own gutt
 @keyframes sp-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .sp-enter { animation: sp-enter .22s ease-out; }
 @media (prefers-reduced-motion: reduce) { .sp-enter { animation: none; } }
+
+/* The section's name heads the playlist, with its switcher */
+.sp-sec-btn { display: inline-flex; align-items: center; gap: var(--s-1); padding: 0; background: none; border: 0; font: inherit; font-size: var(--fs-heading); font-weight: var(--fw-semibold); color: var(--c-text); cursor: pointer; }
+.sp-lh .sp-lh-desc { margin-top: var(--s-1); }

@@ -31,13 +31,15 @@ Product requirements from the interview of 2026-10-09. They revise the step scre
 ## 3. Player layout
 
 ### 3.1 Top bar
-- One slim line (about 40 px): back · project name (quiet) · section name with ⌄ (quiet) · ⋮.
-- **Back** is always reachable and returns to the playlist.
-- **Project name** is quiet, small text above the section name, which is the stronger of the two.
-- **Section name** opens a sheet with the section's notes and the section switcher.
-- **Section tally** (`3 / 24 rows`) at the right of the bar, next to the section name. There is no project-wide tally; it is only useful for single-section patterns.
+- One slim bar: back · title block · section tally · PDF · ⋮. It never hides or moves while scrolling.
+- **In the playlist** the title is the **project's name alone** (tap to rename it). The section is named, and switched, at the head of the list (§2).
+- **In the player** the project's name sits small above the **section's name**. The section name is just a label there: no switcher, no chevron, because you don't switch sections from the player. The project's name is still tappable to rename.
+- **Back** returns to the playlist from the player, and to the library from the playlist.
+- **Rename:** tapping the project's name opens a "Rename project" sheet (the same one the library uses).
+- **Section tally** (`3 / 24 rows`) at the right of the bar. There is no project-wide tally; it is only useful for single-section patterns.
 - **PDF button:** the original pattern PDF has its own icon button in the bar, between the tally and ⋮, so it is one tap from any row. It opens the existing PDF sheet (open, attach, sync state). It is not buried in ⋮.
 - **⋮** keeps reset section / reset pattern. While its menu is open the ⋮ shows ✕; tapping outside the menu, the ✕ or Esc closes it. It is reachable but not prominent.
+- **Section sheet** (from the section name at the head of the playlist): the section's notes and every section to switch to.
 
 ### 3.2 Vertical split
 - The area between the top bar and the dock is divided about **1 / 3 for the instruction card and 2 / 3 for the chart**.

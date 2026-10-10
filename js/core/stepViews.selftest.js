@@ -30,8 +30,15 @@ function stepViewsSelfTest() {
 
     // ── Task 4: top bar, dock copy, confirm sheets ──
     const bar = spTopBarHtml(p, 2, 3);
-    check('top bar: tally, PDF button, back, section menu',
-      [has(bar, '2 / 3 rows'), has(bar, 'aria-label="Original pattern PDF"'), has(bar, 'goHome()'), has(bar, 'spOpenSectionSheet()')], [true, true, true, true]);
+    const projName = activeProject().name;
+    check('playlist top bar: the project name (tap to rename), tally, PDF button, back; no section name or switcher',
+      [has(bar, projName), has(bar, 'renameProject('), has(bar, '2 / 3 rows'), has(bar, 'aria-label="Original pattern PDF"'), has(bar, 'goHome()'), has(bar, p.name), has(bar, 'spOpenSectionSheet()')], [true, true, true, true, true, false, false]);
+    const pbar = spTopBarHtml(p, 2, 3, { player: true, onBack: 'spClosePlayer()' });
+    check('player top bar: the project name small, the section name, no switcher or chevron',
+      [has(pbar, projName), has(pbar, 'renameProject('), has(pbar, p.name), has(pbar, 'spOpenSectionSheet()'), has(pbar, '<svg width="12"')], [true, true, true, false, false]);
+    const headHtml = spPlaylistHtml(p, 0, spRowsFor(p).length, spRowsFor(p));
+    check('playlist: the section name heads the list, with the switcher',
+      [has(headHtml, 'class="sp-sec-btn"'), has(headHtml, 'spOpenSectionSheet()'), headHtml.indexOf('sp-sec-btn') > headHtml.indexOf('</header>')], [true, true, true]);
     setStepCursor(p, 2);
     spViewedRow = 1;
     check('player: a done row offers "not done"', has(spPlayerHtml(p, 2, rows.length, rows), 'Mark row 1 not done'), true);

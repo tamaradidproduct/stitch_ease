@@ -34,3 +34,6 @@
 .ui-dock-main:active { background: var(--c-sage); transform: scale(.98); }
 .ui-dock-main--outline:active { background: var(--c-sage-wash); }
 @media (prefers-reduced-motion: reduce) { .ui-icon-btn, .ui-dock-nav, .ui-dock-main { transition: none; } .ui-icon-btn:active, .ui-dock-nav:active, .ui-dock-main:active { transform: none; } }
+
+.ui-top-project--btn { padding: 0; background: none; border: 0; font: inherit; font-size: var(--fs-caps); color: var(--c-muted); text-align: left; cursor: pointer; }
+.ui-top-title--strong { color: var(--c-text); font-weight: var(--fw-semibold); }

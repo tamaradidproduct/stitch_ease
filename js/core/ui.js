@@ -39,11 +39,18 @@ function uiFacts({ count, countLabel, check }) {
     (check ? `<span class="ui-check"><b>CHECK</b> ${check}</span>` : '') + '</div>';
 }
 
-// Back · project name over section name (taps open the section menu) · tally · actions.
-function uiTopBar({ project, title, tally, onBack, onTitle, actions }) {
-  return `<header class="ui-top"><button class="ui-icon-btn" onclick="${onBack}" aria-label="Back">${UI_CHEV_L}</button>` +
-    `<button class="ui-top-ttl" onclick="${onTitle}" aria-label="Switch section"><span class="ui-top-project">${escapeHtml(project)}</span>` +
-    `<span class="ui-top-title">${escapeHtml(title)} ${UI_CHEV_DOWN}</span></button>` +
+// Back · a title block · tally · actions. The block is an optional small project line over the
+// title; the title may be a button (onTitle) with a chevron (chevron), the project line its own
+// button (onProject). Pass neither handler and it is plain text.
+function uiTopBar({ project, title, tally, onBack, onTitle, onProject, chevron, strong, titleLabel, actions }) {
+  const proj = project
+    ? (onProject ? `<button class="ui-top-project ui-top-project--btn" onclick="${onProject}" aria-label="Rename project">${escapeHtml(project)}</button>` : `<span class="ui-top-project">${escapeHtml(project)}</span>`)
+    : '';
+  const ttl = `<span class="ui-top-title${strong ? ' ui-top-title--strong' : ''}">${escapeHtml(title)}${chevron ? ' ' + UI_CHEV_DOWN : ''}</span>`;
+  const block = onTitle
+    ? `<button class="ui-top-ttl" onclick="${onTitle}" aria-label="${escapeHtml(titleLabel || title)}">${proj}${ttl}</button>`
+    : `<div class="ui-top-ttl">${proj}${ttl}</div>`;
+  return `<header class="ui-top"><button class="ui-icon-btn" onclick="${onBack}" aria-label="Back">${UI_CHEV_L}</button>` + block +
     (tally ? `<span class="ui-top-tally">${escapeHtml(tally)}</span>` : '') + (actions || '') + '</header>';
 }
 

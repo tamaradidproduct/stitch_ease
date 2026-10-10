@@ -127,7 +127,7 @@ function spInnerHtml(p) {
   const total = rows.length;
   const cursor = stepCursor(p);
   if (!total) {
-    return spTopBarHtml(p, 0, 0) + '<div class="sp-scroll">' + spNotesHtml(p) + spTasksHtml(p) + '</div>' + spRowlessDock();
+    return spTopBarHtml(p, 0, 0) + '<div class="sp-scroll">' + spListHeadHtml(p) + spNotesHtml(p) + spTasksHtml(p) + '</div>' + spRowlessDock();
   }
   if (spViewedRow !== null && (spViewedRow < 1 || spViewedRow > total)) spViewedRow = null;
   if (spChartOpen && spPlayerOpen && spHasChart(p, rows[0])) return spFullChartHtml(p, cursor, total, rows);

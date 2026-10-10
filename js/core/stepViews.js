@@ -122,18 +122,23 @@ function spPdfButton() {
     uiIconButton({ icon: PDF_SVG, label: 'Original pattern PDF', onclick: 'openPatternPdf()', dot: typeof pdfWaiting === 'function' && pdfWaiting() });
 }
 
-// The one bar every step screen shares: back, project over section name (taps open the
-// section menu), the section's rows tally, the PDF, and the options menu.
+// The bar every step screen shares. In the playlist it carries the project's name alone (tap to
+// rename) — the section is named, and switched, at the head of the list. In the player (opts.player)
+// the project's name sits small over the section's name, which is just a label there: no switching.
 // opts.onBack: where the chevron goes (the library by default).
 function spTopBarHtml(p, cursor, total, opts) {
   const o = opts || {};
   const proj = typeof activeProject === 'function' ? activeProject() : null;
-  return uiTopBar({
-    project: proj ? proj.name : '', title: p.name,
+  const name = proj ? proj.name : '';
+  const rename = proj ? `renameProject('${proj.id}')` : null;
+  const common = {
     tally: total ? cursor + ' / ' + total + ' rows' : '',
-    onBack: o.onBack || 'goHome()', onTitle: 'spOpenSectionSheet()',
+    onBack: o.onBack || 'goHome()',
     actions: spPdfButton() + '<button class="ui-icon-btn ui-icon-btn--bare" onclick="showResetMenu(event)" aria-label="Options">⋮</button>',
-  });
+  };
+  return o.player
+    ? uiTopBar(Object.assign({ project: name, onProject: rename, title: p.name }, common))
+    : uiTopBar(Object.assign({ title: name, onTitle: rename, titleLabel: 'Rename project', strong: true }, common));
 }
 
 // Rows in order. A repeat block is drawn as one unit: while it is the one being
@@ -173,9 +178,11 @@ function spPlaylistHtml(p, cursor, total, rows) {
     `<section class="sp-list">` + spListHtml(rows, cursor, total) + '</section></div>';
 }
 
-// The section's description. The progress lives in the top bar's tally, so it is not repeated here.
+// The head of the list: the section's name with its switcher, then its description. The progress
+// lives in the top bar's tally, so it is not repeated here.
 function spListHeadHtml(p) {
-  return p.desc ? `<div class="sp-lh"><p class="sp-lh-desc">${p.desc}</p></div>` : '';
+  return `<div class="sp-lh"><button class="sp-sec-btn" onclick="spOpenSectionSheet()" aria-label="Switch section">${escapeHtml(p.name)} ${UI_CHEV_DOWN}</button>` +
+    (p.desc ? `<p class="sp-lh-desc">${p.desc}</p>` : '') + '</div>';
 }
 
 // gap: the playlist dock's centre button is labelled "Next row" in the design;
@@ -460,7 +467,7 @@ function spPlayerHtml(p, cursor, total, rows) {
   const label = done ? `Mark ${rl} not done` : `Mark ${rl} done`;
   const call = done ? `spMarkIncomplete(${v})` : `spDone(${v})`;
   const chart = spChartFor(p, row);
-  return spTopBarHtml(p, cursor, total, { onBack: 'spClosePlayer()' }) +
+  return spTopBarHtml(p, cursor, total, { player: true, onBack: 'spClosePlayer()' }) +
     `<div class="sp-player">${spPlayerHeadHtml(row, v, total)}${row.step.kind === 'repeat' ? spRepeatCardHtml(rows.filter(r => r.step === row.step), row, v, !!chart) : spPlayerCardHtml(p, row, v, total, !!chart)}${chart ? spChartRegionHtml(p, row, chart) : spGlossaryBar(spRowStitches(p, row))}</div>` +
     spDockHtml(label, call, done ? 'outline' : undefined);
 }

@@ -31,6 +31,12 @@ function uiSelfTest() {
   const bar = uiTopBar({ project: 'Peacock Tee', title: long, tally: '3 / 24 rows', onBack: 'goHome()', onTitle: 'togglePhaseNav()', actions: '<i id="act"></i>' });
   check('top bar: title class, tally, actions and back handler',
     [has(bar, 'class="ui-top-title"'), has(bar, '3 / 24 rows'), has(bar, '<i id="act"></i>'), has(bar, 'onclick="goHome()"')], [true, true, true, true]);
+  const noSwitch = uiTopBar({ title: 'Peacock Tee', onBack: 'b()', onTitle: 'rename()' });
+  check('top bar: a title with no project line and no chevron is just the title', [has(noSwitch, 'ui-top-project'), has(noSwitch, '<svg width="12"'), has(noSwitch, 'onclick="rename()"')], [false, false, true]);
+  const plain = uiTopBar({ project: 'P', title: 'Section', onBack: 'b()' });
+  check('top bar: a title with no handler is not a button', [has(plain, 'class="ui-top-ttl"'), /<button class="ui-top-ttl"/.test(plain)], [true, false]);
+  const both = uiTopBar({ project: 'P', title: 'Section', onBack: 'b()', onProject: 'ren()', chevron: true });
+  check('top bar: the project line can be its own button, and a chevron can be asked for', [has(both, 'onclick="ren()"'), has(both, '<svg width="12"')], [true, true]);
   check('top bar without a tally has no tally element', has(uiTopBar({ project: 'P', title: 'T', onBack: 'b()', onTitle: 't()' }), 'ui-top-tally'), false);
   check('top bar escapes project and title', has(uiTopBar({ project: '<x>', title: '<y>', onBack: 'b()', onTitle: 't()' }), '&lt;x&gt;'), true);
 
