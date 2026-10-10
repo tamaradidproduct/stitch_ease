@@ -197,7 +197,7 @@ Fields per case: **Area · Priority · Preconditions · Steps · Expected**.
 **TC-23 Selected row is a card without a Mark button** · Playlist · P0
 - Steps: look at the playlist, then tap a different row.
 - Expected:
-  - The selected row is a plain white card headed `Row 2` in heading style (18 px semibold), with a small `Current` tag beside it when it is the current row (`Done` when it is a finished row), the instruction, a three-row chart preview on chart rows, the count/Check at the foot, and `Open row ›`.
+  - The selected row is a plain white card headed `Row 2` in a quiet heading style (16 px semibold, soft grey — a step below the player's heading), with a small `Current` tag beside it when it is the current row (`Done` when it is a finished row), the instruction, a three-row chart preview on chart rows, the count/Check at the foot, and `Open row ›`.
   - There is no Mark or Done button and no coloured bar on its side.
   - Every other row is a plain line whose name (`R4 (RS)`) is bold and clearly readable; the current row, when not selected, carries the `Current` tag before its text; finished rows are muted with a ✓.
   - Tapping the card (not a control) or `Open row ›` opens the player.

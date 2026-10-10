@@ -51,6 +51,9 @@ if (process.argv.includes('--selftest')) {
     if (uiCss.indexOf(sel) === -1) { console.log('FAIL missing pressed state ' + sel); bad++; }
   }
   if (!/@keyframes sp-enter/.test(stepCss) || !/prefers-reduced-motion[^{]*\{[^}]*\.sp-enter[^}]*animation:\s*none/s.test(stepCss)) { console.log('FAIL the row transition needs a reduced-motion opt-out'); bad++; }
+  // The playlist card's row heading is a step quieter than the player's heading (smaller, softer).
+  const rowH = (stepCss.match(/\.sp-row-h\s*\{[^}]*\}/) || [''])[0];
+  if (!/font-size:\s*var\(--fs-title\)/.test(rowH) || !/color:\s*var\(--c-soft\)/.test(rowH)) { console.log('FAIL .sp-row-h must be smaller and softer than the player heading'); bad++; }
   // The top bar's project name must truncate, or a long name runs under the tally and buttons.
   const ui = fs.readFileSync(path.join(root, 'css/ui.css'), 'utf8');
   const proj = (ui.match(/\.ui-top-project\s*\{[^}]*\}/) || [''])[0];
