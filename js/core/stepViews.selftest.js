@@ -127,6 +127,8 @@ function stepViewsSelfTest() {
     const rPl2 = spPlaylistHtml(PHASES[1], 0, prow.length, prow);
     spViewedRow = null;
     check('the repeat card carries its own summary (rows x passes) in the label', [has(rPl, 'REPEAT · 2 ROWS × 4'), has(rPl, '4 passes × 2 rows')], [true, false]);
+    check('the repeat label sits on its own line above the pass line',
+      [rPl.indexOf('REPEAT · 2 ROWS × 4') < rPl.indexOf('sp-pass-line'), /sp-pass-line[^]*?<\/div>/.exec(rPl)[0].indexOf('REPEAT')], [true, -1]);
     check('playlist repeat: Open row follows the selected row of the repeat', [count(rPl2, 'spOpenPlayer(2)'), has(rPl2, 'spOpenPlayer(1)')], [1, false]);
 
     // ── Repeat modes: expanded only when it holds the selected row, like any other row ──

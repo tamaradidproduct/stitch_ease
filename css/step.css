@@ -45,6 +45,7 @@ body.sp-on .content { padding: 0; }   /* the bars and cards bring their own gutt
 .sp-legend .ui-icon-btn { margin-left: auto; }
 
 /* Repeat state */
+.sp-repeat-label { margin-bottom: var(--s-1); }
 .sp-pass-line { display: flex; align-items: center; gap: var(--s-3); margin-bottom: var(--s-3); }
 .sp-pass-n { flex: 1; font-size: 18px; font-weight: var(--fw-semibold); }
 .sp-rlist { list-style: none; margin: var(--s-2) 0 var(--s-4); padding: 0; display: flex; flex-direction: column; gap: 6px; }

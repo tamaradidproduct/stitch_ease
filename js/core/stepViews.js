@@ -344,7 +344,8 @@ function spRepeatCardHtml(block, row, v, hasChart, inList) {
   const setup = co.before.length
     ? uiToggleSection({ label: 'SETUP', open: spSetupOpen, onclick: 'spToggleSetup()', html: co.before.map(t => `<p>${t}</p>`).join('') }) : '';
   return `<article class="ui-card ${inList ? 'sp-row selected' : 'sp-card'} sp-card--repeat${hasChart ? '' : ' sp-card--nochart'}"${inList ? ` data-row="${v}"` : ''}>
-    <div class="sp-pass-line">${uiCapsLabel('REPEAT · ' + row.R + ' ROWS × ' + T)}<span class="sp-pass-n">Pass ${pass} of ${T}</span>
+    <div class="sp-repeat-label">${uiCapsLabel('REPEAT · ' + row.R + ' ROWS × ' + T)}</div>
+    <div class="sp-pass-line"><span class="sp-pass-n">Pass ${pass} of ${T}</span>
       ${uiIconButton({ icon: '−', label: 'Previous pass', onclick: 'spPass(-1)' })}${uiIconButton({ icon: '+', label: 'Finish this pass', onclick: 'spPass(1)' })}</div>
     ${setup}
     <ul class="sp-rlist">${items}</ul>
