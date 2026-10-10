@@ -13,25 +13,7 @@
 <link rel="stylesheet" href="css/step.css">
 <style>
   :root {
-    --accent-mid: #7a9e8a;
-    --checkbox-done: #a3a19e;
-    --phase-band-bg: #e5e1da;
-    --radius: 12px;
-    --radius-sm: 8px;
     --cell-sz: 16px;
-    /* chart colours */
-    --ch-def-bg: #f8f9fb;
-    --ch-def-border: #bcc9d8;
-    --ch-def-symbol: #3d5170;
-    --ch-active-bg: #eff6ff;
-    --ch-active-border: #2563eb;
-    --ch-active-symbol: #2563eb;
-    --ch-empty-bg: #dde1e7;
-    /* Distinct from --ch-blue on purpose — that's the mid-row drag marker's
-       colour (see .mid-row-line/.mid-row-handle), and a combined-chart's
-       source-panel divider (.cc-seg-end) needs to read as a different kind
-       of line at a glance, not a second copy of the marker. */
-    --ch-purple: #8b5cf6;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -111,9 +93,9 @@
     display: none;
     position: absolute; top: 50%; z-index: 16;
     width: 22px; height: 22px; margin-left: -11px; transform: translateY(-50%);
-    border-radius: 50%;
+    border-radius: var(--r-round);
     background: var(--ch-blue); border: 2px solid var(--card);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    box-shadow: 0 1px 3px var(--c-shadow-m);
     cursor: grab; touch-action: none;
   }
   .mid-row-handle:active { cursor: grabbing; }
@@ -138,7 +120,7 @@
 
   /* Account button — the only entry point to sign-in. */
   .acct-btn {
-    flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%;
+    flex-shrink: 0; width: 34px; height: 34px; border-radius: var(--r-round);
     border: 1px solid var(--border); background: var(--bg);
     color: var(--muted); cursor: pointer; padding: 0;
     display: flex; align-items: center; justify-content: center;
@@ -146,15 +128,15 @@
   }
   /* Signed in: the accent fill is the whole status indicator, so it reads at a
      glance without a label competing with the app title. */
-  .acct-btn.in { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .acct-btn.in { background: var(--accent); border-color: var(--accent); color: var(--c-card); }
   /* Signed in but unreachable — amber ring, not an error colour: nothing is
      wrong, the work is just not backed up yet. */
-  .acct-btn.off { border-color: #c99a3f; color: #a97c22; }
+  .acct-btn.off { border-color: var(--c-warn-line); color: var(--c-warn); }
 
   /* Glossary button — same circular icon-button family as .acct-btn, sits
      just before it so the two read as a row of header utilities. */
   .glossary-btn {
-    flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%;
+    flex-shrink: 0; width: 34px; height: 34px; border-radius: var(--r-round);
     border: 1px solid var(--border); background: var(--bg);
     color: var(--muted); cursor: pointer; padding: 0;
     display: flex; align-items: center; justify-content: center;
@@ -163,8 +145,8 @@
 
   .acct-row { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
   .acct-avatar {
-    width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
-    background: var(--accent); color: #fff;
+    width: 40px; height: 40px; border-radius: var(--r-round); flex-shrink: 0;
+    background: var(--accent); color: var(--c-card);
     display: flex; align-items: center; justify-content: center;
     font-size: 15px; font-weight: 600;
   }
@@ -187,8 +169,8 @@
   .sheet-btn.slim { flex: 0 0 auto; margin: 0; padding: 9px 16px; font-size: 13px; }
 
   .acct-err {
-    font-size: 13px; line-height: 1.45; color: #8e4634;
-    background: #f7ece8; border: 1px solid #e4c7bd; border-radius: var(--radius);
+    font-size: 13px; line-height: 1.45; color: var(--c-danger-strong);
+    background: var(--c-danger-wash); border: 1px solid var(--c-danger-line); border-radius: var(--radius);
     padding: 10px 12px; margin-top: 12px;
   }
   .acct-ok {
@@ -202,9 +184,9 @@
   .google-btn {
     width: 100%; margin-top: 14px;
     display: flex; align-items: center; justify-content: center; gap: 10px;
-    background: #fff; color: #3c4043; border: 1px solid #dadce0;
+    background: var(--c-card); color: var(--c-text); border: 1px solid var(--c-line);
   }
-  .google-btn:active { background: #f7f8f8; }
+  .google-btn:active { background: var(--c-paper); }
   .google-btn svg { flex-shrink: 0; }
 
   /* "or" divider between the two sign-in paths */
@@ -220,7 +202,7 @@
   .proj-head { align-items: flex-start; gap: 8px; margin-bottom: 0; }
   .proj-heading { flex: 1; min-width: 0; }
   .proj-title {
-    font-family: var(--font-ui); font-style: italic; color: var(--accent);
+    font-family: var(--font-ui); font-weight: 600; color: var(--accent);
     font-size: 1.05rem; font-weight: 400; line-height: 1.25;
     letter-spacing: -0.01em; cursor: pointer;
   }
@@ -241,10 +223,10 @@
     font-family: var(--font-ui);
     font-size: 1.25rem; font-weight: 400; color: var(--text); letter-spacing: -0.01em;
   }
-  .header h1 span { font-style: italic; color: var(--accent); }
+  .header h1 span { font-weight: 600; color: var(--accent); }
   .header-badge {
     font-size: 11px; font-weight: 500; color: var(--accent);
-    background: var(--accent-light); padding: 3px 8px; border-radius: 20px;
+    background: var(--accent-light); padding: 3px 8px; border-radius: var(--r-sheet);
   }
 
   /* ── Pattern-title header (back to library) ── */
@@ -253,7 +235,7 @@
      chevrons read as the same control. */
   .lib-back {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 24px; height: 24px; border-radius: 50%;
+    width: 24px; height: 24px; border-radius: var(--r-round);
     border: 1px solid var(--border); background: var(--card);
     color: var(--muted); cursor: pointer; flex-shrink: 0; padding: 0;
     transition: background 0.15s;
@@ -275,32 +257,32 @@
   .lib-card-pct { font-size: 13px; font-weight: 600; color: var(--accent); flex-shrink: 0; }
   .lib-card-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
   .lib-card-track {
-    height: 5px; background: var(--border); border-radius: 3px;
+    height: 5px; background: var(--border); border-radius: var(--r-cell);
     overflow: hidden; margin: 12px 0 6px;
   }
-  .lib-card-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.3s ease; }
+  .lib-card-fill { height: 100%; background: var(--accent); border-radius: var(--r-cell); transition: width 0.3s ease; }
   .lib-card-sub { font-size: 11px; color: var(--muted); }
   .lib-card-bottom { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .proj-actions { display: flex; gap: 4px; flex-shrink: 0; }
   .proj-act {
     font-size: 11px; color: var(--muted); background: none;
-    border: 1px solid var(--border); border-radius: 6px;
+    border: 1px solid var(--border); border-radius: var(--r-small);
     padding: 3px 9px; cursor: pointer; font-family: inherit;
   }
   .proj-act:active { background: var(--bg); }
-  .proj-del { color: #a4553f; border-color: #e4c7bd; }
+  .proj-del { color: var(--c-danger); border-color: var(--c-danger-line); }
 
   /* New-project floating action button + empty/picker states */
   .fab-new {
     position: fixed; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom));
-    z-index: 60; width: 56px; height: 56px; border-radius: 50%;
-    background: var(--accent); color: #fff; border: none;
+    z-index: 60; width: 56px; height: 56px; border-radius: var(--r-round);
+    background: var(--accent); color: var(--c-card); border: none;
     font-size: 30px; font-weight: 300; line-height: 1; padding-bottom: 3px;
     display: flex; align-items: center; justify-content: center;
-    cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,0.22);
+    cursor: pointer; box-shadow: 0 4px 14px var(--c-shadow-m);
     transition: background 0.15s, transform 0.12s;
   }
-  .fab-new:active { background: #3c5a4b; transform: scale(0.94); }
+  .fab-new:active { background: var(--c-sage-strong); transform: scale(0.94); }
   .home-empty { text-align: center; color: var(--muted); font-size: 14px; line-height: 1.6; padding: 24px 12px; }
   .picker-hint { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
   .picker-import-btn {
@@ -324,12 +306,12 @@
   .imp-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
   .imp-chip {
     display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px;
-    border: 1px solid var(--border); border-radius: 999px; font-size: 12px; color: var(--text);
+    border: 1px solid var(--border); border-radius: var(--r-pill); font-size: 12px; color: var(--text);
   }
   .imp-chip b { font-weight: 600; color: var(--muted); }
   .imp-chip-sym { width: 14px; height: 14px; color: var(--text); display: inline-block; }
-  .imp-swatch { width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(0,0,0,.2); flex-shrink: 0; }
-  .imp-swatch-lg { width: 28px; height: 28px; border-radius: 6px; }
+  .imp-swatch { width: 12px; height: 12px; border-radius: var(--r-cell); border: 1px solid var(--c-swatch-line); flex-shrink: 0; }
+  .imp-swatch-lg { width: 28px; height: 28px; border-radius: var(--r-small); }
   .imp-yarn { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
   .imp-yarn .sheet-input { flex: 1; margin: 0; }
   .imp-seg { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
@@ -338,14 +320,14 @@
     font-size: 13px; color: var(--text); cursor: pointer;
   }
   .imp-seg button + button { border-left: 1px solid var(--border); }
-  .imp-seg button[aria-checked="true"] { background: var(--text); color: #fff; }
+  .imp-seg button[aria-checked="true"] { background: var(--text); color: var(--c-card); }
   .imp-seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
   /* ── Phase switch control + tabs ── */
   .phase-name-row { display: flex; align-items: center; gap: 8px; }
   .phase-switch-btn {
     display: flex; align-items: center; justify-content: center;
-    width: 24px; height: 24px; border-radius: 50%;
+    width: 24px; height: 24px; border-radius: var(--r-round);
     border: 1px solid var(--border); background: var(--card);
     color: var(--muted); cursor: pointer; flex-shrink: 0; padding: 0;
     transition: background 0.15s;
@@ -362,13 +344,13 @@
   .phase-scroll::-webkit-scrollbar { display: none; }
   .phase-tab {
     white-space: nowrap; font-size: 12px; font-weight: 500; padding: 6px 13px;
-    border-radius: 20px; border: 1px solid var(--border); background: transparent;
+    border-radius: var(--r-sheet); border: 1px solid var(--border); background: transparent;
     color: var(--muted); cursor: pointer; transition: all 0.15s;
     display: flex; align-items: center; gap: 5px;
   }
-  .phase-tab.active { background: var(--text); color: #fff; border-color: var(--text); }
+  .phase-tab.active { background: var(--text); color: var(--c-card); border-color: var(--text); }
   .phase-tab.complete { background: var(--done-bg); color: var(--done-text); border-color: transparent; }
-  .phase-tab .check-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--done-text); display: none; }
+  .phase-tab .check-dot { width: 6px; height: 6px; border-radius: var(--r-round); background: var(--done-text); display: none; }
   .phase-tab.complete .check-dot { display: block; }
 
   /* ── Content ── */
@@ -404,7 +386,7 @@
   .reset-menu {
     position: fixed; z-index: 250;
     background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 16px var(--c-shadow-s);
     display: flex; flex-direction: column;
     min-width: 200px; overflow: hidden;
   }
@@ -427,22 +409,22 @@
   /* ── Pattern-notes bottom sheet ── */
   .sheet-scrim {
     position: fixed; inset: 0; z-index: 300;
-    background: rgba(42, 37, 32, 0);
+    background: transparent;
     display: flex; align-items: flex-end;
     transition: background 0.25s ease;
   }
-  .sheet-scrim.open { background: rgba(42, 37, 32, 0.45); }
+  .sheet-scrim.open { background: var(--c-scrim); }
   .sheet {
     width: 100%; max-height: 70vh; display: flex; flex-direction: column;
-    background: var(--card); border-radius: 16px 16px 0 0;
+    background: var(--card); border-radius: var(--r-sheet) var(--r-sheet) 0 0;
     padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
-    box-shadow: 0 -6px 24px rgba(0,0,0,0.18);
+    box-shadow: 0 -6px 24px var(--c-shadow-m);
     transform: translateY(100%);
     transition: transform 0.28s ease;
   }
   .sheet-scrim.open .sheet { transform: translateY(0); }
   .sheet-grab {
-    width: 36px; height: 4px; border-radius: 2px;
+    width: 36px; height: 4px; border-radius: var(--r-cell);
     background: var(--border); margin: 4px auto 6px;
   }
   .sheet-head {
@@ -481,10 +463,10 @@
     font-family: inherit; font-size: 14px; font-weight: 500;
     color: var(--text); cursor: pointer; transition: background 0.15s;
   }
-  .sheet-btn.primary { background: var(--text); color: #fff; border-color: var(--text); }
-  .sheet-btn.primary:active { background: #444; }
-  .sheet-btn.danger { background: #a4553f; color: #fff; border-color: #a4553f; }
-  .sheet-btn.danger:active { background: #8e4634; }
+  .sheet-btn.primary { background: var(--text); color: var(--c-card); border-color: var(--text); }
+  .sheet-btn.primary:active { background: var(--c-soft); }
+  .sheet-btn.danger { background: var(--c-danger); color: var(--c-card); border-color: var(--c-danger); }
+  .sheet-btn.danger:active { background: var(--c-danger-strong); }
   .sheet-btn:disabled { opacity: 0.45; cursor: default; }
   /* The PDF "Open" is a real <a> — a user-gesture anchor click is the one path
      no popup blocker touches, and on Android Chrome it's what hands a blob:
@@ -505,7 +487,7 @@
   /* Where this file stands relative to the account. Accent = safe, amber =
      still only here — matching the account button's own two states. */
   .pdf-file-cloud { font-size: 12px; color: var(--accent); margin-top: 2px; }
-  .pdf-file-cloud.pending { color: #a97c22; }
+  .pdf-file-cloud.pending { color: var(--c-warn); }
   .pdf-retry { margin-top: 12px; }
   .pdf-retry .sheet-actions { margin-top: 8px; }
 
@@ -514,7 +496,7 @@
   .phase-folder.has-dot { position: relative; }
   .phase-folder.has-dot::after {
     content: ''; position: absolute; top: 0; right: 0;
-    width: 7px; height: 7px; border-radius: 50%;
+    width: 7px; height: 7px; border-radius: var(--r-round);
     background: var(--ch-blue); border: 1.5px solid var(--phase-band-bg);
   }
 
@@ -535,12 +517,12 @@
   .fam-code {
     margin-top: 14px; padding: 16px 12px;
     background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-family: var(--font-mono);
     font-size: 26px; letter-spacing: 0.18em; text-align: center; color: var(--text);
     word-break: break-all;
   }
   .fam-input {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-family: var(--font-mono);
     letter-spacing: 0.16em; text-transform: uppercase; text-align: center;
   }
 
@@ -561,7 +543,7 @@
   .acct-pdf-sub { font-size: 12px; color: var(--muted); word-break: break-all; }
   .acct-pdf-del {
     flex-shrink: 0; background: none; border: none; padding: 4px 2px;
-    font-family: inherit; font-size: 12px; color: #a4553f; cursor: pointer;
+    font-family: inherit; font-size: 12px; color: var(--c-danger); cursor: pointer;
   }
   .note-row {
     display: flex; align-items: baseline; gap: 12px;
@@ -581,7 +563,7 @@
   /* ── Stitch glossary ── */
   .glossary-search {
     width: 100%; box-sizing: border-box; padding: 10px 12px; margin-bottom: 18px;
-    border: 1px solid var(--border); border-radius: 10px; background: var(--card);
+    border: 1px solid var(--border); border-radius: var(--r-control); background: var(--card);
     color: var(--text); font-family: inherit; font-size: 15px;
   }
   .glossary-craft { margin-bottom: 24px; }
@@ -598,20 +580,20 @@
   /* ── Pattern-finished celebration screen ── */
   .finished-scrim {
     position: fixed; inset: 0; z-index: 400;
-    background: rgba(42, 37, 32, 0);
+    background: transparent;
     display: flex; align-items: center; justify-content: center;
     padding: 24px;
     transition: background 0.3s ease;
     overflow: hidden;
   }
-  .finished-scrim.open { background: rgba(42, 37, 32, 0.55); }
+  .finished-scrim.open { background: var(--c-scrim); }
   .finished-card {
     position: relative; z-index: 1;
     width: 100%; max-width: 340px;
-    background: var(--card); border-radius: 20px;
+    background: var(--card); border-radius: var(--r-sheet);
     padding: 36px 28px 28px;
     text-align: center;
-    box-shadow: 0 12px 40px rgba(0,0,0,0.22);
+    box-shadow: 0 12px 40px var(--c-shadow-m);
     transform: scale(0.85) translateY(10px); opacity: 0;
     transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
   }
@@ -633,14 +615,14 @@
     cursor: pointer; border: 1px solid var(--border); background: var(--card); color: var(--text);
     transition: background 0.15s;
   }
-  .finished-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .finished-btn.primary { background: var(--accent); color: var(--c-card); border-color: var(--accent); }
   .finished-btn:active { background: var(--bg); }
-  .finished-btn.primary:active { background: #3c5949; }
+  .finished-btn.primary:active { background: var(--c-sage-strong); }
 
   /* Confetti falls across the whole scrim, behind the card */
   .confetti-piece {
     position: absolute; top: -20px; z-index: 0;
-    border-radius: 2px; opacity: 0.95;
+    border-radius: var(--r-cell); opacity: 0.95;
     animation-name: confetti-fall;
     animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1);
     animation-fill-mode: forwards;
@@ -681,7 +663,7 @@
   }
   .step.active:active { background: var(--card); }
   .step-circle {
-    width: 22px; height: 22px; border-radius: 6px;
+    width: 22px; height: 22px; border-radius: var(--r-small);
     border: 2px solid var(--muted); background: transparent;
     flex-shrink: 0; display: flex; align-items: center; justify-content: center;
     margin-top: 2px; transition: all 0.15s;
@@ -703,7 +685,7 @@
   }
   .step-bullets li::before {
     content: ''; position: absolute; left: 3px; top: 8px;
-    width: 5px; height: 5px; border-radius: 50%; background: var(--accent);
+    width: 5px; height: 5px; border-radius: var(--r-round); background: var(--accent);
   }
   .step.done .step-bullets li { color: var(--done-text); }
   .step.done .step-bullets li::before { background: var(--accent-mid); }
@@ -759,7 +741,7 @@
   .repeat-tag {
     flex-shrink: 0; font-size: 10px; font-weight: 600; letter-spacing: 0.03em;
     text-transform: uppercase; color: var(--accent); background: var(--accent-light);
-    padding: 2px 7px; border-radius: 20px; line-height: 1.4;
+    padding: 2px 7px; border-radius: var(--r-sheet); line-height: 1.4;
   }
   .step.done .repeat-tag { color: var(--muted); background: var(--bg); }
 
@@ -770,7 +752,7 @@
      so the button is a visual cue, not a second stop. */
   .repeat-expand-btn {
     display: flex; align-items: center; justify-content: center;
-    width: 24px; height: 24px; border-radius: 50%;
+    width: 24px; height: 24px; border-radius: var(--r-round);
     border: 1px solid var(--border); background: var(--card);
     color: var(--muted); cursor: pointer; flex-shrink: 0; padding: 0;
     transition: background 0.15s;
@@ -792,13 +774,13 @@
     font-variant-numeric: tabular-nums;
   }
   .rep-pass-btn {
-    width: 22px; height: 22px; border-radius: 50%; border: none;
+    width: 22px; height: 22px; border-radius: var(--r-round); border: none;
     background: transparent; color: var(--accent);
     font-size: 14px; font-weight: 400; line-height: 1;
     display: flex; align-items: center; justify-content: center;
     cursor: pointer; transition: background 0.12s; flex-shrink: 0;
   }
-  .rep-pass-btn:active { background: rgba(0,0,0,0.08); }
+  .rep-pass-btn:active { background: var(--c-press); }
   .step.done .rep-pass-lbl,
   .step.done .rep-pass-btn { color: var(--muted); }
 
@@ -811,7 +793,7 @@
   }
   .rep-row + .rep-row { margin-top: 2px; }
   .rep-check {
-    flex-shrink: 0; width: 20px; height: 20px; border-radius: 5px;
+    flex-shrink: 0; width: 20px; height: 20px; border-radius: var(--r-cell);
     border: 2px solid var(--muted); background: transparent;
     display: flex; align-items: center; justify-content: center;
     margin-top: 1px; transition: all 0.15s;
@@ -861,11 +843,11 @@
     margin-top: 10px; background: var(--bg); border-radius: var(--radius-sm);
     padding: 10px 12px; display: flex; align-items: center; gap: 10px;
   }
-  .step.done .row-counter { background: rgba(255,255,255,0.5); }
+  .step.done .row-counter { background: var(--c-glass); }
   .rc-label { flex: 1; font-size: 12px; color: var(--muted); }
   .rc-controls { display: flex; align-items: center; gap: 12px; }
   .rc-btn {
-    width: 32px; height: 32px; border-radius: 50%;
+    width: 32px; height: 32px; border-radius: var(--r-round);
     border: 1px solid var(--border); background: var(--card);
     font-size: 18px; color: var(--text); cursor: pointer;
     display: flex; align-items: center; justify-content: center;
@@ -888,8 +870,8 @@
     font-size: 14px; font-weight: 500; color: var(--text); cursor: pointer; transition: background 0.15s;
   }
   .nav-btn:active { background: var(--bg); }
-  .nav-btn.primary { background: var(--text); color: #fff; border-color: var(--text); }
-  .nav-btn.primary:active { background: #444; }
+  .nav-btn.primary { background: var(--text); color: var(--c-card); border-color: var(--text); }
+  .nav-btn.primary:active { background: var(--c-soft); }
 
   /* ── Chart Tracker ── */
   .chart-tracker {
@@ -950,7 +932,7 @@
   .cc {
     width: var(--cell-sz); height: var(--cell-sz);
     border: 0.5px solid var(--ch-def-border);
-    border-radius: 1px;
+    border-radius: var(--r-cell);
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
     background: var(--ch-def-bg);
@@ -1019,23 +1001,23 @@
   }
   .yarn-chip {
     display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 5px;
-    border: 1px solid var(--border); border-radius: 999px; background: var(--card);
+    border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--card);
     font-size: 12px; color: var(--text);
   }
-  .yarn-dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0,0,0,.2); }
-  .yarn-chips:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+  .yarn-dot { width: 14px; height: 14px; border-radius: var(--r-round); border: 1px solid var(--c-swatch-line); }
+  .yarn-chips:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-small); }
   .yarn-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
   .yarn-row + .yarn-row { border-top: 1px solid var(--border); }
   .yarn-pick {
-    position: relative; width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0;
-    border: 1px solid rgba(0,0,0,.2); cursor: pointer; overflow: hidden;
+    position: relative; width: 44px; height: 44px; border-radius: var(--r-control); flex-shrink: 0;
+    border: 1px solid var(--c-swatch-line); cursor: pointer; overflow: hidden;
   }
   .yarn-pick input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
   .yarn-pick:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
   .yarn-row-name { flex: 1; font-size: 15px; color: var(--text); }
   .recap-swatch {
-    display: inline-block; width: 10px; height: 10px; border-radius: 2px;
-    border: 1px solid rgba(0,0,0,.25); vertical-align: -1px; margin-right: 3px;
+    display: inline-block; width: 10px; height: 10px; border-radius: var(--r-cell);
+    border: 1px solid var(--c-swatch-line); vertical-align: -1px; margin-right: 3px;
   }
 
   /* Row-number cell — same frame as a stitch cell (.cc: same --cell-sz box,
@@ -1111,7 +1093,7 @@
   .leg { display: flex; align-items: center; gap: 4px; }
   .leg-cc {
     width: 14px; height: 14px;
-    border: 0.5px solid var(--ch-def-border); border-radius: 1px;
+    border: 0.5px solid var(--ch-def-border); border-radius: var(--r-cell);
     background: var(--ch-def-bg);
     display: flex; align-items: center; justify-content: center;
     font-size: 9px; color: var(--ch-def-symbol); flex-shrink: 0;
@@ -1129,7 +1111,7 @@
      obviously tappable without needing a text label. */
   .color-edit-btn {
     margin-left: auto; width: 32px; height: 32px; padding: 0;
-    border-radius: 50%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--r-round); background: var(--bg); border: 1px solid var(--border);
     display: flex; align-items: center; justify-content: center;
     transition: background 0.15s, border-color 0.15s;
   }
@@ -1137,7 +1119,7 @@
   .color-edit-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
   .color-edit-swatch {
     width: 36px; height: 36px; flex-shrink: 0; padding: 0; cursor: pointer;
-    border: 1px solid var(--border); border-radius: 6px;
+    border: 1px solid var(--border); border-radius: var(--r-small);
   }
   .color-edit-name { flex: 1; margin: 0; }
   .color-grid {
@@ -1150,7 +1132,7 @@
   .color-grid[hidden] { display: none; }
   .color-swatch-opt {
     width: 100%; aspect-ratio: 1; padding: 0; cursor: pointer;
-    border: 1px solid var(--border); border-radius: 6px;
+    border: 1px solid var(--border); border-radius: var(--r-small);
   }
   .color-swatch-opt:active { transform: scale(0.92); }
 
@@ -1177,7 +1159,7 @@
     margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
   }
   .recap-row-dot {
-    width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
+    width: 14px; height: 14px; border-radius: var(--r-round); flex-shrink: 0;
     border: 1px solid var(--border);
   }
   .recap-section { margin-top: 10px; }
@@ -1191,7 +1173,7 @@
     padding: 8px 16px; gap: 0;
   }
   .cc-ctrl {
-    width: 44px; height: 44px; border-radius: 50%; border: none;
+    width: 44px; height: 44px; border-radius: var(--r-round); border: none;
     font-size: 26px; font-weight: 300;
     display: flex; align-items: center; justify-content: center;
     cursor: pointer; flex-shrink: 0; transition: background 0.12s;
@@ -1199,8 +1181,8 @@
   }
   .cc-minus { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
   .cc-minus:active { background: var(--border); }
-  .cc-plus { background: var(--ch-blue); color: #fff; }
-  .cc-plus:active { background: #1d4ed8; }
+  .cc-plus { background: var(--ch-blue); color: var(--c-card); }
+  .cc-plus:active { background: var(--c-blue-strong); }
 
   .cc-stats { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 0 12px; }
   .cc-stat-lbl { font-size: 11px; color: var(--muted); letter-spacing: 0.02em; }
@@ -1216,17 +1198,17 @@
   }
   #banner-stack > * { pointer-events: auto; }
   #update-banner {
-    background: var(--text); color: #fff;
+    background: var(--text); color: var(--c-card);
     border-radius: var(--radius); padding: 13px 16px;
     display: flex; align-items: center; justify-content: space-between;
     font-size: 14px; gap: 12px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+    box-shadow: 0 4px 16px var(--c-shadow-m);
     animation: slide-up 0.25s ease;
   }
   @keyframes slide-up { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
   #update-banner button {
-    background: #fff; color: var(--text); border: none;
-    border-radius: 8px; padding: 7px 14px;
+    background: var(--c-card); color: var(--text); border: none;
+    border-radius: var(--r-small); padding: 7px 14px;
     font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; flex-shrink: 0;
   }
 
@@ -1234,16 +1216,16 @@
      dark: nothing is broken and nothing is lost, there is just a question
      waiting. Persistent until answered. */
   #conflict-banner {
-    background: #8a6417; color: #fff;
+    background: var(--c-warn-strong); color: var(--c-card);
     border-radius: var(--radius); padding: 13px 16px;
     display: flex; align-items: center; justify-content: space-between;
     font-size: 14px; gap: 12px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+    box-shadow: 0 4px 16px var(--c-shadow-m);
     animation: slide-up 0.25s ease;
   }
   #conflict-banner button {
-    background: #fff; color: var(--text); border: none;
-    border-radius: 8px; padding: 7px 14px;
+    background: var(--c-card); color: var(--text); border: none;
+    border-radius: var(--r-small); padding: 7px 14px;
     font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; flex-shrink: 0;
   }
 
@@ -1254,10 +1236,10 @@
      message. Raised only for the two states this device cannot resolve itself;
      an out-of-date row is converted on read (see upgradeLegacyRow). */
   .sync-banner {
-    background: #8a6417; color: #fff;
+    background: var(--c-warn-strong); color: var(--c-card);
     border-radius: var(--radius); padding: 13px 16px;
     font-size: 14px; line-height: 1.45;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+    box-shadow: 0 4px 16px var(--c-shadow-m);
     animation: slide-up 0.25s ease;
   }
 
@@ -1294,12 +1276,12 @@
     padding: 10px 12px 10px 16px;
     display: flex; align-items: center; justify-content: space-between;
     font-size: 13.5px; gap: 12px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    box-shadow: 0 4px 16px var(--c-shadow-s);
     animation: slide-up 0.25s ease;
   }
   #pattern-chip button {
-    background: var(--accent); color: #fff; border: none;
-    border-radius: 8px; padding: 7px 14px;
+    background: var(--accent); color: var(--c-card); border: none;
+    border-radius: var(--r-small); padding: 7px 14px;
     font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; flex-shrink: 0;
   }
   .pu-facts { margin-top: 12px; }
@@ -1311,10 +1293,10 @@
   /* ── Save-failure banner ── persistent and buttonless: the only fix is
      freeing space, which the user has to do themselves. */
   #save-error {
-    background: #8a3b32; color: #fff;
+    background: var(--c-danger-strong); color: var(--c-card);
     border-radius: var(--radius); padding: 13px 16px;
     font-size: 13.5px; line-height: 1.45;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+    box-shadow: 0 4px 16px var(--c-shadow-m);
     animation: slide-up 0.25s ease;
   }
 </style>

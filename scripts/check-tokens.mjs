@@ -11,7 +11,7 @@ export function findViolations(text) {
   for (const m of text.matchAll(/(?<![&\w])#[0-9a-fA-F]{3,8}\b/g)) out.push('raw colour ' + m[0]);
   for (const m of text.matchAll(/rgba?\(/g)) out.push('raw colour ' + m[0]);
   for (const m of text.matchAll(/border-radius\s*:\s*[^;"]*\d+px/g)) out.push('raw radius ' + m[0].trim());
-  for (const m of text.matchAll(/font-family\s*:\s*(?!\s*var\()[^;"]+/g)) out.push('raw font ' + m[0].trim());
+  for (const m of text.matchAll(/font-family\s*:\s*(?!\s*(?:var\(|inherit))[^;"]+/g)) out.push('raw font ' + m[0].trim());
   return out;
 }
 
@@ -26,6 +26,7 @@ if (process.argv.includes('--selftest')) {
     ['token colour', 'color: var(--c-card);', 0],
     ['token radius', 'border-radius: var(--r-card);', 0],
     ['token font', 'font-family: var(--font-ui);', 0],
+    ['inherit is not a raw font', 'font-family: inherit;', 0],
     ['50% radius is a circle, still a raw value', 'border-radius: 50%;', 0],
   ];
   let bad = 0;
@@ -43,7 +44,14 @@ let n = 0;
 for (const f of files) {
   const p = path.join(root, f);
   if (!fs.existsSync(p)) continue;
-  fs.readFileSync(p, 'utf8').split('\n').forEach((line, i) => {
+  let text = fs.readFileSync(p, 'utf8');
+  if (f === 'index.html') {                       // only the inline CSS; meta tags and icons carry their own colours
+    const a = text.indexOf('<style>'), b = text.indexOf('</style>');
+    text = text.split('\n').map((ln, i, arr) => ln).join('\n');
+    const before = text.slice(0, a).split('\n').length - 1;
+    text = '\n'.repeat(before) + text.slice(a, b);
+  }
+  text.split('\n').forEach((line, i) => {
     findViolations(line).forEach(v => { console.log(`${f}:${i + 1} ${v}`); n++; });
   });
 }

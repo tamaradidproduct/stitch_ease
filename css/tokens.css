@@ -18,12 +18,43 @@
   --c-scrim: rgba(30, 32, 35, 0.38);
   --c-blue: #2f63d6;
 
+
+  /* state colours */
+  --c-danger: #b3402f;
+  --c-danger-strong: #8e2f22;
+  --c-danger-line: #e8c9c4;
+  --c-danger-wash: #f9ecea;
+  --c-warn: #a97c22;
+  --c-warn-strong: #8a6417;
+  --c-warn-line: #c99a3f;
+  --c-blue-strong: #1d4ed8;
+  --c-sage-mid: #7a9e8a;
+  --c-shadow-s: rgba(0, 0, 0, 0.14);
+  --c-shadow-m: rgba(0, 0, 0, 0.2);
+  --c-press: rgba(0, 0, 0, 0.08);
+  --c-glass: rgba(255, 255, 255, 0.5);
+  --c-swatch-line: rgba(0, 0, 0, 0.2);
+
+  /* chart (the knitting chart's own palette) */
+  --ch-def-bg: #f8f9fb;
+  --ch-def-border: #bcc9d8;
+  --ch-def-symbol: #3d5170;
+  --ch-active-bg: #eff6ff;
+  --ch-active-border: var(--c-blue);
+  --ch-active-symbol: var(--c-blue);
+  --ch-empty-bg: #dde1e7;
+  /* Distinct from --ch-blue on purpose — that's the mid-row drag marker's colour (see
+     .mid-row-line/.mid-row-handle), and a combined-chart's source-panel divider (.cc-seg-end)
+     needs to read as a different kind of line at a glance. */
+  --ch-purple: #8b5cf6;
+
   /* shape */
   --r-card: 12px;
   --r-control: 10px;
   --r-small: 8px;
   --r-sheet: 16px;
   --r-round: 50%;
+  --r-pill: 999px;
   --r-cell: 4px;
 
   /* space (multiples of 4) */
@@ -35,6 +66,7 @@
   --s-6: 24px;
 
   /* type */
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
   --font-ui: 'Figtree', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --fs-instruction: 21px;
   --fs-title: 16px;
@@ -66,4 +98,9 @@
   --done-bg: var(--c-sage-wash);
   --done-text: var(--c-sage-strong);
   --ch-blue: var(--c-blue);
+  --accent-mid: var(--c-sage-mid);
+  --checkbox-done: var(--c-muted);
+  --phase-band-bg: var(--c-line);
+  --radius: var(--r-card);
+  --radius-sm: var(--r-small);
 }
