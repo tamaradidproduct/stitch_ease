@@ -283,7 +283,7 @@ Fields per case: **Area · Priority · Preconditions · Steps · Expected**.
   - Every screen behaves as before (layout, buttons, navigation).
 
 **TC-29 Old chart screen still works** · Regression · P0
-- Preconditions: a project on the old renderer (open the app without `?steps=1`, open a Peacock Tee project, go to the yoke chart).
+- Preconditions: a project created before the step model, which keeps the old renderer through its frozen snapshot: open it and go to the yoke chart.
 - Steps: change rows with + and −, zoom with A− and A+, and tap a row.
 - Expected: the chart, row counter, zoom and highlight work as before and show no layout break from the restyle.
 
