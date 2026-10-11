@@ -24,6 +24,9 @@ Do not commit, push, open a PR, or merge until the user explicitly says so.
 - Still bump `CACHE` in `sw.js` when cached assets change.
 
 ## Airtable QA loop
-- Base `app48cJR6Trt1Mwbe` ("Stitch Ease Knitting QA"): **Findings** `tbl0oEhUjzY7LTtcm`, **Test Cases** `tblHqeMuQ7NSyJnkA`, **Deployments** `tblHR2lbYGsM3kv1v` (written by the staging webhook).
+- Base `app48cJR6Trt1Mwbe` ("Stitch Ease Knitting QA"): **Findings** `tbl0oEhUjzY7LTtcm`, **Test Cases** `tblHqeMuQ7NSyJnkA`, **Deployments** `tblHR2lbYGsM3kv1v` (written by the staging webhook), **Test Runs** `tblfR0FjDEtDx8tAR`.
 - PRs that fix a Finding: never `Closes/Fixes/Resolves #N`; use `Refs #N` or `(#N)` in the commit subject. Staging deploy then sets the Finding to `Ready to retest`; QA sets `Resolved`.
 - New manual-QA cases go in Test Cases (not GitHub issues): Title, Area, Platform, Test Priority, Steps, Expected Result, Lifecycle `Ready`; source PR/issue in Notes.
+- Test Runs link to a Test Case (and optionally Findings). Two automations keep them current: a new run with Test Case, Environment, Test Profile and Result sets the case's Latest Result / Last Executed and clears Needs Retest; a Staging run links the newest Staging Deployment.
+- Needs Retest is manual here: the staging webhook flips Findings only and does not match commits to Test Cases.
+- All Airtable automations are created as drafts; turn them on in the Airtable UI.
