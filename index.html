@@ -153,10 +153,6 @@
   }
   .acct-email { font-size: 14px; color: var(--text); word-break: break-all; }
   .acct-status { font-size: 12px; color: var(--muted); margin-top: 1px; }
-  .acct-note {
-    font-size: 12px; color: var(--muted); line-height: 1.5;
-    margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--border);
-  }
   /* "Backed up 4 minutes ago", with the manual trigger beside it. Shown on
      every visit, not only on failure — a status nobody has seen working is one
      nobody can read when it breaks. */
@@ -169,16 +165,6 @@
      line of text and has to be content-width instead. */
   .sheet-btn.slim { flex: 0 0 auto; margin: 0; padding: 9px 16px; font-size: 13px; }
 
-  .acct-err {
-    font-size: 13px; line-height: 1.45; color: var(--c-danger-strong);
-    background: var(--c-danger-wash); border: 1px solid var(--c-danger-line); border-radius: var(--radius);
-    padding: 10px 12px; margin-top: 12px;
-  }
-  .acct-ok {
-    font-size: 13px; line-height: 1.45; color: var(--text);
-    background: var(--accent-light); border: 1px solid var(--accent);
-    border-radius: var(--radius); padding: 10px 12px; margin-top: 12px;
-  }
 
   /* Google's brand guidelines: white button, their four-colour G unmodified,
      and the wording left as "Continue with Google". */
@@ -225,10 +211,6 @@
     font-size: 1.25rem; font-weight: 400; color: var(--text); letter-spacing: -0.01em;
   }
   .header h1 span { font-weight: 600; color: var(--accent); }
-  .header-badge {
-    font-size: 11px; font-weight: 500; color: var(--accent);
-    background: var(--accent-light); padding: 3px 8px; border-radius: var(--r-sheet);
-  }
 
   /* ── Pattern-title header (back to library) ── */
   .pattern-h1 { display: flex; align-items: center; gap: 6px; }
@@ -312,7 +294,6 @@
   .imp-chip b { font-weight: 600; color: var(--muted); }
   .imp-chip-sym { width: 14px; height: 14px; color: var(--text); display: inline-block; }
   .imp-swatch { width: 12px; height: 12px; border-radius: var(--r-cell); border: 1px solid var(--c-swatch-line); flex-shrink: 0; }
-  .imp-swatch-lg { width: 28px; height: 28px; border-radius: var(--r-small); }
   .imp-yarn { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
   .imp-yarn .sheet-input { flex: 1; margin: 0; }
   .imp-seg { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
@@ -516,7 +497,6 @@
   }
   .acct-family-count { font-size: 12px; color: var(--muted); text-align: right; }
   .fam-list { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
-  .fam-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
   .fam-email { font-size: 13px; color: var(--text); word-break: break-all; }
   .fam-role { font-size: 12px; color: var(--muted); flex-shrink: 0; }
   .acct-family .sheet-actions { margin-top: 12px; }
@@ -545,8 +525,6 @@
   .acct-pdfs-head .chevron { transition: transform 0.2s ease; }
   .acct-pdfs-head.open .chevron { transform: rotate(180deg); }
   .acct-pdfs-list { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
-  .acct-pdf-row { display: flex; align-items: center; gap: 10px; }
-  .acct-pdf-main { flex: 1; min-width: 0; }
   .acct-pdf-name { font-size: 13px; color: var(--text); }
   .acct-pdf-sub { font-size: 12px; color: var(--muted); word-break: break-all; }
   .acct-pdf-del {
@@ -852,8 +830,6 @@
     padding: 10px 12px; display: flex; align-items: center; gap: 10px;
   }
   .step.done .row-counter { background: var(--c-glass); }
-  .rc-label { flex: 1; font-size: 12px; color: var(--muted); }
-  .rc-controls { display: flex; align-items: center; gap: 12px; }
   .rc-btn {
     width: 32px; height: 32px; border-radius: var(--r-round);
     border: 1px solid var(--border); background: var(--card);
@@ -862,8 +838,6 @@
     font-weight: 300; transition: background 0.1s;
   }
   .rc-btn:active { background: var(--accent-light); }
-  .rc-val { font-size: 18px; font-weight: 500; min-width: 28px; text-align: center; color: var(--text); }
-  .rc-target { font-size: 12px; color: var(--muted); }
 
   /* ── Nav buttons — fixed at bottom ── */
   .nav-btns {
@@ -1012,7 +986,6 @@
     border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--card);
     font-size: 12px; color: var(--text);
   }
-  .yarn-dot { width: 14px; height: 14px; border-radius: var(--r-round); border: 1px solid var(--c-swatch-line); }
   .yarn-chips:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-small); }
   .yarn-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
   .yarn-row + .yarn-row { border-top: 1px solid var(--border); }
@@ -1166,10 +1139,6 @@
     font-size: 18px; font-weight: 700; color: var(--text);
     margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
   }
-  .recap-row-dot {
-    width: 14px; height: 14px; border-radius: var(--r-round); flex-shrink: 0;
-    border: 1px solid var(--border);
-  }
   .recap-section { margin-top: 10px; }
   .recap-section + .recap-section { padding-top: 10px; border-top: 1px dashed var(--border); }
   .recap-sub { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 2px; }
@@ -1179,13 +1148,6 @@
     display: flex; align-items: center;
     border-top: 1px solid var(--border);
     padding: 8px 16px; gap: 0;
-  }
-  .cc-ctrl {
-    width: 44px; height: 44px; border-radius: var(--r-round); border: none;
-    font-size: 26px; font-weight: 300;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; flex-shrink: 0; transition: background 0.12s;
-    line-height: 1;
   }
   .cc-minus { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
   .cc-minus:active { background: var(--border); }
