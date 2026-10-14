@@ -293,8 +293,6 @@
   .imp-chip b { font-weight: 600; color: var(--muted); }
   .imp-chip-sym { width: 14px; height: 14px; color: var(--text); display: inline-block; }
   .imp-swatch { width: 12px; height: 12px; border-radius: var(--r-cell); border: 1px solid var(--c-swatch-line); flex-shrink: 0; }
-  .imp-yarn { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-  .imp-yarn .sheet-input { flex: 1; margin: 0; }
   .imp-seg { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
   .imp-seg button {
     flex: 1; padding: 10px 8px; border: 0; background: var(--card); font: inherit;
@@ -595,14 +593,6 @@
   .finished-title { font-family: var(--font-ui); font-size: 1.35rem; color: var(--text); margin: 14px 0 6px; }
   .finished-sub { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 24px; }
   .finished-actions { display: flex; flex-direction: column; gap: 10px; }
-  .finished-btn {
-    padding: 13px; border-radius: var(--radius); font-size: 14px; font-weight: 500;
-    cursor: pointer; border: 1px solid var(--border); background: var(--card); color: var(--text);
-    transition: background 0.15s;
-  }
-  .finished-btn.primary { background: var(--accent); color: var(--c-card); border-color: var(--accent); }
-  .finished-btn:active { background: var(--bg); }
-  .finished-btn.primary:active { background: var(--c-sage-strong); }
 
   /* Confetti falls across the whole scrim, behind the card */
   .confetti-piece {
@@ -647,15 +637,6 @@
     margin: 10px 0;
   }
   .step.active:active { background: var(--card); }
-  .step-circle {
-    width: 22px; height: 22px; border-radius: var(--r-small);
-    border: 2px solid var(--muted); background: transparent;
-    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
-    margin-top: 2px; transition: all 0.15s;
-  }
-  .step.done .step-circle { background: var(--checkbox-done); border-color: var(--checkbox-done); }
-  .step-circle svg { display: none; }
-  .step.done .step-circle svg { display: block; }
   .step-body { flex: 1; min-width: 0; }
   .step-text { font-size: 16px; line-height: 1.5; color: var(--text); }
   .step.done .step-text { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--muted); }
@@ -754,20 +735,10 @@
     display: flex; align-items: center; gap: 4px; flex-shrink: 0;
   }
   .rep-pass-lbl {
-    font-size: 12px; font-weight: 600; color: var(--done-text);
+    font-size: 12px; font-weight: 600;
     min-width: 68px; text-align: center;
     font-variant-numeric: tabular-nums;
   }
-  .rep-pass-btn {
-    width: 22px; height: 22px; border-radius: var(--r-round); border: none;
-    background: transparent; color: var(--accent);
-    font-size: 14px; font-weight: 400; line-height: 1;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; transition: background 0.12s; flex-shrink: 0;
-  }
-  .rep-pass-btn:active { background: var(--c-press); }
-  .step.done .rep-pass-lbl,
-  .step.done .rep-pass-btn { color: var(--muted); }
 
   .rep-rows { list-style: none; margin: 0; padding: 0; }
   .rep-row {
@@ -777,15 +748,6 @@
     cursor: pointer; transition: background 0.15s;
   }
   .rep-row + .rep-row { margin-top: 2px; }
-  .rep-check {
-    flex-shrink: 0; width: 20px; height: 20px; border-radius: var(--r-cell);
-    border: 2px solid var(--muted); background: transparent;
-    display: flex; align-items: center; justify-content: center;
-    margin-top: 1px; transition: all 0.15s;
-  }
-  .rep-row.done .rep-check { background: var(--checkbox-done); border-color: var(--checkbox-done); }
-  .rep-check svg { display: none; }
-  .rep-row.done .rep-check svg { display: block; }
   .rep-n {
     flex-shrink: 0; width: 16px; text-align: center;
     font-size: 11px; font-weight: 600; color: var(--muted);
@@ -829,14 +791,6 @@
     padding: 10px 12px; display: flex; align-items: center; gap: 10px;
   }
   .step.done .row-counter { background: var(--c-glass); }
-  .rc-btn {
-    width: 32px; height: 32px; border-radius: var(--r-round);
-    border: 1px solid var(--border); background: var(--card);
-    font-size: 18px; color: var(--text); cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 300; transition: background 0.1s;
-  }
-  .rc-btn:active { background: var(--accent-light); }
 
   /* ── Nav buttons — fixed at bottom ── */
   .nav-btns {
@@ -1048,8 +1002,6 @@
   }
   .chart-confirm-step:active { background: var(--bg); }
   .chart-confirm-step.done { background: var(--done-bg); }
-  .chart-confirm-step.done .step-circle { background: var(--accent); border-color: var(--accent); }
-  .chart-confirm-step.done .step-circle svg { display: block; }
   .chart-confirm-step.done .step-text { color: var(--done-text); text-decoration: line-through; text-decoration-color: var(--accent-mid); }
 
 
