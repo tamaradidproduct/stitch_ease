@@ -1,8 +1,8 @@
 # Nightly audit 2026-10-14
 
 ## Fixed autonomously
-- `index.html`: removed CSS rules for classes with no consumer in `index.html` markup, `css/`, or `js/**` (generated HTML strings and inline onclicks checked): `.finished-btn` (+ `.primary`, `:active`), `.step-circle` (+ `.done`, `svg`, including the `.chart-confirm-step.done .step-circle` rules), `.rep-pass-btn` (the grouped `.step.done .rep-pass-lbl, .step.done .rep-pass-btn` rule now only names the live `.rep-pass-lbl`), `.rep-check` (+ `.done`, `svg`), `.rc-btn`, `.imp-yarn`. Safe: CSS-only deletion; the live siblings (`.finished-*`, `.rep-pass-lbl`, `.rep-row`, `.chart-confirm-step`) are untouched. Replaced by `.check` per CLAUDE.md (`checkHtml`).
-- `sw.js`: CACHE bumped v87 → v88 because `index.html` is in ASSETS.
+- `index.html`: removed CSS rules for classes with no consumer in `index.html` markup, `css/`, or `js/**` (generated HTML strings and inline onclicks checked): `.finished-btn` (+ `.primary`, `:active`), `.step-circle` (+ `.done`, `svg`, including the `.chart-confirm-step.done .step-circle` rules), `.rep-pass-btn` (the grouped `.step.done .rep-pass-lbl, .step.done .rep-pass-btn` rule is gone entirely, since `css/components.css` already sets `.step.done .rep-pass-lbl` to muted), `.rep-check` (+ `.done`, `svg`), `.rc-btn`, `.imp-yarn`. Safe: CSS-only deletion; the live siblings (`.finished-*`, `.rep-pass-lbl`, `.rep-row`, `.chart-confirm-step`) are untouched. Replaced by `.check` per CLAUDE.md (`checkHtml`).
+- `sw.js`: CACHE bumped v87 → v89 because `index.html` is in ASSETS.
 
 `node scripts/check.mjs` and `node scripts/check-tokens.mjs --all` pass.
 
