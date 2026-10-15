@@ -292,7 +292,6 @@
   }
   .imp-chip b { font-weight: 600; color: var(--muted); }
   .imp-chip-sym { width: 14px; height: 14px; color: var(--text); display: inline-block; }
-  .imp-swatch { width: 12px; height: 12px; border-radius: var(--r-cell); border: 1px solid var(--c-swatch-line); flex-shrink: 0; }
   .imp-seg { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
   .imp-seg button {
     flex: 1; padding: 10px 8px; border: 0; background: var(--card); font: inherit;
@@ -767,25 +766,6 @@
   .rep-row.now .rep-t { color: var(--done-text); font-weight: 500; }
   .step.done .rep-row { opacity: 0.6; }
 
-  /* Position line on a repeat block: which row of which pass, and the
-     pattern row it works out to. Was the cadence reminder before repeats
-     replaced cadence. */
-  .round-hint {
-    margin-top: 10px; padding: 9px 12px; border-radius: var(--radius-sm);
-    background: var(--bg); border-left: 3px solid var(--border);
-    display: flex; flex-direction: column; gap: 2px;
-  }
-  .round-hint-lbl {
-    font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
-    text-transform: uppercase; color: var(--muted);
-  }
-  .round-hint-txt { font-size: 13px; line-height: 1.45; color: var(--text); }
-  .round-hint.on {
-    background: var(--accent-light); border-left-color: var(--accent);
-  }
-  .round-hint.on .round-hint-lbl { color: var(--accent); }
-  .round-hint.on .round-hint-txt { color: var(--done-text); font-weight: 500; }
-
   .row-counter {
     margin-top: 10px; background: var(--bg); border-radius: var(--radius-sm);
     padding: 10px 12px; display: flex; align-items: center; gap: 10px;
@@ -972,13 +952,6 @@
      edge). The margin on each is mirrored in chart.js's
      midRowLeftPad() — the left one's width+margin shifts where column 0
      actually starts, which the mid-row line's position math depends on. */
-  .cc-rownum {
-    flex-shrink: 0; font-size: 10px; font-weight: 500;
-    color: var(--muted); background: var(--card);
-    z-index: 3; overflow: hidden;
-  }
-  .cc-rownum-l { margin-right: 4px; position: sticky; left: 0; }
-  .cc-rownum-r { margin-left: 4px; position: sticky; right: 0; }
   .crow-num-active { color: var(--ch-blue) !important; font-weight: 700; }
   .crow-num-done { color: var(--accent) !important; }
 

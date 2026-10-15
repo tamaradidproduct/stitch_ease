@@ -257,25 +257,6 @@
   .rep-row.now .rep-t { color: var(--done-text); font-weight: 500; }
   .step.done .rep-row { opacity: 0.6; }
 
-  /* Position line on a repeat block: which row of which pass, and the
-     pattern row it works out to. Was the cadence reminder before repeats
-     replaced cadence. */
-  .round-hint {
-    margin-top: 10px; padding: 9px 12px; border-radius: var(--radius-sm);
-    background: var(--bg); border-left: 3px solid var(--border);
-    display: flex; flex-direction: column; gap: 2px;
-  }
-  .round-hint-lbl {
-    font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
-    text-transform: uppercase; color: var(--muted);
-  }
-  .round-hint-txt { font-size: 13px; line-height: 1.45; color: var(--text); }
-  .round-hint.on {
-    background: var(--accent-light); border-left-color: var(--accent);
-  }
-  .round-hint.on .round-hint-lbl { color: var(--accent); }
-  .round-hint.on .round-hint-txt { color: var(--done-text); font-weight: 500; }
-
   /* ── Chip ── outlined pill label (see chipHtml in js/core/widgets.js); --lead when
      it starts with a swatch or icon, which wants less padding on that side. */
   .chip {

@@ -74,7 +74,6 @@ body.sp-on .content { padding: 0; }   /* the bars and cards bring their own gutt
 .sp-row-n { width: var(--w-rownum); flex: none; white-space: nowrap; font-size: var(--fs-body); font-weight: var(--fw-bold); color: var(--c-text); }
 .sp-row-t { flex: 1; }
 .sp-row-c { flex: none; font-size: var(--fs-meta); color: var(--c-muted); }
-.sp-row-tag { display: block; margin-top: 2px; font-size: var(--fs-micro); font-weight: var(--fw-bold); letter-spacing: var(--ls-label); color: var(--c-sage-strong); }
 .sp-row.done { color: var(--c-muted); }
 .sp-row.done .sp-row-n { color: var(--c-muted); }
 .sp-open-btn { height: var(--h-tap); margin-top: var(--s-3); background: var(--c-card); color: var(--c-soft); border: 0; border-radius: var(--r-control); box-shadow: 0 0 0 1px var(--c-line); font: inherit; font-size: var(--fs-body); font-weight: var(--fw-medium); cursor: pointer; }
