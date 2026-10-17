@@ -1,4 +1,4 @@
-const CACHE = 'stitch-ease-v86';
+const CACHE = 'stitch-ease-v87';
 // Precached so a fresh install works offline. /js/** is also network-first at
 // runtime (see fetch below), so a missing entry here degrades to a cache miss
 // on first offline load, never to stale code. Paths are relative to the app's
@@ -11,6 +11,7 @@ const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './ic
   './js/core/storage.js',
   './js/core/rows.js',
   './js/core/steps.js',
+  './js/core/markers.js',
   './js/core/chart.js',
   './js/core/yarns.js',
   './js/core/render.js',

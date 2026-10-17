@@ -9,11 +9,50 @@
 
 const UI_CHEV_L = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15.75 19.5-7.5-7.5 7.5-7.5"/></svg>';
 const UI_CHEV_R = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>';
+// The flag's drawing is centred in its 24-unit box (a pole on the left made it sit off-centre inside a round or square button).
+const UI_FLAG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 20.5v-17"/><path d="M6.5 3.5h11l-2 4 2 4h-11"/></svg>';
+const UI_LINE = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg>';
 const UI_CHEV_DOWN = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>';
 
 // A square icon-only button. `icon` is trusted markup; `dot` adds the "something is waiting" dot.
-function uiIconButton({ icon, label, onclick, dot }) {
-  return `<button class="ui-icon-btn${dot ? ' has-dot' : ''}" onclick="${onclick}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}">${icon}</button>`;
+// `active` is the "something is set here" state (sage wash), e.g. a row that has a marker.
+function uiIconButton({ icon, label, onclick, dot, active }) {
+  return `<button class="ui-icon-btn${dot ? ' has-dot' : ''}${active ? ' ui-icon-btn--active' : ''}" onclick="${onclick}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}">${icon}</button>`;
+}
+
+// A small pill label with an optional leading icon. `icon` is trusted markup, `text` is escaped.
+// variant: 'solid' (sage fill) or none (outlined).
+function uiBadge({ text, icon, variant }) {
+  return `<span class="ui-badge${variant ? ' ui-badge--' + variant : ''}">${icon || ''}${escapeHtml(text)}</span>`;
+}
+
+// A quiet tappable panel that holds a badge (or any trusted `leadHtml`) and a line of text, which is
+// escaped. Wraps onto a second line when the text is long. `onclick` is developer-authored JS.
+function uiNoteStrip({ leadHtml, text, onclick }) {
+  return `<button class="ui-strip" onclick="${onclick}">${leadHtml || ''}${text ? `<span class="ui-strip-t">${escapeHtml(text)}</span>` : ''}</button>`;
+}
+
+// Mutually exclusive choices in equal segments; the chosen one reads as selected (aria-pressed).
+// options: [{ value, label, icon? }] (value and label escaped, icon trusted). `onpick` is the name of a
+// global function called with the value, which repaints the pressed state in place (see uiSegmentedPick).
+function uiSegmented({ options, value, onpick }) {
+  return '<div class="ui-seg" role="group">' + options.map(o =>
+    `<button class="ui-seg-opt" data-value="${escapeHtml(o.value)}" aria-pressed="${o.value === value}" onclick="${onpick}('${escapeHtml(o.value)}')">${o.icon || ''}${escapeHtml(o.label)}</button>`).join('') + '</div>';
+}
+
+// A single-line text field for a sheet. Everything is escaped; `label` is the accessible name.
+function uiTextInput({ id, value, placeholder, maxlength, label }) {
+  return `<input class="sheet-input" id="${escapeHtml(id)}" type="text"${maxlength ? ` maxlength="${maxlength | 0}"` : ''} value="${escapeHtml(value || '')}"` +
+    `${placeholder ? ` placeholder="${escapeHtml(placeholder)}"` : ''} aria-label="${escapeHtml(label)}">`;
+}
+
+// The chosen value of a segmented control, or null; and moving the choice without repainting.
+function uiSegmentedValue(root) {
+  const on = (root || document).querySelector('.ui-seg-opt[aria-pressed="true"]');
+  return on ? on.dataset.value : null;
+}
+function uiSegmentedPick(value, root) {
+  (root || document).querySelectorAll('.ui-seg-opt').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.value === value)));
 }
 
 // Small tracked-out label: ROW 4 OF 24, INSTRUCTIONS.

@@ -58,6 +58,22 @@ function uiSelfTest() {
   const art = uiCard({ cls: 'sp-row', html: 'x', tag: 'article', attrs: 'data-row="3"' });
   check('card: tag and extra attributes', [art.indexOf('<article class="ui-card sp-row" data-row="3">'), art.slice(-10)], [0, '</article>']);
 
+  check('badge: solid and outlined, text escaped, icon kept',
+    [uiBadge({ text: 'Note' }), uiBadge({ text: '<b>', variant: 'solid', icon: '<svg></svg>' })],
+    ['<span class="ui-badge">Note</span>', '<span class="ui-badge ui-badge--solid"><svg></svg>&lt;b&gt;</span>']);
+  const strip = uiNoteStrip({ leadHtml: '<i>L</i>', text: 'a <b>', onclick: 'go(2)' });
+  check('note strip: a button with the lead, escaped text and handler', [has(strip, '<button class="ui-strip" onclick="go(2)">'), has(strip, '<i>L</i>'), has(strip, 'a &lt;b&gt;')], [true, true, true]);
+  check('note strip: no text, no text span', has(uiNoteStrip({ leadHtml: 'L', onclick: 'x()' }), 'ui-strip-t'), false);
+  const seg = uiSegmented({ onpick: 'pick', value: 'b', options: [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }] });
+  check('segmented: the value is pressed, the other is not, handler wired',
+    [has(seg, 'data-value="a" aria-pressed="false"'), has(seg, 'data-value="b" aria-pressed="true"'), has(seg, "onclick=\"pick('a')\"")], [true, true, true]);
+  const ti = uiTextInput({ id: 'f', value: 'a "q" <b>', placeholder: 'p', maxlength: 120, label: 'L' });
+  check('text input: escaped value, limit, placeholder and label',
+    [has(ti, 'id="f"'), has(ti, 'maxlength="120"'), has(ti, 'value="a &quot;q&quot; &lt;b&gt;"'), has(ti, 'placeholder="p"'), has(ti, 'aria-label="L"'), has(uiTextInput({ id: 'g', label: 'L' }), 'maxlength')],
+    [true, true, true, true, true, false]);
+  check('icon button: active state is a class, off by default',
+    [has(uiIconButton({ icon: 'x', label: 'L', onclick: 'o()', active: true }), 'ui-icon-btn--active'), has(uiIconButton({ icon: 'x', label: 'L', onclick: 'o()' }), 'ui-icon-btn--active')], [true, false]);
+
   const failed = results.filter(r => !r.ok);
   console.log('[ui selftest] ' + (results.length - failed.length) + '/' + results.length + ' passed');
   failed.forEach(f => console.log('FAIL', f.case, '\n  got ', f.got, '\n  want', f.want));

@@ -31,6 +31,33 @@ function spBrowseChip(cursor, total) {
     <button onclick="spBackToCurrent()">Back to current</button></div>`;
 }
 
+// ── Row markers (js/core/markers.js) ──
+// A badge says which kind; the strip adds the note and opens the sheet; the round flag button
+// in a row card's top right adds or edits. Marker text can come from another device: always escaped.
+function spMarkerBadgeHtml(m) {
+  return m.t === 'lifeline' ? uiBadge({ text: 'Lifeline', icon: UI_LINE, variant: 'solid' }) : uiBadge({ text: 'Note', icon: UI_FLAG });
+}
+
+function spMarkerStripHtml(row, m) {
+  return m ? uiNoteStrip({ leadHtml: spMarkerBadgeHtml(m), text: m.x, onclick: `spOpenMarkerSheet(${row.n})` }) : '';
+}
+
+function spMarkerButtonHtml(row, m) {
+  return uiIconButton({ icon: UI_FLAG, label: m ? 'Edit marker' : 'Mark row', onclick: `spOpenMarkerSheet(${row.n})`, active: !!m });
+}
+
+// The Mark row sheet. `m` is the row's current marker or null; the sheet opens on its type (Lifeline for a
+// new one). Choosing is spMarkerPick's job in place — the sheet is not rebuilt.
+function spMarkerSheetHtml(n, m) {
+  return sheetBodyHtml({
+    body: uiSegmented({ onpick: 'spMarkerPick', value: m ? m.t : 'lifeline',
+        options: [{ value: 'lifeline', label: 'Lifeline', icon: UI_LINE }, { value: 'note', label: 'Note', icon: UI_FLAG }] }) +
+      uiTextInput({ id: 'mk-note', value: m ? m.x : '', maxlength: MARKER_TEXT_MAX, placeholder: 'Add a note, e.g. lifeline in at 253 sts', label: 'Note' }),
+    actions: [btnHtml({ label: 'Save', variant: 'primary', onclick: `spSaveMarker(${n})` })]
+      .concat(m ? [btnHtml({ label: 'Remove marker', variant: 'danger', onclick: `spRemoveMarker(${n})` })] : []),
+  });
+}
+
 function spPassNote(row) {
   return row.passes > 1 ? `<span class="sp-pass">Pass ${row.pass} of ${row.passes} · row ${row.rowInPass} of ${row.R}</span>` : '';
 }
@@ -63,15 +90,17 @@ function spRowHtml(row, cursor, total) {
   const text = spText(row), co = spCallouts(row);
   const rep = row.step.kind === 'repeat';
   const cnt = spCount(row);
+  const mk = markerAt(PHASES[cur], row.n);
   if (selected) {
     const cr = row.def.chartRow;
     const rs = !rep && cr && spHasChart(PHASES[cur], row) ? (isRSRow(cr) ? 'RS' : 'WS') : '';
     const setup = co.before.length
       ? uiToggleSection({ label: 'SETUP', open: spSetupOpen, onclick: 'spToggleSetup()', html: co.before.map(t => `<p>${t}</p>`).join('') }) : '';
     return uiCard({ tag: 'article', cls: 'sp-row selected', attrs: `data-row="${row.n}" onclick="spCardTap(event, ${row.n})"`, html: `
-      <div class="sp-card-top"><h3 class="sp-row-h">Row ${row.n}</h3>${current ? uiTag('Current') : done ? uiTag('Done', 'done') : ''}<span class="sp-card-top-r">${rs ? `<span class="sp-read">${rs}</span>` : ''}${rep ? '' : spPassNote(row)}</span></div>
+      <div class="sp-card-top"><h3 class="sp-row-h">Row ${row.n}</h3>${current ? uiTag('Current') : done ? uiTag('Done', 'done') : ''}<span class="sp-card-top-r">${rs ? `<span class="sp-read">${rs}</span>` : ''}${rep ? '' : spPassNote(row)}${spMarkerButtonHtml(row, mk)}</span></div>
       ${setup}
       <p class="sp-ins">${text}</p>
+      ${spMarkerStripHtml(row, mk)}
       ${spMiniChartHtml(PHASES[cur], row)}
       ${uiFacts({ count: cnt, check: co.after.join(' · ') || null })}
       ${uiButton({ label: 'Open row ›', onclick: `spOpenPlayer(${row.n})`, cls: 'sp-open-btn' })}
@@ -80,6 +109,7 @@ function spRowHtml(row, cursor, total) {
   return `<article class="sp-row ${done ? 'done' : 'upcoming'}${current ? ' current' : ''}" data-row="${row.n}" onclick="spSelectRow(${row.n})">
     <span class="sp-row-n">${spLabel(row)}${done ? ' ✓' : ''}</span>
     <span class="sp-row-t">${current ? uiTag('Current') + ' ' : ''}${text}</span>
+    ${mk ? spMarkerBadgeHtml(mk) : ''}
     ${cnt === null ? '' : `<span class="sp-row-c">${cnt}</span>`}
   </article>`;
 }
@@ -163,10 +193,10 @@ function spRepeatHtml(block, cursor, total, sel) {
   const selIn = sel >= first && sel <= last;                 // like any row: open only when selected (the current row by default)
   if (!selIn) {
     const done = last <= cursor, curIn = cursor + 1 >= first && cursor + 1 <= last;
-    const pass = curIn ? block[cursor + 1 - first].pass : 0;
+    const pass = curIn ? block[cursor + 1 - first].pass : 0, bm = blockMarker(block);
     return `<article class="sp-row ${done ? 'done' : 'upcoming'}${curIn ? ' current' : ''}" onclick="spSelectRow(${curIn ? cursor + 1 : first})">
       <span class="sp-row-n">R${first}–${last}${done ? ' ✓' : ''}</span>
-      <span class="sp-row-t">${curIn ? uiTag('Current') + ' ' : ''}Repeat · ${R} rows × ${T}${curIn ? `<span class="sp-row-sub">Pass ${pass} of ${T}</span>` : ''}<span class="sp-row-sub">${block.slice(0, R).map(spText).join(' · ')}</span></span></article>`;
+      <span class="sp-row-t">${curIn ? uiTag('Current') + ' ' : ''}Repeat · ${R} rows × ${T}${curIn ? `<span class="sp-row-sub">Pass ${pass} of ${T}</span>` : ''}<span class="sp-row-sub">${block.slice(0, R).map(spText).join(' · ')}</span></span>${bm ? spMarkerBadgeHtml(bm) : ''}</article>`;
   }
   const row = block[sel - first];
   return spRepeatCardHtml(block, row, row.n, false, true);
@@ -405,11 +435,12 @@ function spChartWindowHtml(chartRow, after, span, chart) {
 // "Row 3 of 12" with the side and reading direction: a heading above the card, quieter than
 // the instruction. A repeat row's heading is the repeat itself (its pass line is in the card).
 function spPlayerHeadHtml(row, v, total) {
-  if (row.step.kind === 'repeat') return `<div class="sp-head"><h2 class="sp-head-t">Repeat · ${row.R} rows × ${row.passes}</h2></div>`;
+  const flag = spMarkerButtonHtml(row, markerAt(PHASES[cur], row.n));   // the marker button sits at the heading's right, in the player
+  if (row.step.kind === 'repeat') return `<div class="sp-head"><h2 class="sp-head-t">Repeat · ${row.R} rows × ${row.passes}</h2>${flag}</div>`;
   const cr = row.def.chartRow;
   const rs = cr ? isRSRow(cr) : null;   // RS/WS belongs to the section's chart, not a motif
   const dir = rs === null ? '' : `<span class="sp-read">${rs ? 'RS · read right → left' : 'WS · read left → right'}</span>`;
-  return `<div class="sp-head"><h2 class="sp-head-t">Row ${v} of ${total}</h2>${dir}${spPassNote(row)}</div>`;
+  return `<div class="sp-head"><h2 class="sp-head-t">Row ${v} of ${total}</h2>${dir}${spPassNote(row)}${flag}</div>`;
 }
 
 // The card under it: the row's Setup (collapsed until asked for), the instruction, and the
@@ -421,6 +452,7 @@ function spPlayerCardHtml(p, row, v, total, hasChart) {
   return uiCard({ tag: 'article', cls: 'sp-card' + (hasChart ? '' : ' sp-card--nochart'), html: `
     ${setup}
     <p class="sp-ins">${spText(row)}</p>
+    ${spMarkerStripHtml(row, markerAt(p, row.n))}
     ${uiFacts({ count: spCount(row), check: co.after.join(' · ') || null })}
   ` });
 }
@@ -441,9 +473,10 @@ function spRepeatCardHtml(block, row, v, hasChart, inList) {
     attrs: inList ? `data-row="${v}" onclick="spCardTap(event, ${v})"` : '', html: `
     ${inList ? `<div class="sp-repeat-label">${uiCapsLabel('REPEAT · ' + row.R + ' ROWS × ' + T)}</div>` : ''}
     <div class="sp-pass-line"><span class="sp-pass-n">Pass ${pass} of ${T}</span>
-      ${uiIconButton({ icon: '−', label: 'Previous pass', onclick: 'spPass(-1)' })}${uiIconButton({ icon: '+', label: 'Finish this pass', onclick: 'spPass(1)' })}</div>
+      ${uiIconButton({ icon: '−', label: 'Previous pass', onclick: 'spPass(-1)' })}${uiIconButton({ icon: '+', label: 'Finish this pass', onclick: 'spPass(1)' })}${inList ? spMarkerButtonHtml(row, markerAt(PHASES[cur], row.n)) : ''}</div>
     ${setup}
     <ul class="sp-rlist">${items}</ul>
+    ${spMarkerStripHtml(row, markerAt(PHASES[cur], row.n))}
     ${uiFacts({ count: spPassEndCount(block, pass), countLabel: 'sts at end of pass ' + pass, check: co.after.join(' · ') || null })}
     ${inList ? uiButton({ label: 'Open row ›', onclick: `spOpenPlayer(${v})`, cls: 'sp-open-btn' }) : ''}
   ` });

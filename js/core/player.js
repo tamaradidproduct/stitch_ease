@@ -318,6 +318,29 @@ function spCardTap(e, n) {
   spOpenPlayer(n);
 }
 
+// ── Row markers: the Mark row sheet ──
+// Saving a marker never touches progress — it is a label on a row.
+function spOpenMarkerSheet(n) {
+  const p = PHASES[cur];
+  if (!p || !markerRowOk(p, n)) return;
+  openSheet('Mark row ' + n, spMarkerSheetHtml(n, markerAt(p, n)));
+}
+
+function spMarkerPick(type) { uiSegmentedPick(type); }
+
+function spSaveMarker(n) {
+  const note = document.getElementById('mk-note');
+  if (!setMarker(PHASES[cur], n, uiSegmentedValue() || 'lifeline', note ? note.value : '')) return;
+  closeSheet();
+  spRender();
+}
+
+function spRemoveMarker(n) {
+  clearMarker(PHASES[cur], n);
+  closeSheet();
+  spRender();
+}
+
 // Feedback for a change of progress: the next screen eases in once.
 let spEnterPending = false;
 function spNoteChange() { spEnterPending = true; }

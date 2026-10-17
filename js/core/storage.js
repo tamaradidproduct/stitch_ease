@@ -711,7 +711,9 @@ function resetPattern() {
   if (!activeProjectId) return;
   state = {};
   ctrs = {};
+  const liveMarkers = markerKeys();
   entryProg = {};
+  tombstoneMarkers(liveMarkers);   // a reset is an edit to sync: removed markers need tombstones
   chartRows = {};
   chartCurrentRow = 1;
   cur = 0;

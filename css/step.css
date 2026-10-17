@@ -139,3 +139,7 @@ body.sp-on .content { padding: 0; }   /* the bars and cards bring their own gutt
 .sp-card-top-r { margin-left: auto; display: inline-flex; gap: var(--s-2); align-items: baseline; }
 
 .sheet-actions--col { flex-direction: column; }
+
+/* The marker flag sits at the right of the row heading, in the playlist card and above the player card alike. */
+.sp-card-top-r { align-items: center; }
+.sp-head .ui-icon-btn { align-self: center; }
