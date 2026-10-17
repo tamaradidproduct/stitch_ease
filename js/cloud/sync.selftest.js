@@ -362,6 +362,68 @@ function syncSelfTest() {
     })(),
     ['number', 'number', 4, 2]);
 
+  // ── Row markers (mk:<section>:<n>) ──
+  check('splitFields: a marker is kept, a malformed one becomes a tombstone',
+    splitFields({ 'mk:s1:2': { t: 'lifeline', x: 'hi' }, 'mk:s1:3': { t: 'banana', x: 'z' } }).entries,
+    { 'mk:s1:2': { t: 'lifeline', x: 'hi' }, 'mk:s1:3': { t: '', x: '' } });
+  check('joinFields: a marker comes back as an object, not true',
+    joinFields({ entries: { 'mk:s1:2': { t: 'note', x: 'a' } }, chart_rows: {}, cur: 0 }).values['mk:s1:2'],
+    { t: 'note', x: 'a' });
+  check('sameFieldValue: two different markers are NOT the same',
+    [sameFieldValue('mk:s1:2', { t: 'note', x: 'a' }, { t: 'lifeline', x: 'b' }),
+     sameFieldValue('mk:s1:2', { t: 'note', x: 'a' }, { t: 'note', x: 'b' }),
+     sameFieldValue('mk:s1:2', { t: 'note', x: 'a' }, { t: 'note', x: 'a' }),
+     sameFieldValue('mk:s1:2', { t: '', x: '' }, { t: '', x: '' }),
+     sameFieldValue('rp:r1', { y: 1, z: 1 }, { y: 1, z: 1 }),
+     sameFieldValue('rp:r1', { y: 1, z: 1 }, { y: 2, z: 1 })],
+    [false, false, true, true, true, false]);
+  check('a repeat object with t still compares as a repeat',
+    (() => {
+      const r = diffProgress(
+        { values: { 'rp:r1': { y: 3, z: 1, t: 'future' } }, clocks: { 'rp:r1': t1 } },
+        { values: { 'rp:r1': { y: 1, z: 1, t: 'future' } }, clocks: { 'rp:r1': t1 + 1 } },
+        { 'rp:r1': t0 });
+      return r.conflicts.map(c => c.key);
+    })(),
+    ['rp:r1']);
+  check('a marker edited differently on both devices is a conflict',
+    (() => {
+      const r = diffProgress(
+        { values: { 'mk:s1:2': { t: 'note', x: 'a' } }, clocks: { 'mk:s1:2': t1 } },
+        { values: { 'mk:s1:2': { t: 'lifeline', x: 'b' } }, clocks: { 'mk:s1:2': t1 + 1 } },
+        { 'mk:s1:2': t0 });
+      return r.conflicts.map(c => c.key);
+    })(),
+    ['mk:s1:2']);
+  check('markers on different rows from two devices both survive, no conflict',
+    (() => {
+      const r = diffProgress(
+        { values: { 'mk:s1:2': { t: 'note', x: 'a' } }, clocks: { 'mk:s1:2': t1 } },
+        { values: { 'mk:s1:9': { t: 'lifeline', x: 'b' } }, clocks: { 'mk:s1:9': t1 } },
+        {});
+      return { merged: r.merged, conflicts: r.conflicts.length };
+    })(),
+    { merged: { 'mk:s1:2': { t: 'note', x: 'a' }, 'mk:s1:9': { t: 'lifeline', x: 'b' } }, conflicts: 0 });
+  check('a newer remote tombstone removes an unchanged local marker',
+    diffProgress(
+      { values: { 'mk:s1:2': { t: 'note', x: 'a' } }, clocks: { 'mk:s1:2': t0 } },
+      { values: { 'mk:s1:2': { t: '', x: '' } }, clocks: { 'mk:s1:2': t1 } },
+      { 'mk:s1:2': t0 }).merged['mk:s1:2'],
+    { t: '', x: '' });
+  check('conflict label: "Marker · row N", saying both versions in words',
+    (() => {
+      const l = conflictLabel({ k: 'mk:s1:2', p: 'no-such-project' });
+      return [l.field, l.fmt({ t: 'lifeline', x: 'in at 253' }), l.fmt({ t: 'note', x: '' }), l.fmt({ t: '', x: '' })];
+    })(),
+    ['Marker · row 2', 'Lifeline: in at 253', 'Note', 'No marker']);
+  check('schema 4: a v3 row upgrades with its entries untouched',
+    (() => {
+      const row = { project_id: 'p', entries: { 'sc:s1': 3, 'mk:s1:2': { t: 'note', x: 'a' } }, cur: 0, chart_rows: {}, clocks: {}, schema_ver: 3 };
+      const up = upgradeRow(row, null);
+      return [PROGRESS_SCHEMA, up.schema_ver, up.entries];
+    })(),
+    [4, 4, { 'sc:s1': 3, 'mk:s1:2': { t: 'note', x: 'a' } }]);
+
   const failed = results.filter(r => !r.ok);
   console.table(results.map(r => ({ case: r.case, ok: r.ok })));
   failed.forEach(f => console.error('FAIL ' + f.case + '\n  got  ' + f.got + '\n  want ' + f.want));

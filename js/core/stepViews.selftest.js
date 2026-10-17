@@ -324,6 +324,64 @@ function stepViewsSelfTest() {
     check('section sheet: no inline style', has(spSectionSheetHtml(), 'style='), false);
     const tasksP = PHASES.find(s => sectionSteps(s, activeDoc).some(t => t.kind === 'task'));
     if (tasksP) check('checklist: rows are checkboxes', has(spTasksHtml(tasksP), 'role="checkbox"') && has(spTasksHtml(tasksP), 'aria-checked='), true);
+
+    // ── Row markers ──
+    setStepCursor(p, 0); spViewedRow = null;
+    setMarker(p, 3, 'lifeline', 'in at 253');
+    setMarker(p, 1, 'note', '<img src=x onerror=alert(1)>');
+    const mh = spPlaylistHtml(p, 0, rows.length, rows);
+    check('marker: selected row has the edit button and a strip, text escaped',
+      [has(mh, 'aria-label="Edit marker"'), count(mh, 'class="ui-strip"'), has(mh, '&lt;img'), has(mh, '<img src=x')], [true, 1, true, false]);
+    check('marker: a plain line shows a badge with no handler of its own',
+      [has(mh, 'ui-badge--solid'), count(mh, 'spOpenMarkerSheet(')], [true, 2]);
+    spViewedRow = 2;
+    const uh = spPlaylistHtml(p, 0, rows.length, rows);
+    check('marker: an unmarked selected row offers "Mark row" and no strip',
+      [has(uh, 'aria-label="Mark row"'), has(uh, 'aria-label="Edit marker"'), count(uh, 'class="ui-strip"')], [true, false, 0]);
+    spViewedRow = 1;
+    const dockOf = h => h.slice(h.indexOf('<footer'));
+    const pm = spPlayerHtml(p, 0, rows.length, rows);
+    check('marker: the player shows the strip and the button',
+      [has(pm, 'ui-strip'), has(pm, 'aria-label="Edit marker"')], [true, true]);
+    check('marker: in the player the button is in the heading, above the card, once',
+      [pm.indexOf('aria-label="Edit marker"') > pm.indexOf('class="sp-head"'), pm.indexOf('aria-label="Edit marker"') < pm.indexOf('sp-card'), count(pm, 'aria-label="Edit marker"')], [true, true, 1]);
+    clearMarker(p, 1);
+    check('marker: the dock is the same marked or not',
+      dockOf(pm) === dockOf(spPlayerHtml(p, 0, rows.length, rows)), true);
+    entryProg[markerKey(p.id, 99)] = { t: 'note', x: 'stale' };
+    check('marker: a marker past the last row changes nothing and does not throw',
+      spPlaylistHtml(p, 0, rows.length, rows) === (delete entryProg[markerKey(p.id, 99)], spPlaylistHtml(p, 0, rows.length, rows)), true);
+    const rp2 = PHASES[1], rrows2 = spRowsFor(rp2);
+    cur = 1; setMarker(rp2, 2, 'note', 'x'); spViewedRow = rrows2.length;
+    check('marker: a collapsed repeat shows one badge for its whole block',
+      count(spPlaylistHtml(rp2, 0, rrows2.length, rrows2), 'class="ui-badge'), 1);
+    cur = 0; spViewedRow = null;
+
+    // ── Mark row sheet ──
+    const sh0 = spMarkerSheetHtml(2, null);
+    check('sheet (new row): Save, both choices, a 120 limit, no Remove, Lifeline chosen',
+      [has(sh0, 'Save'), has(sh0, 'Lifeline'), has(sh0, 'Note'), has(sh0, 'maxlength="120"'), has(sh0, 'Remove marker'), has(sh0, 'data-value="lifeline" aria-pressed="true"')],
+      [true, true, true, true, false, true]);
+    const sh1 = spMarkerSheetHtml(2, { t: 'note', x: 'a <b>' });
+    check('sheet (marked row): Note chosen, Remove offered, text escaped',
+      [has(sh1, 'data-value="note" aria-pressed="true"'), has(sh1, 'Remove marker'), has(sh1, 'a &lt;b&gt;'), has(sh1, 'a <b>')],
+      [true, true, true, false]);
+    cur = 0; setStepCursor(p, 1); spViewedRow = null;
+    const cursor0 = stepCursor(p);
+    spOpenMarkerSheet(2);
+    check('sheet opens titled for the row',
+      [!!document.getElementById('sheet-scrim'), (document.querySelector('.sheet-title') || {}).textContent], [true, 'Mark row 2']);
+    spMarkerPick('note');
+    document.getElementById('mk-note').value = '   ';
+    spSaveMarker(2);
+    check('save: a blank note keeps the type, closes the sheet, leaves progress alone',
+      [markerAt(p, 2), !!document.getElementById('sheet-scrim'), stepCursor(p) === cursor0], [{ t: 'note', x: '' }, false, true]);
+    spOpenMarkerSheet(2);
+    check('reopening shows the saved type', has(document.querySelector('.sheet').innerHTML, 'data-value="note" aria-pressed="true"'), true);
+    spRemoveMarker(2);
+    check('remove: the marker is gone, progress untouched', [markerAt(p, 2), stepCursor(p) === cursor0, !!document.getElementById('sheet-scrim')], [null, true, false]);
+    spOpenMarkerSheet(99);
+    check('a row that does not exist opens no sheet', !!document.getElementById('sheet-scrim'), false);
   } finally {
     Object.keys(snap).forEach(k => localStorage.setItem(k, snap[k]));
     for (let i = localStorage.length - 1; i >= 0; i--) { const k = localStorage.key(i); if (/^pt3_/.test(k) && !(k in snap)) localStorage.removeItem(k); }

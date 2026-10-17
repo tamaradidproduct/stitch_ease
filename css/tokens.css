@@ -102,6 +102,8 @@
   --w-column: 640px;
   --w-navbtn: 52px;
   --h-check: 22px;
+  --h-seg-icon: 16px;
+  --h-badge-icon: 12px;
   --w-rownum: 58px;
 
   /* restored with the components in css/components.css */

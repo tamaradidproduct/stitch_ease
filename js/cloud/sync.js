@@ -212,6 +212,7 @@ function splitFields(values) {
     // position and the row are lost.
     if (k.indexOf('rp:') === 0)      entries[k] = normalizeRepeatValue(v);
     else if (k.indexOf('cr:') === 0) chart_rows[k.slice(3)] = v | 0;
+    else if (k.indexOf('mk:') === 0) entries[k] = normalizeMarker(v);
     else if (k.indexOf('sc:') === 0) entries[k] = Math.max(0, v | 0);
     else if (k.indexOf('t:') === 0)  entries[k] = !!v;
     else if (k.indexOf('n:') === 0)  entries[k] = !!v;
@@ -237,6 +238,7 @@ function joinFields(row) {
   const entries = (row && row.entries) || {};
   Object.keys(entries).forEach(k => {
     values[k] = k.indexOf('rp:') === 0 ? normalizeRepeatValue(entries[k])
+              : k.indexOf('mk:') === 0 ? normalizeMarker(entries[k])
               : k.indexOf('sc:') === 0 ? Math.max(0, entries[k] | 0)
               : !!entries[k];
   });
@@ -886,6 +888,14 @@ function conflictLabel(c) {
     return { field: ph ? plainText(ph.name, 28) : 'Section',
              fmt: v => (total && (v | 0) >= total) ? 'Finished (' + total + ' rows)' : 'On row ' + (((v | 0) + 1)) + (total ? ' of ' + total : '') };
   }
+  // A marker, said the way the knitter put it: "Lifeline: in at 253".
+  if (c.k.indexOf('mk:') === 0) {
+    return { field: 'Marker · row ' + c.k.slice(c.k.lastIndexOf(':') + 1),
+             fmt: v => {
+               const m = normalizeMarker(v);
+               return !m.t ? 'No marker' : (m.t === 'lifeline' ? 'Lifeline' : 'Note') + (m.x ? ': ' + plainText(m.x, 60) : '');
+             } };
+  }
   if (c.k.indexOf('t:') === 0) {
     const e = findEntry(c.k.slice(2));
     return { field: (e && plainText(e.text)) || 'Task', fmt: v => (v ? 'Done' : 'Not done') };
@@ -936,7 +946,9 @@ function conflictLabel(c) {
 // v3 = one cursor per section (`sc:<section>`, `t:<task>`) in place of per-row
 // keys. Tied to the step-model flag so a device that is not on it keeps writing,
 // and reading, exactly what it did.
-const PROGRESS_SCHEMA = stepModelOn() ? 3 : 2;
+// v4 = row markers (`mk:<section>:<n>`) in entries. A v3 build drops keys it does
+// not know on push, so it must see a v4 row as "newer — reload" rather than merge it.
+const PROGRESS_SCHEMA = stepModelOn() ? 4 : 2;
 
 function schemaMatches(row) { return ((row && row.schema_ver) | 0) === PROGRESS_SCHEMA; }
 function rowSchema(row) { return (row && row.schema_ver) | 0; }
@@ -1072,7 +1084,9 @@ function upgradeRow(row, legacy) {
     r = upgradeLegacyRow(row, legacy);
     if (!r) return null;
   }
-  return PROGRESS_SCHEMA >= 3 ? upgradeV2Row(r) : r;
+  if (PROGRESS_SCHEMA < 3) return r;
+  // v3 → v4 changes no existing key: the row only needs its version rewritten.
+  return v < 3 ? upgradeV2Row(r) : Object.assign({}, r, { schema_ver: PROGRESS_SCHEMA });
 }
 
 // The legacy columns for specific projects, fetched only when a v1 row is
@@ -1549,9 +1563,12 @@ async function pull(reason) {
 // repeat's position is an OBJECT, and two objects are never `===` — comparing
 // them that way would report a conflict on every single sync for every repeat
 // both devices had touched, even when they agreed exactly.
-function sameFieldValue(a, b) {
+function sameFieldValue(key, a, b) {
   if (a === b) return true;
   if (a && b && typeof a === 'object' && typeof b === 'object') {
+    // A marker {t, x} has no y/z — without this branch every pair of markers
+    // would compare equal and a real clash would be reported as agreement.
+    if (key.indexOf('mk:') === 0) return a.t === b.t && a.x === b.x;
     return (a.y | 0) === (b.y | 0) && (a.z | 0) === (b.z | 0);
   }
   return false;
@@ -1585,7 +1602,7 @@ function diffProgress(local, remote, base) {
       mergedClocks[k] = rClock;
       return;
     }
-    if (sameFieldValue(lv[k], rv[k])) {  // both moved, and agreed
+    if (sameFieldValue(k, lv[k], rv[k])) {  // both moved, and agreed
       mergedClocks[k] = Math.max(lClock, rClock);
       return;
     }
