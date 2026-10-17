@@ -37,6 +37,52 @@ const HATSUKI_SIZES = [
   badge: `Size ${s.name} · chest ${s.inch}" / ${s.cm} cm`,
 }));
 
+// Leaf chart, 15 sts × 20 rows. Flat: odd rows RS, even rows WS.
+const HATSUKI_LEAF_FLAT = [
+  'K10, k2tog, yo, k1, p2.',
+  'K2, yo, p2, p2tog, p9.',
+  'K8, k2tog, k1, yo, k2, p2.',
+  'K2, p1, yo, p3, p2tog, p7.',
+  'K6, k2tog, k2, yo, k3, p2.',
+  'K2, p2, yo, p4, p2tog, p5.',
+  'K4, k2tog, k3, yo, k4, p2.',
+  'K2, p3, yo, p5, p2tog, p3.',
+  'K13, p2.',
+  'K2, p13.',
+  'K1, yo, ssk, k10, p2.',
+  'K2, p9, ssp, p2, yo.',
+  'K2, yo, k1, ssk, k8, p2.',
+  'K2, p7, ssp, p3, yo, p1.',
+  'K3, yo, k2, ssk, k6, p2.',
+  'K2, p5, ssp, p4, yo, p2.',
+  'K4, yo, k3, ssk, k4, p2.',
+  'K2, p3, ssp, p5, yo, p3.',
+  'K13, p2.',
+  'K2, p13.',
+];
+const HATSUKI_LEAF_ROUND = [
+  'K10, k2tog, yo, k1, p2.',
+  'K9, k2tog, k2, yo, p2.',
+  'K8, k2tog, k1, yo, k2, p2.',
+  'K7, k2tog, k3, yo, k1, p2.',
+  'K6, k2tog, k2, yo, k3, p2.',
+  'K5, k2tog, k4, yo, k2, p2.',
+  'K4, k2tog, k3, yo, k4, p2.',
+  'K3, k2tog, k5, yo, k3, p2.',
+  'K13, p2.',
+  'K13, p2.',
+  'K1, yo, ssk, k10, p2.',
+  'YO, k2, ssk, k9, p2.',
+  'K2, yo, k1, ssk, k8, p2.',
+  'K1, yo, k3, ssk, k7, p2.',
+  'K3, yo, k2, ssk, k6, p2.',
+  'K2, yo, k4, ssk, k5, p2.',
+  'K4, yo, k3, ssk, k4, p2.',
+  'K3, yo, k5, ssk, k3, p2.',
+  'K13, p2.',
+  'K13, p2.',
+];
+
 // Leaf chart, 15 sts × 20 rows, from hatsuki.stitchchart.json (row 1 = the
 // export's min y, stitch order = ascending x, so the two purl columns sit on
 // the left exactly as the PDF draws them). Worked flat: odd rows RS.
@@ -106,6 +152,22 @@ function buildHatsukiPhases(z) {
       n('hk-m8', 'How it is made — knit top down, starting from each front shoulder; join them and start the Leaf pattern at a fixed position down the front. Then pick up from the shoulder cast-on edges for the left and right back, join them and work the back to the underarms (no leaf pattern on the back). Finally join back and front and work in the round. The total length is intentionally cropped; it can be extended. Cotton and linen yarns get heavier and longer with finishing, so knit cropped first.'),
     ]
   };
+
+  // The Leaf chart stays inline, right where the pattern calls for it: each
+  // row is written out in place (no separate chart section), and also
+  // carries `chartRow` + `chart` so it gets the app's chart-row preview —
+  // the same grid the chart screens use, on an ordinary row, no repeat
+  // wrapper and no `hasChart` section needed (see spChartFor in player.js).
+  // The stitch list is inlined in parentheses next to the chart-row mention
+  // rather than tacked on after, so it reads as part of one instruction.
+  const leafFlatRows = (id, spec) => HATSUKI_LEAF_FLAT.map((t, i) => ({
+    kind: 'row', id: `${id}-${i + 1}`, chartRow: i + 1, chart: HATSUKI_LEAF_CHART,
+    text: `Row ${i + 1} (${i % 2 ? 'WS' : 'RS'}): Work following the pattern to M, SM, ${spec(i + 1, t.replace(/\.$/, ''))}, SM, work following the pattern to end.`
+  }));
+  const leafRoundRows = (id) => HATSUKI_LEAF_ROUND.map((t, i) => ({
+    kind: 'row', id: `${id}-${i + 1}`, chartRow: i + 1, chart: HATSUKI_LEAF_CHART,
+    text: `Rnd ${i + 1}: Work the front wide rib to M, SM, Leaf chart rnd ${i + 1} (${t.replace(/\.$/, '')}) to M, SM, then the rest of the round as established.`
+  }));
 
   // ── Left front shoulder ────────────────────────────────────
   // After row 15, `t1` extra 2-row repeats, then a CO-2 row pair repeated t2 times.
@@ -192,15 +254,11 @@ function buildHatsukiPhases(z) {
   };
 
   // ── Front ──────────────────────────────────────────────────
-  // The Leaf chart itself is a separate phase (hk-front-leaf, right after this
-  // one) — the real chart viewport, not a 20-row transcription. Everything
-  // ABOUT using it (how many times at first, when markers move, when to stop)
-  // stays here as plain notes, since a chart phase only ever shows the chart.
   const centerDepth = hkCm(S([4, 4, 3.25, 3.25, 2.5, 2.5]), S([10, 10, 8, 8, 6, 6]));
   const reps1 = S([1, 2, 1, 2, 1, 2]);
   const repsWord = reps1 === 1 ? 'once' : 'twice';
   const front = {
-    id: 'hk-front', name: 'Front', desc: 'Join the shoulders',
+    id: 'hk-front', name: 'Front', desc: 'Join the shoulders · Leaf chart', flatChart: true,
     entries: [
       e('hk-fr-join', `Next row (RS): Work following the pattern to end, CO ${S([17, 18, 23, 32, 33, 38])} sts, return the left front shoulder sts to the needle with the RS facing, continue following the pattern to end. ${FRONT_TOTAL} sts.`),
       e('hk-fr-ws', 'Next row (WS): K1, p13, *k2, p13* rep to 1 st bef end, k1.'),
@@ -209,12 +267,12 @@ function buildHatsukiPhases(z) {
       n('hk-fr-pm', has(0, 2, 4)
         ? 'Set-up markers (removable), RS facing: PM at the beginning of the K in the center column of the wide ribs, PM at the end of the P2 on the left of the same center column — 15 sts between the markers, which is a guideline on the Leaf chart.'
         : 'Set-up markers (removable), RS facing: PM at the beginning of the K of the wide rib in the right column of the center two columns, PM at the end of the P2 in the left column of the two center columns — 30 sts between the markers, which is a guideline on the Leaf chart.'),
-      n('hk-fr-chart', `Open the Leaf chart (next section) and work rows 1–20 ${repsWord} between the markers. After that, each time you start the chart over from row 1, move the markers outward by 15 sts on each side first, and work the chart once between them. Keep repeating until the armhole measures ${ARMHOLE} from the shoulder tip (finished on a WS row), then break the yarn and place all sts on a holder or scrap yarn. ${FRONT_TOTAL} sts. Keep a record of the chart row you end on — it resumes there after the front and back are joined.`),
+      ...leafFlatRows('hk-fr-l1', (i, t) => `rep Leaf chart row ${i} (${t}) ${repsWord}`),
+      n('hk-fr-pm2', 'Set-up markers: replace the M on each side of the Leaf chart outward by 15 sts each.'),
+      ...leafFlatRows('hk-fr-l2', (i, t) => `rep Leaf chart row ${i} (${t}) to M`),
+      n('hk-fr-more', `Continue knitting the front repeating that frame (markers 15 sts further out each time). At the same time, when the armhole measures ${ARMHOLE} from the shoulder tip (finished on a WS row), break the yarn and place all sts on a holder or scrap yarn. ${FRONT_TOTAL} sts.`),
+      n('hk-fr-rec', 'Keep a record of the Leaf chart row you ended on — the chart is resumed after the front and back are joined.'),
     ]
-  };
-  const frontLeaf = {
-    id: 'hk-front-leaf', name: 'Leaf chart · Front', desc: '15 sts · 20 rows · worked flat — repeat as set up in Front',
-    hasChart: true, flatChart: true, chart: HATSUKI_LEAF_CHART, chartSteps: {},
   };
 
   // ── Right back shoulder ────────────────────────────────────
@@ -301,21 +359,16 @@ function buildHatsukiPhases(z) {
   };
 
   // ── Join & body ────────────────────────────────────────────
-  // Same split as Front: the chart lives in its own phase (hk-body-leaf),
-  // worked in the round this time (no flatChart), resuming the row the
-  // front ended on.
   const body = {
     id: 'hk-body', name: 'Body', desc: 'Join front and back · in the round',
     entries: [
       e('hk-bd-join', `Connect the front and back body — P1, k13, *p2, k13* rep to 1 st bef end, PM, p1, CO 5 sts, return the front body sts to the needle with the RS facing, p1, PM for BOR, *k13, p2* rep to M, SM, rep the following row of the Leaf chart to M, SM, k13, *p2, k13* rep to 1 st bef end, PM, p1, CO 5 sts, p1 (back body), PM, k13, *p2, k13* rep to M, SM, p1, *k1, p1* rep to M (BOR). ${S([280, 310, 340, 370, 400, 430])} sts.`),
       e('hk-bd-1', 'Next rnd: *K13, p2* rep to M, SM, rep the Leaf chart (round knitting) to M, SM, k13, *p2, k13* rep to M, SM, p1, *k1, p1* rep to M, SM, k13, *p2, k13* rep to M, SM, p1, *k1, p1* rep to end.'),
-      n('hk-bd-n1', 'Continue the wide rib and the 1x1 rib on each side until Row 20 of the Leaf chart — resume the chart in the next section at the row you recorded from the front.'),
-      n('hk-bd-chart', `Open the Leaf chart (next section) and work rnds 1–20 once. After that, each time you start the chart over from round 1, move the markers outward by 15 sts on each side first, and work the chart once between them. Keep repeating until the Leaf chart is ${LEAF_COLS} columns wide in total — to extend the body length, it's best to end at the 10th or 20th round. On the last round you work, RM both markers.`),
+      n('hk-bd-n1', 'Continue the wide rib and the 1x1 rib on each side until Row 20 of the Leaf chart.'),
+      n('hk-bd-pm', 'Set-up markers: replace the M on each side of the Leaf chart outward by 15 sts each. Continue with the main wide rib and the 1x1 rib on both sides, working Rows 1–20 of the Leaf chart.'),
+      ...leafRoundRows('hk-bd-l'),
+      n('hk-bd-more', `Rep the work in that frame until the Leaf chart is ${LEAF_COLS} columns wide in total. To extend the body length, it is best to end at the 10th or 20th row of the Leaf chart. On the last rnd, RM both sides of the Leaf chart.`),
     ]
-  };
-  const bodyLeaf = {
-    id: 'hk-body-leaf', name: 'Leaf chart · Body', desc: '15 sts · 20 rnds · worked in the round — repeat as set up in Body',
-    hasChart: true, chart: HATSUKI_LEAF_CHART, chartSteps: {},
   };
 
   // ── Hem & edgings ──────────────────────────────────────────
@@ -438,7 +491,7 @@ function buildHatsukiPhases(z) {
   countShoulder(rightFront, CO);
   countShoulder(rightBack, CO);
   countShoulder(leftBack, CO);
-  return [materials, leftFront, rightFront, front, frontLeaf, rightBack, leftBack, back, body, bodyLeaf, edgings, finishing];
+  return [materials, leftFront, rightFront, front, rightBack, leftBack, back, body, edgings, finishing];
 }
 
 const HATSUKI_NOTES = [
