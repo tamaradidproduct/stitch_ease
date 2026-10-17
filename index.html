@@ -153,10 +153,6 @@
   }
   .acct-email { font-size: 14px; color: var(--text); word-break: break-all; }
   .acct-status { font-size: 12px; color: var(--muted); margin-top: 1px; }
-  .acct-note {
-    font-size: 12px; color: var(--muted); line-height: 1.5;
-    margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--border);
-  }
   /* "Backed up 4 minutes ago", with the manual trigger beside it. Shown on
      every visit, not only on failure — a status nobody has seen working is one
      nobody can read when it breaks. */
@@ -168,17 +164,6 @@
   /* .sheet-btn is flex:1 for the paired full-width rows; here it sits beside a
      line of text and has to be content-width instead. */
   .sheet-btn.slim { flex: 0 0 auto; margin: 0; padding: 9px 16px; font-size: 13px; }
-
-  .acct-err {
-    font-size: 13px; line-height: 1.45; color: var(--c-danger-strong);
-    background: var(--c-danger-wash); border: 1px solid var(--c-danger-line); border-radius: var(--radius);
-    padding: 10px 12px; margin-top: 12px;
-  }
-  .acct-ok {
-    font-size: 13px; line-height: 1.45; color: var(--text);
-    background: var(--accent-light); border: 1px solid var(--accent);
-    border-radius: var(--radius); padding: 10px 12px; margin-top: 12px;
-  }
 
   /* Google's brand guidelines: white button, their four-colour G unmodified,
      and the wording left as "Continue with Google". */
@@ -225,10 +210,6 @@
     font-size: 1.25rem; font-weight: 400; color: var(--text); letter-spacing: -0.01em;
   }
   .header h1 span { font-weight: 600; color: var(--accent); }
-  .header-badge {
-    font-size: 11px; font-weight: 500; color: var(--accent);
-    background: var(--accent-light); padding: 3px 8px; border-radius: var(--r-sheet);
-  }
 
   /* ── Pattern-title header (back to library) ── */
   .pattern-h1 { display: flex; align-items: center; gap: 6px; }
@@ -311,10 +292,6 @@
   }
   .imp-chip b { font-weight: 600; color: var(--muted); }
   .imp-chip-sym { width: 14px; height: 14px; color: var(--text); display: inline-block; }
-  .imp-swatch { width: 12px; height: 12px; border-radius: var(--r-cell); border: 1px solid var(--c-swatch-line); flex-shrink: 0; }
-  .imp-swatch-lg { width: 28px; height: 28px; border-radius: var(--r-small); }
-  .imp-yarn { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-  .imp-yarn .sheet-input { flex: 1; margin: 0; }
   .imp-seg { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
   .imp-seg button {
     flex: 1; padding: 10px 8px; border: 0; background: var(--card); font: inherit;
@@ -516,7 +493,6 @@
   }
   .acct-family-count { font-size: 12px; color: var(--muted); text-align: right; }
   .fam-list { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
-  .fam-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
   .fam-email { font-size: 13px; color: var(--text); word-break: break-all; }
   .fam-role { font-size: 12px; color: var(--muted); flex-shrink: 0; }
   .acct-family .sheet-actions { margin-top: 12px; }
@@ -545,8 +521,6 @@
   .acct-pdfs-head .chevron { transition: transform 0.2s ease; }
   .acct-pdfs-head.open .chevron { transform: rotate(180deg); }
   .acct-pdfs-list { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
-  .acct-pdf-row { display: flex; align-items: center; gap: 10px; }
-  .acct-pdf-main { flex: 1; min-width: 0; }
   .acct-pdf-name { font-size: 13px; color: var(--text); }
   .acct-pdf-sub { font-size: 12px; color: var(--muted); word-break: break-all; }
   .acct-pdf-del {
@@ -618,14 +592,6 @@
   .finished-title { font-family: var(--font-ui); font-size: 1.35rem; color: var(--text); margin: 14px 0 6px; }
   .finished-sub { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 24px; }
   .finished-actions { display: flex; flex-direction: column; gap: 10px; }
-  .finished-btn {
-    padding: 13px; border-radius: var(--radius); font-size: 14px; font-weight: 500;
-    cursor: pointer; border: 1px solid var(--border); background: var(--card); color: var(--text);
-    transition: background 0.15s;
-  }
-  .finished-btn.primary { background: var(--accent); color: var(--c-card); border-color: var(--accent); }
-  .finished-btn:active { background: var(--bg); }
-  .finished-btn.primary:active { background: var(--c-sage-strong); }
 
   /* Confetti falls across the whole scrim, behind the card */
   .confetti-piece {
@@ -670,15 +636,6 @@
     margin: 10px 0;
   }
   .step.active:active { background: var(--card); }
-  .step-circle {
-    width: 22px; height: 22px; border-radius: var(--r-small);
-    border: 2px solid var(--muted); background: transparent;
-    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
-    margin-top: 2px; transition: all 0.15s;
-  }
-  .step.done .step-circle { background: var(--checkbox-done); border-color: var(--checkbox-done); }
-  .step-circle svg { display: none; }
-  .step.done .step-circle svg { display: block; }
   .step-body { flex: 1; min-width: 0; }
   .step-text { font-size: 16px; line-height: 1.5; color: var(--text); }
   .step.done .step-text { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--muted); }
@@ -777,20 +734,10 @@
     display: flex; align-items: center; gap: 4px; flex-shrink: 0;
   }
   .rep-pass-lbl {
-    font-size: 12px; font-weight: 600; color: var(--done-text);
+    font-size: 12px; font-weight: 600;
     min-width: 68px; text-align: center;
     font-variant-numeric: tabular-nums;
   }
-  .rep-pass-btn {
-    width: 22px; height: 22px; border-radius: var(--r-round); border: none;
-    background: transparent; color: var(--accent);
-    font-size: 14px; font-weight: 400; line-height: 1;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; transition: background 0.12s; flex-shrink: 0;
-  }
-  .rep-pass-btn:active { background: var(--c-press); }
-  .step.done .rep-pass-lbl,
-  .step.done .rep-pass-btn { color: var(--muted); }
 
   .rep-rows { list-style: none; margin: 0; padding: 0; }
   .rep-row {
@@ -800,15 +747,6 @@
     cursor: pointer; transition: background 0.15s;
   }
   .rep-row + .rep-row { margin-top: 2px; }
-  .rep-check {
-    flex-shrink: 0; width: 20px; height: 20px; border-radius: var(--r-cell);
-    border: 2px solid var(--muted); background: transparent;
-    display: flex; align-items: center; justify-content: center;
-    margin-top: 1px; transition: all 0.15s;
-  }
-  .rep-row.done .rep-check { background: var(--checkbox-done); border-color: var(--checkbox-done); }
-  .rep-check svg { display: none; }
-  .rep-row.done .rep-check svg { display: block; }
   .rep-n {
     flex-shrink: 0; width: 16px; text-align: center;
     font-size: 11px; font-weight: 600; color: var(--muted);
@@ -828,42 +766,11 @@
   .rep-row.now .rep-t { color: var(--done-text); font-weight: 500; }
   .step.done .rep-row { opacity: 0.6; }
 
-  /* Position line on a repeat block: which row of which pass, and the
-     pattern row it works out to. Was the cadence reminder before repeats
-     replaced cadence. */
-  .round-hint {
-    margin-top: 10px; padding: 9px 12px; border-radius: var(--radius-sm);
-    background: var(--bg); border-left: 3px solid var(--border);
-    display: flex; flex-direction: column; gap: 2px;
-  }
-  .round-hint-lbl {
-    font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
-    text-transform: uppercase; color: var(--muted);
-  }
-  .round-hint-txt { font-size: 13px; line-height: 1.45; color: var(--text); }
-  .round-hint.on {
-    background: var(--accent-light); border-left-color: var(--accent);
-  }
-  .round-hint.on .round-hint-lbl { color: var(--accent); }
-  .round-hint.on .round-hint-txt { color: var(--done-text); font-weight: 500; }
-
   .row-counter {
     margin-top: 10px; background: var(--bg); border-radius: var(--radius-sm);
     padding: 10px 12px; display: flex; align-items: center; gap: 10px;
   }
   .step.done .row-counter { background: var(--c-glass); }
-  .rc-label { flex: 1; font-size: 12px; color: var(--muted); }
-  .rc-controls { display: flex; align-items: center; gap: 12px; }
-  .rc-btn {
-    width: 32px; height: 32px; border-radius: var(--r-round);
-    border: 1px solid var(--border); background: var(--card);
-    font-size: 18px; color: var(--text); cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 300; transition: background 0.1s;
-  }
-  .rc-btn:active { background: var(--accent-light); }
-  .rc-val { font-size: 18px; font-weight: 500; min-width: 28px; text-align: center; color: var(--text); }
-  .rc-target { font-size: 12px; color: var(--muted); }
 
   /* ── Nav buttons — fixed at bottom ── */
   .nav-btns {
@@ -1012,7 +919,6 @@
     border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--card);
     font-size: 12px; color: var(--text);
   }
-  .yarn-dot { width: 14px; height: 14px; border-radius: var(--r-round); border: 1px solid var(--c-swatch-line); }
   .yarn-chips:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-small); }
   .yarn-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
   .yarn-row + .yarn-row { border-top: 1px solid var(--border); }
@@ -1046,13 +952,6 @@
      edge). The margin on each is mirrored in chart.js's
      midRowLeftPad() — the left one's width+margin shifts where column 0
      actually starts, which the mid-row line's position math depends on. */
-  .cc-rownum {
-    flex-shrink: 0; font-size: 10px; font-weight: 500;
-    color: var(--muted); background: var(--card);
-    z-index: 3; overflow: hidden;
-  }
-  .cc-rownum-l { margin-right: 4px; position: sticky; left: 0; }
-  .cc-rownum-r { margin-left: 4px; position: sticky; right: 0; }
   .crow-num-active { color: var(--ch-blue) !important; font-weight: 700; }
   .crow-num-done { color: var(--accent) !important; }
 
@@ -1076,8 +975,6 @@
   }
   .chart-confirm-step:active { background: var(--bg); }
   .chart-confirm-step.done { background: var(--done-bg); }
-  .chart-confirm-step.done .step-circle { background: var(--accent); border-color: var(--accent); }
-  .chart-confirm-step.done .step-circle svg { display: block; }
   .chart-confirm-step.done .step-text { color: var(--done-text); text-decoration: line-through; text-decoration-color: var(--accent-mid); }
 
 
@@ -1166,10 +1063,6 @@
     font-size: 18px; font-weight: 700; color: var(--text);
     margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
   }
-  .recap-row-dot {
-    width: 14px; height: 14px; border-radius: var(--r-round); flex-shrink: 0;
-    border: 1px solid var(--border);
-  }
   .recap-section { margin-top: 10px; }
   .recap-section + .recap-section { padding-top: 10px; border-top: 1px dashed var(--border); }
   .recap-sub { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 2px; }
@@ -1179,13 +1072,6 @@
     display: flex; align-items: center;
     border-top: 1px solid var(--border);
     padding: 8px 16px; gap: 0;
-  }
-  .cc-ctrl {
-    width: 44px; height: 44px; border-radius: var(--r-round); border: none;
-    font-size: 26px; font-weight: 300;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; flex-shrink: 0; transition: background 0.12s;
-    line-height: 1;
   }
   .cc-minus { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
   .cc-minus:active { background: var(--border); }
