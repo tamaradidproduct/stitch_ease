@@ -370,13 +370,22 @@ function syncSelfTest() {
     joinFields({ entries: { 'mk:s1:2': { t: 'note', x: 'a' } }, chart_rows: {}, cur: 0 }).values['mk:s1:2'],
     { t: 'note', x: 'a' });
   check('sameFieldValue: two different markers are NOT the same',
-    [sameFieldValue({ t: 'note', x: 'a' }, { t: 'lifeline', x: 'b' }),
-     sameFieldValue({ t: 'note', x: 'a' }, { t: 'note', x: 'b' }),
-     sameFieldValue({ t: 'note', x: 'a' }, { t: 'note', x: 'a' }),
-     sameFieldValue({ t: '', x: '' }, { t: '', x: '' }),
-     sameFieldValue({ y: 1, z: 1 }, { y: 1, z: 1 }),
-     sameFieldValue({ y: 1, z: 1 }, { y: 2, z: 1 })],
+    [sameFieldValue('mk:s1:2', { t: 'note', x: 'a' }, { t: 'lifeline', x: 'b' }),
+     sameFieldValue('mk:s1:2', { t: 'note', x: 'a' }, { t: 'note', x: 'b' }),
+     sameFieldValue('mk:s1:2', { t: 'note', x: 'a' }, { t: 'note', x: 'a' }),
+     sameFieldValue('mk:s1:2', { t: '', x: '' }, { t: '', x: '' }),
+     sameFieldValue('rp:r1', { y: 1, z: 1 }, { y: 1, z: 1 }),
+     sameFieldValue('rp:r1', { y: 1, z: 1 }, { y: 2, z: 1 })],
     [false, false, true, true, true, false]);
+  check('a repeat object with t still compares as a repeat',
+    (() => {
+      const r = diffProgress(
+        { values: { 'rp:r1': { y: 3, z: 1, t: 'future' } }, clocks: { 'rp:r1': t1 } },
+        { values: { 'rp:r1': { y: 1, z: 1, t: 'future' } }, clocks: { 'rp:r1': t1 + 1 } },
+        { 'rp:r1': t0 });
+      return r.conflicts.map(c => c.key);
+    })(),
+    ['rp:r1']);
   check('a marker edited differently on both devices is a conflict',
     (() => {
       const r = diffProgress(

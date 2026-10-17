@@ -1563,12 +1563,12 @@ async function pull(reason) {
 // repeat's position is an OBJECT, and two objects are never `===` — comparing
 // them that way would report a conflict on every single sync for every repeat
 // both devices had touched, even when they agreed exactly.
-function sameFieldValue(a, b) {
+function sameFieldValue(key, a, b) {
   if (a === b) return true;
   if (a && b && typeof a === 'object' && typeof b === 'object') {
     // A marker {t, x} has no y/z — without this branch every pair of markers
     // would compare equal and a real clash would be reported as agreement.
-    if ('t' in a || 't' in b) return a.t === b.t && a.x === b.x;
+    if (key.indexOf('mk:') === 0) return a.t === b.t && a.x === b.x;
     return (a.y | 0) === (b.y | 0) && (a.z | 0) === (b.z | 0);
   }
   return false;
@@ -1602,7 +1602,7 @@ function diffProgress(local, remote, base) {
       mergedClocks[k] = rClock;
       return;
     }
-    if (sameFieldValue(lv[k], rv[k])) {  // both moved, and agreed
+    if (sameFieldValue(k, lv[k], rv[k])) {  // both moved, and agreed
       mergedClocks[k] = Math.max(lClock, rClock);
       return;
     }
