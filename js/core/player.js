@@ -103,13 +103,18 @@ function spHasChart(p, row) {
   return !!(p.hasChart && row && row.step.kind === 'row' && row.def.chartRow && CHART_B.length && CHART_B[0]);
 }
 
-// The chart a row is worked from: the section's own chart for a chart row, or
-// the repeat's motif chart (`step.motif`, a small grid) for a row inside it.
+// The chart a row is worked from: the section's own chart for a chart row, the
+// repeat's motif chart (`step.motif`, a small grid) for a row inside it, or —
+// for a plain row in a non-chart section — the row's own `chart` field: one
+// row written out with a reference to a chart grid it shares with other rows,
+// no `hasChart` section and no repeat wrapper needed.
 function spChartFor(p, row) {
   if (!row) return null;
   if (spHasChart(p, row)) return CHART_B;
   const st = row.step;
-  return st.kind === 'repeat' && st.motif && st.motif[0] && row.def.chartRow ? st.motif : null;
+  if (st.kind === 'repeat' && st.motif && st.motif[0] && row.def.chartRow) return st.motif;
+  if (st.kind === 'row' && st.chart && st.chart[0] && st.chartRow) return st.chart;
+  return null;
 }
 
 function spInnerHtml(p) {

@@ -93,7 +93,7 @@ function spRowHtml(row, cursor, total) {
   const mk = markerAt(PHASES[cur], row.n);
   if (selected) {
     const cr = row.def.chartRow;
-    const rs = !rep && cr && spHasChart(PHASES[cur], row) ? (isRSRow(cr) ? 'RS' : 'WS') : '';
+    const rs = !rep && cr && spChartFor(PHASES[cur], row) ? (isRSRow(cr) ? 'RS' : 'WS') : '';
     const setup = co.before.length
       ? uiToggleSection({ label: 'SETUP', open: spSetupOpen, onclick: 'spToggleSetup()', html: co.before.map(t => `<p>${t}</p>`).join('') }) : '';
     return uiCard({ tag: 'article', cls: 'sp-row selected', attrs: `data-row="${row.n}" onclick="spCardTap(event, ${row.n})"`, html: `
