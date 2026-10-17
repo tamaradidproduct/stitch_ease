@@ -643,14 +643,15 @@ async function syncPushPullTest() {
     // passes standing on row 1 of the fourth.
     // On the step model (schema 3) the same row also lands as one cursor per
     // section — here Collar (3 passes + the row before them) and the 9 chart rows
-    // done — with each cursor's clock taken from the keys it came from.
+    // done — with each cursor's clock taken from the keys it came from. The Materials
+    // step, a checklist task in a rowless section, also becomes a `t:m1` done flag.
     const onSteps = (o, extra) => stepModelOn() ? Object.assign({}, o, extra) : o;
     check('a v1 row is converted on read, not skipped',
       readLocalProgress('v1proj').values,
-      onSteps({ 'n:m1': true, 'r:c3': true, 'rp:c2': { y: 3, z: 1 }, cur: 2, 'cr:chart': 10 }, { 'sc:col': 4, 'sc:chart': 9 }));
+      onSteps({ 'n:m1': true, 'r:c3': true, 'rp:c2': { y: 3, z: 1 }, cur: 2, 'cr:chart': 10 }, { 'sc:col': 4, 'sc:chart': 9, 't:m1': true }));
     check('its clocks travel with it, into the new namespace',
       readLocalProgress('v1proj').clocks,
-      onSteps({ 'n:m1': 700, 'r:c3': 700, 'rp:c2': 700, cur: 700, 'cr:chart': 700 }, { 'sc:col': 700, 'sc:chart': 700 }));
+      onSteps({ 'n:m1': 700, 'r:c3': 700, 'rp:c2': 700, cur: 700, 'cr:chart': 700 }, { 'sc:col': 700, 'sc:chart': 700, 't:m1': 700 }));
     // global_rows is derived in v2. Carrying its clock would be a timestamp
     // asserting an edit to a field that no longer exists.
     check('but the derived global_rows clock is left behind',
@@ -669,7 +670,7 @@ async function syncPushPullTest() {
       upgraded.schema_ver, PROGRESS_SCHEMA);
     check('and the upgraded values go up in the new namespace',
       { entries: upgraded.entries, cur: upgraded.cur },
-      { entries: onSteps({ 'n:m1': true, 'r:c3': true, 'rp:c2': { y: 3, z: 1 } }, { 'sc:col': 4, 'sc:chart': 9 }), cur: 2 });
+      { entries: onSteps({ 'n:m1': true, 'r:c3': true, 'rp:c2': { y: 3, z: 1 } }, { 'sc:col': 4, 'sc:chart': 9, 't:m1': true }), cur: 2 });
     // The v1 client's only copy of its own progress. Dropping it is a separate
     // decision, for when no v1 client can exist.
     check('the legacy columns are left alone, not cleared',
@@ -697,10 +698,10 @@ async function syncPushPullTest() {
 
     check('the v1 row\'s work and this device\'s work both survive',
       readLocalProgress('both').values,
-      { 'n:m1': true, 'r:c3': true, cur: 0 });
+      onSteps({ 'n:m1': true, 'r:c3': true, cur: 0 }, { 't:m1': true }));
     check('and neither is lost on the way up',
       db.project_progress.find(r => r.project_id === 'both').entries,
-      { 'n:m1': true, 'r:c3': true });
+      onSteps({ 'n:m1': true, 'r:c3': true }, { 't:m1': true }));
 
     // ── A newer row is still refused ──
     //
