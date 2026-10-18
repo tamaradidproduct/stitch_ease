@@ -113,7 +113,7 @@ function spChartFor(p, row) {
   if (spHasChart(p, row)) return CHART_B;
   const st = row.step;
   if (st.kind === 'repeat' && st.motif && st.motif[0] && row.def.chartRow) return st.motif;
-  if (st.kind === 'row' && st.chart && st.chart[0] && st.chartRow) return st.chart;
+  if (st.kind === 'row' && st.chart && st.chart[0] && row.def.chartRow) return st.chart;
   return null;
 }
 

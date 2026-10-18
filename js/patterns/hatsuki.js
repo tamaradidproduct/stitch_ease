@@ -364,7 +364,7 @@ function buildHatsukiPhases(z) {
     entries: [
       e('hk-bd-join', `Connect the front and back body — P1, k13, *p2, k13* rep to 1 st bef end, PM, p1, CO 5 sts, return the front body sts to the needle with the RS facing, p1, PM for BOR, *k13, p2* rep to M, SM, rep the following row of the Leaf chart to M, SM, k13, *p2, k13* rep to 1 st bef end, PM, p1, CO 5 sts, p1 (back body), PM, k13, *p2, k13* rep to M, SM, p1, *k1, p1* rep to M (BOR). ${S([280, 310, 340, 370, 400, 430])} sts.`),
       e('hk-bd-1', 'Next rnd: *K13, p2* rep to M, SM, rep the Leaf chart (round knitting) to M, SM, k13, *p2, k13* rep to M, SM, p1, *k1, p1* rep to M, SM, k13, *p2, k13* rep to M, SM, p1, *k1, p1* rep to end.'),
-      n('hk-bd-n1', 'Continue the wide rib and the 1x1 rib on each side until Row 20 of the Leaf chart.'),
+      n('hk-bd-n1', 'Continue the wide rib and the 1x1 rib on each side until Row 20 of the Leaf chart, resuming at the row you recorded from the front.'),
       n('hk-bd-pm', 'Set-up markers: replace the M on each side of the Leaf chart outward by 15 sts each. Continue with the main wide rib and the 1x1 rib on both sides, working Rows 1–20 of the Leaf chart.'),
       ...leafRoundRows('hk-bd-l'),
       n('hk-bd-more', `Rep the work in that frame until the Leaf chart is ${LEAF_COLS} columns wide in total. To extend the body length, it is best to end at the 10th or 20th row of the Leaf chart. On the last rnd, RM both sides of the Leaf chart.`),
