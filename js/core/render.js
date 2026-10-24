@@ -821,14 +821,74 @@ function renderHome() {
 // Glossary = general craft-stitch reference, grouped by craft. Independent of
 // any pattern's own `notes` (the abbreviations one specific pattern uses) —
 // this is the "what does ssk mean" lookup, browsable with no project open.
+let glossaryPatternCache = null;
+
 function renderGlossary() {
   leaveChartMode();
   renderHeader();
+  glossaryPatternCache = glossaryPatternItems();
+  const own = glossaryPatternCache;
   document.getElementById('phase-content').innerHTML =
-    `<div class="picker-hint">Stitches and terms, across every craft in the library.</div>
+    `<div class="picker-hint">${own.length ? 'Every stitch this pattern uses. Stitches the designer defined are tagged Custom.' : 'Stitches and terms, across every craft in the library.'}</div>
     <input type="text" id="glossary-search" class="glossary-search" placeholder="Search stitches…"
            oninput="filterGlossary(this.value)" autocomplete="off">
-    <div id="glossary-list">${glossaryListHtml(GLOSSARY)}</div>`;
+    <div id="glossary-list">${own.length ? glossaryItemsHtml(own) : glossaryListHtml(GLOSSARY)}</div>`;
+}
+
+// Opened from a project: one list of every stitch the pattern uses — the glossary entries its
+// chart cells and step text name, plus the designer's own `notes`. A note with its own `def` is
+// the designer's definition and is tagged `custom`; a note that defers resolves to the glossary
+// entry and is listed once, like any other. Empty when opened from the library.
+function glossaryPatternItems() {
+  const pat = glossaryFrom && typeof activePattern === 'function' ? activePattern() : null;
+  if (!pat) return [];
+  const notes = pat.notes || [];
+  const craft = /tatting/i.test((pat.badge || '') + ' ' + (pat.desc || '')) ? 'Tatting' : 'Knitting';
+  const seen = {}, out = [];
+  const add = it => {
+    const k = String(it.term).toLowerCase();
+    if (seen[k]) return;
+    seen[k] = true;
+    out.push(it);
+  };
+  const noteSym = n => n.sym && typeof SYMS !== 'undefined' ? SYMS[n.sym] || '' : (n.symbol || '');
+  notes.forEach(n => {
+    if (!n || !n.term) return;
+    const gl = glossaryEntry(n.term);
+    if (n.def) {
+      if (gl) seen[gl.term.toLowerCase()] = true;
+      add({ term: n.term, def: n.def, sym: noteSym(n), custom: true });
+    } else if (gl) {
+      add({ term: gl.term, abbr: gl.abbr, def: gl.def, sym: noteSym(n) || spSymFor(gl) });
+    }
+  });
+  const addChart = grid => (grid || []).forEach(row => (row || []).forEach(c => {
+    const t = parseColorCell(c).t;
+    if (t === 'E') return;
+    const e = glossaryEntry(SP_STITCH_NAMES[t] || t);
+    if (e) add({ term: e.term, abbr: e.abbr, def: e.def, sym: (typeof SYMS !== 'undefined' ? SYMS[t] : '') || spSymFor(e) });
+  }));
+  (pat.phases || []).forEach(ph => {
+    if (ph.hasChart) addChart(chartForPhase(ph));
+    (ph.steps || []).forEach(st => {
+      addChart(st.motif);
+      addChart(st.chart);
+      [st.text].concat(st.bullets || []).filter(Boolean).forEach(t => spStitchesInText(t, craft, notes).forEach(i => {
+        const e = glossaryEntry(i.term);
+        const isCustom = notes.some(n => n && n.def && n.term === i.term);
+        add(e && !isCustom ? { term: e.term, abbr: e.abbr, def: e.def, sym: i.sym } : { term: i.term, def: i.def, sym: i.sym, custom: isCustom });
+      }));
+    });
+  });
+  return out;
+}
+
+function glossaryItemsHtml(items) {
+  if (!items.length) return '<div class="home-empty">No matches.</div>';
+  return items.map(t => `<div class="row row--baseline note-row">
+    <span class="note-term">${t.sym ? `<span class="note-sym">${t.sym}</span>` : ''}${escapeHtml(t.abbr || t.term)}</span>
+    <span class="note-def">${t.abbr ? `<strong>${escapeHtml(t.term)}.</strong> ` : ''}${escapeHtml(t.def || '')}${t.custom ? ' ' + uiTag('Custom') : ''}</span>
+  </div>`).join('');
 }
 
 function glossaryListHtml(crafts) {
@@ -860,6 +920,13 @@ function filterGlossary(q) {
     const list = document.getElementById('glossary-list');
     if (!list) return;
     const query = q.trim().toLowerCase();
+    const own = glossaryPatternCache || [];
+    if (own.length) {
+      list.innerHTML = glossaryItemsHtml(!query ? own : own.filter(t =>
+        t.term.toLowerCase().includes(query) || (t.abbr && t.abbr.toLowerCase().includes(query)) ||
+        (t.def || '').toLowerCase().includes(query)));
+      return;
+    }
     if (!query) { list.innerHTML = glossaryListHtml(GLOSSARY); return; }
     const crafts = GLOSSARY.map(c => ({
       craft: c.craft,
