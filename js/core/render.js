@@ -821,10 +821,13 @@ function renderHome() {
 // Glossary = general craft-stitch reference, grouped by craft. Independent of
 // any pattern's own `notes` (the abbreviations one specific pattern uses) —
 // this is the "what does ssk mean" lookup, browsable with no project open.
+let glossaryPatternCache = null;
+
 function renderGlossary() {
   leaveChartMode();
   renderHeader();
-  const own = glossaryPatternItems();
+  glossaryPatternCache = glossaryPatternItems();
+  const own = glossaryPatternCache;
   document.getElementById('phase-content').innerHTML =
     `<div class="picker-hint">${own.length ? 'Every stitch this pattern uses. Stitches the designer defined are tagged Custom.' : 'Stitches and terms, across every craft in the library.'}</div>
     <input type="text" id="glossary-search" class="glossary-search" placeholder="Search stitches…"
@@ -863,16 +866,17 @@ function glossaryPatternItems() {
     const t = parseColorCell(c).t;
     if (t === 'E') return;
     const e = glossaryEntry(SP_STITCH_NAMES[t] || t);
-    if (e) add({ term: e.term, abbr: e.abbr, def: e.def, sym: SYMS[t] || spSymFor(e) });
+    if (e) add({ term: e.term, abbr: e.abbr, def: e.def, sym: (typeof SYMS !== 'undefined' ? SYMS[t] : '') || spSymFor(e) });
   }));
   (pat.phases || []).forEach(ph => {
     if (ph.hasChart) addChart(chartForPhase(ph));
     (ph.steps || []).forEach(st => {
       addChart(st.motif);
       addChart(st.chart);
-      [st.text].concat(st.bullets || []).forEach(t => spStitchesInText(t, craft, notes).forEach(i => {
+      [st.text].concat(st.bullets || []).filter(Boolean).forEach(t => spStitchesInText(t, craft, notes).forEach(i => {
         const e = glossaryEntry(i.term);
-        add(e && !notes.some(n => n && n.def && n.term === i.term) ? { term: e.term, abbr: e.abbr, def: e.def, sym: i.sym } : { term: i.term, def: i.def, sym: i.sym, custom: notes.some(n => n && n.def && n.term === i.term) });
+        const isCustom = notes.some(n => n && n.def && n.term === i.term);
+        add(e && !isCustom ? { term: e.term, abbr: e.abbr, def: e.def, sym: i.sym } : { term: i.term, def: i.def, sym: i.sym, custom: isCustom });
       }));
     });
   });
@@ -916,7 +920,7 @@ function filterGlossary(q) {
     const list = document.getElementById('glossary-list');
     if (!list) return;
     const query = q.trim().toLowerCase();
-    const own = glossaryPatternItems();
+    const own = glossaryPatternCache || [];
     if (own.length) {
       list.innerHTML = glossaryItemsHtml(!query ? own : own.filter(t =>
         t.term.toLowerCase().includes(query) || (t.abbr && t.abbr.toLowerCase().includes(query)) ||
